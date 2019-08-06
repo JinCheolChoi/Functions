@@ -290,7 +290,7 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
                    row.names=names(coef(GEE.m))[-1]
                  )
     )
-    #print(paste0(i, " ", ColumnsToUse[i]))
+    print(paste0(i, " ", ColumnsToUse[i]))
   }
   return(output)
 }
@@ -305,7 +305,7 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
-# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
 # Outcome_name="outcome"
 # ID_name="id"
 # which.family="binomial"
@@ -315,6 +315,9 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
 # GEE_Multivariable_Jin(Data, ColumnsToUse, Outcome_name, ID_name, which.family,
 #                       vector.OF.classes.num.fact, levels.of.fact)
+# Data$treat[sample(1:nrow(Data), 20)]=NA
+# Data$treat[sample(1:nrow(Data), 20)]=NA
+# Data$treat[sample(1:nrow(Data), 20)]=NA
 GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy"), checkpackages)
@@ -323,10 +326,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   Data=as.data.frame(Data)
   
   # delete data with missing value
-  del=unique(which(is.na(Data[,c(Outcome_name,ColumnsToUse)]), arr.ind=T)[,1])
-  
-  if(length(del)>0){
-    Data=Data[-del, ]}else{ Data=Data}
+  Data=na.omit(Data[, c(Outcome_name, ID_name, ColumnsToUse)])
   
   # convert variable class
   Data[,Outcome_name]=as.numeric(as.character(Data[,Outcome_name])) # response variable
@@ -344,7 +344,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   
   # run model
   fullmod=as.formula( paste( Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
-  GEE.m=geeglm(fullmod, data=Data[,c(ColumnsToUse, ID_name, Outcome_name)], id=Data[,ID_name], family=which.family, corstr="exchangeable")
+  GEE.m=geeglm(fullmod, data=Data[,c(ColumnsToUse, Outcome_name)], id=Data[,ID_name], family=which.family, corstr="exchangeable")
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1,]
@@ -434,7 +434,7 @@ LMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, vector.OF.
                         `P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
                                          format(round2(Coef[, "Pr(>|t|)"][Coef.ind], 3), nsmall=3)),
                         `95 CI`=paste0("(", format(round2(CI[CI.ind, 1], 3), nsmall=2), ", ",
-                                         format(round2(CI[CI.ind, 2], 3), nsmall=2), ")")
+                                       format(round2(CI[CI.ind, 2], 3), nsmall=2), ")")
                       )
     )
     #print(paste(i," ", ColumnsToUse[i],sep=""))
@@ -617,18 +617,34 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # levels.of.fact[which(pred_vars=="treat")]="P"
 # levels.of.fact[which(pred_vars=="sex")]="F"
 # lambda=seq(0, 5, by=0.5)
-# MSE=Binomial_GLMM_CV(data=Data,
-#                      pred_vars,
-#                      res_var,
-#                      rand_var,
-#                      vector.OF.classes.num.fact,
-#                      levels.of.fact,
-#                      k=4,
-#                      lambda=lambda)
+# Error=Binomial_GLMM_CV(data=Data,
+#                        pred_vars,
+#                        res_var,
+#                        rand_var,
+#                        vector.OF.classes.num.fact,
+#                        levels.of.fact,
+#                        k=4,
+#                        lambda=lambda)
+# Train_Error=Error[[1]]
+# CV_Error=Error[[2]]
+# # plot
+# Data.Frame=data.frame(
+#   lambda=lambda,
+#   Error=c(apply(Train_Error, 1, mean), apply(CV_Error, 1, mean)),
+#   Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
+# )
+# Data.Frame %>%
+#   ggplot(aes(x=lambda, y=Error, group=Label)) +
+#   geom_line(aes(color=Label)) +
+#   geom_point(aes(color=Label)) +
+#   scale_color_brewer(palette="Dark2") +
+#   theme_set(theme_bw())
 # # optimal lambda
-# lambda[which.min(apply(MSE, 1, mean))]
+# lambda[which.min(apply(CV_Error, 1, mean))]
 Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fact,
                           levels.of.fact, k=4, lambda=seq(0, 10, by=1)){
+  #data=data[sample(1:nrow(data), 5000), ]
+  
   # check out packages
   lapply(c("glmmLasso", "data.table", "dplyr"), checkpackages)
   # convert data to data frame
@@ -692,7 +708,7 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
   pass.ind=1
   while(sum(pass.ind)>0){
     folds=sample(rep_len(1:k, nrow(CV_data_y)), 
-                   nrow(CV_data_y))
+                 nrow(CV_data_y))
     for(k.ind in 1:k){
       #k.ind=1
       # actual split of the CV_data
@@ -718,14 +734,21 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
   }
   # speicfy GLMM model (with dummies)
   CV.model=as.formula(paste(res_var, "~", paste(CV_data_X_names, collapse="+"), sep=""))
-  # generate empty matrix to save MSE
-  MSE=matrix(NA, length(lambda), k)
-  rownames(MSE)=c(paste0("lambda=", lambda))
-  colnames(MSE)=c(paste0(1:k, "nd sub"))
+  # generate empty matrix to save Train_Error
+  Train_Error=matrix(NA, length(lambda), k)
+  rownames(Train_Error)=c(paste0("lambda=", lambda))
+  colnames(Train_Error)=c(paste0(1:k, "nd sub"))
+  # generate empty matrix to save CV_Error
+  CV_Error=matrix(NA, length(lambda), k)
+  rownames(CV_Error)=c(paste0("lambda=", lambda))
+  colnames(CV_Error)=c(paste0(1:k, "nd sub"))
+  
   # run algorithm
   for(lambda.ind in 1:length(lambda)){
+    #lambda.ind=1
     # actual cross validation
     for(k.ind in 1:k) {
+      #k.ind=1
       # actual split of the CV_data
       fold=which(folds == k.ind)
       # divide data into training and test sets
@@ -737,22 +760,32 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
       names(random_effect)=rand_var
       ## fit adjacent category model
       glmmLasso.fit=glmmLasso(CV.model,
-                                 rnd=random_effect, 
-                                 family=binomial(link=logit), 
-                                 data=CV_data_train, 
-                                 lambda=lambda[lambda.ind],
-                                 switch.NR=TRUE)
+                              rnd=random_effect, 
+                              family=binomial(link=logit), 
+                              data=CV_data_train, 
+                              lambda=lambda[lambda.ind],
+                              switch.NR=TRUE)
       # Make predictions and compute the R2, RMSE and MAE
-      predictions=glmmLasso.fit %>% predict(CV_data_test)
-      # MSE
-      MSE[lambda.ind, k.ind]=mean(unlist(predictions - CV_data_test[, .SD, .SDcol=res_var])^2)
+      predictions_train=glmmLasso.fit %>% predict(CV_data_train)
+      predictions_test=glmmLasso.fit %>% predict(CV_data_test)
+      
+      # Train_Error and CV_Error
+      Train_Error[lambda.ind, k.ind]=mean(unlist(predictions_train - CV_data_train[, .SD, .SDcol=res_var])^2)
+      CV_Error[lambda.ind, k.ind]=mean(unlist(predictions_test - CV_data_test[, .SD, .SDcol=res_var])^2)
+      
       if(k.ind == k){
         # print process
         print(paste0("k : ", k.ind, ", lambda : ", lambda[lambda.ind]))
       }
     }
   }
-  return(MSE)
+  
+  # combine Train_Error and CV_Error
+  out=list()
+  out[[1]]=Train_Error
+  out[[2]]=CV_Error
+  
+  return(out)
 }
 
 
@@ -780,7 +813,7 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
 #                      lambda=10)
 # summary(GLMM.LASSO.fit)
 GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fact,
-                          levels.of.fact, lambda=10){
+                    levels.of.fact, lambda=10){
   # check out packages
   lapply(c("glmmLasso", "data.table", "dplyr"), checkpackages)
   # convert data to data frame
@@ -795,32 +828,32 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
                            arr.ind=TRUE)[, 1])
   # 
   data=data[!missing_obs, 
-               .SD, 
-               .SDcols=c(res_var, pred_vars, rand_var)]
+            .SD, 
+            .SDcols=c(res_var, pred_vars, rand_var)]
   #***********************
   # convert variable types
   #***********************
   # response variable to numeric
   data[, 
-          (res_var):=lapply(.SD, function(x) as.numeric(as.character(x))), 
-          .SDcols=res_var]
+       (res_var):=lapply(.SD, function(x) as.numeric(as.character(x))), 
+       .SDcols=res_var]
   # predictor variables
   for(i in 1:length(pred_vars)){
     #i=3
     # convert variable class
     if(vector.OF.classes.num.fact[i]=="num"){
       data[, 
-              (pred_vars[i]):=lapply(.SD, function(x) as.numeric(as.character(x))), 
-              .SDcols=pred_vars[i]]
+           (pred_vars[i]):=lapply(.SD, function(x) as.numeric(as.character(x))), 
+           .SDcols=pred_vars[i]]
     }
     if(vector.OF.classes.num.fact[i]=="fact"){
       data[, 
-              (pred_vars[i]):=lapply(.SD, function(x) as.factor(as.character(x))), 
-              .SDcols=pred_vars[i]]
+           (pred_vars[i]):=lapply(.SD, function(x) as.factor(as.character(x))), 
+           .SDcols=pred_vars[i]]
       
       data[, 
-              (pred_vars[i]):=lapply(.SD, function(x) relevel(x, ref=levels.of.fact[i])),
-              .SDcols=pred_vars[i]]
+           (pred_vars[i]):=lapply(.SD, function(x) relevel(x, ref=levels.of.fact[i])),
+           .SDcols=pred_vars[i]]
     }
   }
   # grouping variable
@@ -1046,7 +1079,7 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 #********
 # # Define arguments
 # # x is a vector
-# ring2D=function(x){exp(-5*abs(x[1]^2+x[2]^2-1))}  
+# ring2D=function(x){exp(-5*abs(x[1]^2+x[2]^2-1))}
 # vcov2D=.01*diag(2)
 # target=ring2D
 # N=400
