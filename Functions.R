@@ -1160,7 +1160,7 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
 #                             Row_Var="age_cat",
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="<20",
-#                             Missing="Not_Include")
+#                             Missing="Include")
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
   # Data as data table
   Data=as.data.frame(Data)
@@ -1171,8 +1171,8 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   if(Missing=="Include"){
     Data[is.na(Data[, Col_Var]), Col_Var]="NA"
     Data[is.na(Data[, Row_Var]), Row_Var]="NA"
-    }else if(Missing=="Not_Include"){
-      }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+  }else if(Missing=="Not_Include"){
+  }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
   
   #
   Data[, Col_Var]=as.factor(Data[, Col_Var])
@@ -1184,23 +1184,25 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
     dplyr::select(Row_Var, Col_Var) %>% 
     table(useNA="no")
   
-  # Sum of values column-wise
-  Sum_Col_Wise=apply(Contingency_Table, 2, sum)
+  # Sum of values column-wise INCLUDING missing data in Row_Var
+  Sum_Col_Wise=Data %>% 
+    dplyr::select(Col_Var) %>% 
+    table(useNA="no") %>% c
   
-  # Sum of values row-wise
+  # Sum of values row-wise EXCLUDING missing data in Col_Var
   Sum_Row_Wise=apply(Contingency_Table, 1, sum)
   
   # compute odds ratio
   Odds_ratio=Contingency_Table %>% 
     oddsratio(method="wald")
   Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2),
-               " (",
-               round(Odds_ratio$measure[, 2], 2), 
-               " - ", 
-               round(Odds_ratio$measure[, 3], 2), 
-               ")"), 
-        ifelse(Odds_ratio$p.value[, "fisher.exact"]<0.001, "<0.001", round(Odds_ratio$p.value[, "fisher.exact"], 3)), 
-        ifelse(Odds_ratio$p.value[, "chi.square"]<0.001, "<0.001", round(Odds_ratio$p.value[, "chi.square"], 3)))
+                              " (",
+                              round(Odds_ratio$measure[, 2], 2), 
+                              " - ", 
+                              round(Odds_ratio$measure[, 3], 2), 
+                              ")"), 
+                       ifelse(Odds_ratio$p.value[, "fisher.exact"]<0.001, "<0.001", round(Odds_ratio$p.value[, "fisher.exact"], 3)), 
+                       ifelse(Odds_ratio$p.value[, "chi.square"]<0.001, "<0.001", round(Odds_ratio$p.value[, "chi.square"], 3)))
   colnames(Odds_ratio_row)=c("OR (95% CI)", "P-value (Fisher)", "P-value (Chi-square)")
   
   # merge all results
@@ -1209,8 +1211,8 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
                  paste0(Contingency_Table, " (", round(t(t(Contingency_Table)/Sum_Col_Wise)*100, 2), "%)") %>% 
                    matrix(nrow(Contingency_Table), ncol(Contingency_Table)),
                  paste0(Sum_Row_Wise, " (", round(Sum_Row_Wise/sum(Sum_Col_Wise)*100, 2), "%)")
-                 )
-               ) %>% as.data.frame()
+               )
+  ) %>% as.data.frame()
   
   # post-processing
   colnames(Merged)[1:2]=c("Predictor", "Value")
@@ -1263,9 +1265,9 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 # #Data$outcome[sample(1:nrow(Data), 30)]="2"
 # 
 # # Data at baseline
-# BL_Data=Data %>% 
-#   group_by(id) %>% 
-#   filter(visit==min(visit)) %>% 
+# BL_Data=Data %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
 #   ungroup()
 # #
 # Contingency_Table_Generator_Conti_X(Data=BL_Data,
@@ -1289,11 +1291,10 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
       useNA="no"
       }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
 
-  # Sum of values column-wise
+  # Sum of values column-wise INCLUDING missing data in Row_Var
   Sum_Col_Wise=Data %>% 
     dplyr::select(Col_Var) %>% 
-    table(useNA=useNA)
-  
+    table(useNA="no") %>% c
   
   # GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
