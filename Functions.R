@@ -1103,4 +1103,289 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
   samples[(burnin+1):(N+burnin),]
 }
 
+#********************************
+#
+# [ Descriptive Statistics ] ----
+#
+#********************************
+#
+# Contingency_Table_Generator
+#
+#****************************
+# Generate summary (contingency) table that outlines baseline characteristics from longitudinal dataset
+# Row_Var : Non-continuous predictor variable
+# Col_Var : Categorical response variable
+#********
+# Example
+#****************
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools"
+# ),
+# checkpackages)
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data$sex[sample(1:nrow(Data), 30)]=NA
+# Data$age[sample(1:nrow(Data), 30)]=NA
+# Data$outcome[sample(1:nrow(Data), 30)]=NA
+# Data$outcome[sample(1:nrow(Data), 30)]="2"
+# 
+# # Work on predictor with more than 2 levels
+# Data=as.data.table(Data)
+# Data[age<20, age_cat:="<20"]
+# Data[20<=age & age<30, age_cat:="20<=age<30"]
+# Data[30<=age & age<40, age_cat:="30<=age<40"]
+# Data[40<=age & age<50, age_cat:="40<=age<50"]
+# Data[50<=age & age<60, age_cat:="50<=age<60"]
+# Data[60<=age, age_cat:="60<=age"]
+# Data[, age_cat:=as.factor(age_cat)]
+# 
+# # Data at baseline
+# BL_Data=Data %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# #
+# Contingency_Table_Generator(Data=BL_Data,
+#                             Row_Var="sex",
+#                             Col_Var="outcome",
+#                             Ref_of_Row_Var="F",
+#                             Missing="Not_Include")
+# Contingency_Table_Generator(Data=BL_Data,
+#                             Row_Var="age_cat",
+#                             Col_Var="outcome",
+#                             Ref_of_Row_Var="<20",
+#                             Missing="Not_Include")
+Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+  # Data as data table
+  Data=as.data.frame(Data)
+  # 
+  Data[, Col_Var]=as.character(Data[, Col_Var])
+  Data[, Row_Var]=as.character(Data[, Row_Var])
+  
+  if(Missing=="Include"){
+    Data[is.na(Data[, Col_Var]), Col_Var]="NA"
+    Data[is.na(Data[, Row_Var]), Row_Var]="NA"
+    }else if(Missing=="Not_Include"){
+      }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+  
+  #
+  Data[, Col_Var]=as.factor(Data[, Col_Var])
+  Data[, Row_Var]=as.factor(Data[, Row_Var])
+  Data[, Row_Var]=relevel(Data[, Row_Var], ref=Ref_of_Row_Var)
+  
+  # Contingency Table
+  Contingency_Table=Data %>% 
+    dplyr::select(Row_Var, Col_Var) %>% 
+    table(useNA="no")
+  
+  # Sum of values column-wise
+  Sum_Col_Wise=apply(Contingency_Table, 2, sum)
+  
+  # Sum of values row-wise
+  Sum_Row_Wise=apply(Contingency_Table, 1, sum)
+  
+  # compute odds ratio
+  Odds_ratio=Contingency_Table %>% 
+    oddsratio(method="wald")
+  Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2),
+               " (",
+               round(Odds_ratio$measure[, 2], 2), 
+               " - ", 
+               round(Odds_ratio$measure[, 3], 2), 
+               ")"), 
+        ifelse(Odds_ratio$p.value[, "fisher.exact"]<0.001, "<0.001", round(Odds_ratio$p.value[, "fisher.exact"], 3)), 
+        ifelse(Odds_ratio$p.value[, "chi.square"]<0.001, "<0.001", round(Odds_ratio$p.value[, "chi.square"], 3)))
+  colnames(Odds_ratio_row)=c("OR (95% CI)", "P-value (Fisher)", "P-value (Chi-square)")
+  
+  # merge all results
+  Merged=cbind(Row_Var, rownames(Contingency_Table), 
+               cbind(
+                 paste0(Contingency_Table, " (", round(t(t(Contingency_Table)/Sum_Col_Wise)*100, 2), "%)") %>% 
+                   matrix(nrow(Contingency_Table), ncol(Contingency_Table)),
+                 paste0(Sum_Row_Wise, " (", round(Sum_Row_Wise/sum(Sum_Col_Wise)*100, 2), "%)")
+                 )
+               ) %>% as.data.frame()
+  
+  # post-processing
+  colnames(Merged)[1:2]=c("Predictor", "Value")
+  colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(Col_Var, "=", colnames(Contingency_Table), " (n=", Sum_Col_Wise, ")")
+  colnames(Merged)[3+ncol(Contingency_Table)]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
+  Out=cbind(Merged, Odds_ratio_row)
+  
+  Out$`OR (95% CI)`=as.character(Out$`OR (95% CI)`)
+  Out$`P-value (Fisher)`=as.character(Out$`P-value (Fisher)`)
+  Out$`P-value (Chi-square)`=as.character(Out$`P-value (Chi-square)`)
+  
+  #
+  Out=as.data.table(Out)
+  Out[Value==Ref_of_Row_Var, c("OR (95% CI)")]="OR of first two levels"
+  Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 
+                                                           "<0.001 (*Ind Test)", 
+                                                           paste0(round(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 3), "(*Ind Test)"))
+  Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table)$p.value<0.001, 
+                                                               "<0.001 (*Ind Test)", 
+                                                               paste0(round(chisq.test(Contingency_Table)$p.value, 3), " (*Ind Test)"))
+  # return
+  return(Out)
+}
+
+#************************************
+#
+# Contingency_Table_Generator_Conti_X
+#
+#************************************
+# Generate summary (contingency) table that outlines baseline characteristics from longitudinal dataset
+# Row_Var : Non-continuous predictor variable
+# Col_Var : Categorical response variable
+#********
+# Example
+#****************
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools"
+# ),
+# checkpackages)
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data$age[sample(1:nrow(Data), 30)]=NA
+# Data$outcome[sample(1:nrow(Data), 30)]=NA
+# #Data$outcome[sample(1:nrow(Data), 30)]="2"
+# 
+# # Data at baseline
+# BL_Data=Data %>% 
+#   group_by(id) %>% 
+#   filter(visit==min(visit)) %>% 
+#   ungroup()
+# #
+# Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                            Row_Var="age",
+#                            Col_Var="outcome",
+#                            Missing="Include")
+# Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                            Row_Var="age",
+#                            Col_Var="outcome",
+#                            Missing="Not_Include")
+Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+  # Data as data table
+  Data=as.data.frame(Data)
+  #
+  Data[, Col_Var]=as.numeric(Data[, Col_Var])
+  Data[, Row_Var]=as.numeric(Data[, Row_Var])
+  #
+  if(Missing=="Include"){
+    useNA="always"
+    }else if(Missing=="Not_Include"){
+      useNA="no"
+      }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+
+  # Sum of values column-wise
+  Sum_Col_Wise=Data %>% 
+    dplyr::select(Col_Var) %>% 
+    table(useNA=useNA)
+  
+  
+  # GLM to compute P.value and OR.and.CI
+  if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
+    GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=Data, binomial(logit))
+    est=esticon(GLM_Result, diag(length(coef(GLM_Result))))[-1, ]
+    OR.and.CI=paste0(round(exp(est$Estimate), 2), " (", round(exp(est$Lower), 2), " - ", round(exp(est$Upper), 2),")")
+    P.value=ifelse(est$`Pr(>|X^2|)`<0.001, "<0.001", round(est$`Pr(>|X^2|)`, 3)) 
+  }else{
+    OR.and.CI="Y is not binary"
+    P.value="Y is not binary"
+  }
+  
+  #
+  Data=as.data.table(Data)
+  # summary statistics
+  if(Missing=="Include"){
+    Sum_Stat=round(t(rbind(
+        with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(Data[is.na(eval(parse(text = Col_Var))), eval(parse(text = Row_Var))])[1:6], # missing in outcome
+        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+        )), 2)
+  }else if(Missing=="Not_Include"){
+    Sum_Stat=round(t(rbind(
+        with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+        )), 2)
+  }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+  
+  # merge all results
+  Out=c()
+  Out=cbind(
+    rbind(
+      Sum_Stat
+      ),
+    # GLM to compute P.value and OR.and.CI
+    OR.and.CI,
+    P.value
+    )
+  
+  # post-processing
+  Out=cbind(Row_Var, 
+            c("Min", "Q1", "Median", "Mean", "Q3", "Max"), 
+            Out) %>% as.data.frame
+  Out$`OR.and.CI`=as.character(Out$`OR.and.CI`)
+  Out$`P.value`=as.character(Out$`P.value`)
+  Out[-1, c("OR.and.CI", "P.value")]=""
+  colnames(Out)[1:2]=c("Predictor", "Value")
+  
+  #
+  colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
+  colnames(Out)[(3+length(Sum_Col_Wise))]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
+  colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+2)]=c("OR (95% CI)", "P-value (GLM)")
+  
+  # return
+  return(Out)
+}
+
+#******************************************************************************
+#
+# Example of combining contingency tables of categorical and continuous variables
+#
+#******************************************************************************
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools"
+# ),
+# checkpackages)
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# #
+# Combined_CT=rbind(
+#   Contingency_Table_Generator(Data=Data,
+#                               Row_Var="sex",
+#                               Col_Var="outcome",
+#                               Ref_of_Row_Var="F",
+#                               Missing="Include"),
+#   Contingency_Table_Generator_Conti_X(Data=Data,
+#                                       Row_Var="age",
+#                                       Col_Var="outcome",
+#                                       Missing="Include"),
+#   fill=TRUE
+#   )
+# Combined_CT
+
+
+
+
+
+
+
 
