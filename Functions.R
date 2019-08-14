@@ -1151,12 +1151,12 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
 #   filter(visit==min(visit)) %>%
 #   ungroup()
 # #
-# Contingency_Table_Generator(Data=BL_Data,
+# Contingency_Table_Generator(Data=Data,
 #                             Row_Var="sex",
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="F",
 #                             Missing="Not_Include")
-# Contingency_Table_Generator(Data=BL_Data,
+# Contingency_Table_Generator(Data=Data,
 #                             Row_Var="age_cat",
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="<20",
@@ -1252,7 +1252,8 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #          "data.table",
 # 
 #          "lme4",
-#          "epitools"
+#          "epitools",
+#          "doBy" # for esticon function
 # ),
 # checkpackages)
 # require(geepack)
@@ -1361,7 +1362,8 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
 #          "data.table",
 # 
 #          "lme4",
-#          "epitools"
+#          "epitools",
+#          "doBy" # for esticon function
 # ),
 # checkpackages)
 # require(geepack)
