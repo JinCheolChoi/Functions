@@ -606,6 +606,10 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # Binomial_GLMM_CV
 #
 #*****************
+# For some reason, the function in library(lmmen) that conducts a cross-validation for the optimal tuning parameter does not work.
+#cv.glmmLasso(initialize_example(seed=1))
+# Thus, I wrote my own code that perform a k-fold cross-validation as below.
+#***************************************************************************
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
@@ -751,7 +755,7 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
     #lambda.ind=1
     # actual cross validation
     for(k.ind in 1:k) {
-      #k.ind=1
+      #k.ind=2
       # actual split of the CV_data
       fold=which(folds == k.ind)
       # divide data into training and test sets
