@@ -617,36 +617,39 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # levels.of.fact[which(pred_vars=="treat")]="P"
 # levels.of.fact[which(pred_vars=="sex")]="F"
 # lambda=seq(0, 5, by=0.5)
-# Error=Binomial_GLMM_CV(data=Data,
-#                        pred_vars,
-#                        res_var,
-#                        rand_var,
-#                        vector.OF.classes.num.fact,
-#                        levels.of.fact,
-#                        k=4,
-#                        lambda=lambda)
-# Train_Error=Error[[1]]
-# CV_Error=Error[[2]]
+# # Binom_GLMM_CV
+# Binom_GLMM_CV=Binomial_GLMM_CV(data=Data,
+#                                pred_vars,
+#                                res_var,
+#                                rand_var,
+#                                vector.OF.classes.num.fact,
+#                                levels.of.fact,
+#                                k=4,
+#                                lambda=lambda)
+# # train error
+# Binom_GLMM_CV$Train_Error
+# # cv error
+# Binom_GLMM_CV$CV_Error
 # # plot
-# Data.Frame=data.frame(
+# Error_by_Lambda=data.frame(
 #   lambda=lambda,
-#   Error=c(apply(Train_Error, 1, mean), apply(CV_Error, 1, mean)),
+#   Error=c(apply(Binom_GLMM_CV$Train_Error, 1, mean), apply(Binom_GLMM_CV$CV_Error, 1, mean)),
 #   Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
 # )
-# Data.Frame %>%
+# Error_by_Lambda %>%
 #   ggplot(aes(x=lambda, y=Error, group=Label)) +
 #   geom_line(aes(color=Label)) +
 #   geom_point(aes(color=Label)) +
 #   scale_color_brewer(palette="Dark2") +
 #   theme_set(theme_bw())
 # # optimal lambda
-# lambda[which.min(apply(CV_Error, 1, mean))]
+# Binom_GLMM_CV$Optimal_Lambda
 Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fact,
                           levels.of.fact, k=4, lambda=seq(0, 10, by=1)){
   #data=data[sample(1:nrow(data), 5000), ]
   
   # check out packages
-  lapply(c("glmmLasso", "data.table", "dplyr"), checkpackages)
+  lapply(c("glmmLasso", "data.table", "dplyr", "ggplot2"), checkpackages)
   # convert data to data frame
   data=as.data.table(data)
   
@@ -782,12 +785,14 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
   
   # combine Train_Error and CV_Error
   out=list()
-  out[[1]]=Train_Error
-  out[[2]]=CV_Error
+  out$Train_Error=Train_Error
+  out$CV_Error=CV_Error
+  
+  # optimal lambda
+  out$Optimal_Lambda=lambda[which.min(apply(CV_Error, 1, mean))]
   
   return(out)
 }
-
 
 #***********
 #
@@ -856,25 +861,38 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
            .SDcols=pred_vars[i]]
     }
   }
-  # grouping variable
-  data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
   
   #*************
   # run algoritm
   #*************
-  # specify GLMM model (before creating dummies)
-  model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
+  # specify original GLMM model (before creating dummies)
+  original.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
+  
+  # generate design matrix (with dummies created for categorical variable with more than 2 levels)
+  data_X=model.matrix(original.model, data) %>% 
+    as.data.table()
+  data_X_names=colnames(data_X[, -1])
+  # response variable
+  data_y=data[, .SD, .SDcols=res_var]
+  # standardize predictor variables
+  data_X[, (data_X_names):=lapply(.SD, function(x) scale(x, center=TRUE, scale=TRUE)), 
+         .SDcols=data_X_names]
+  # grouping variable
+  data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+  data_ID=data[, .SD, .SDcols=rand_var]
   # random effect
   random_effect=list(id=~1)
   names(random_effect)=rand_var
-  #
-  glmmLasso.fit=glmmLasso(model,
+  
+  # specify GLMM model (after creating dummies)
+  GLMM.model=as.formula(paste(res_var, "~", paste(data_X_names, collapse="+"), sep=""))
+  # run glmm Lasso
+  glmmLasso.fit=glmmLasso(GLMM.model,
                           rnd=random_effect, 
                           family=binomial(link=logit), 
-                          data=data, 
+                          data=cbind(data_y, data_ID, data_X), 
                           lambda=lambda,
                           switch.NR=TRUE)
-  
   return(glmmLasso.fit)
 }
 
@@ -1288,10 +1306,10 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   #
   if(Missing=="Include"){
     useNA="always"
-    }else if(Missing=="Not_Include"){
-      useNA="no"
-      }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
-
+  }else if(Missing=="Not_Include"){
+    useNA="no"
+  }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+  
   # Sum of values column-wise INCLUDING missing data in Row_Var
   Sum_Col_Wise=Data %>% 
     dplyr::select(Col_Var) %>% 
@@ -1313,15 +1331,15 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   # summary statistics
   if(Missing=="Include"){
     Sum_Stat=round(t(rbind(
-        with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
-        summary(Data[is.na(eval(parse(text = Col_Var))), eval(parse(text = Row_Var))])[1:6], # missing in outcome
-        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
-        )), 2)
+      with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
+      summary(Data[is.na(eval(parse(text = Col_Var))), eval(parse(text = Row_Var))])[1:6], # missing in outcome
+      summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+    )), 2)
   }else if(Missing=="Not_Include"){
     Sum_Stat=round(t(rbind(
-        with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
-        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
-        )), 2)
+      with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
+      summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+    )), 2)
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
   
   # merge all results
@@ -1329,11 +1347,11 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   Out=cbind(
     rbind(
       Sum_Stat
-      ),
+    ),
     # GLM to compute P.value and OR.and.CI
     OR.and.CI,
     P.value
-    )
+  )
   
   # post-processing
   Out=cbind(Row_Var, 
