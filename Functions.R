@@ -660,14 +660,9 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
   #****************************
   # exclude missing obsevations
   #****************************
-  missing_obs=unique(which(is.na(data[, 
-                                      .SD, 
-                                      .SDcols=c(res_var, pred_vars, rand_var)]), 
-                           arr.ind=TRUE)[, 1])
-  # 
-  CV_data=data[!missing_obs, 
-               .SD, 
-               .SDcols=c(res_var, pred_vars, rand_var)]
+  CV_data=na.omit(data[, 
+                       .SD, 
+                       .SDcols=c(res_var, pred_vars, rand_var)])
   #***********************
   # convert variable types
   #***********************
@@ -694,41 +689,29 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
               .SDcols=pred_vars[i]]
     }
   }
+  # grouping variable
+  CV_data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+  
   #***
   # CV
   #***
-  # specify GLMM model (before creating dummies)
-  original.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
-  # generate design matrix (with dummies created for categorical variable with more than 2 levels)
-  CV_data_X=model.matrix(original.model, CV_data) %>% 
-    as.data.table()
-  CV_data_X_names=colnames(CV_data_X[, -1])
-  # response variable
-  CV_data_y=CV_data[, .SD, .SDcols=res_var]
-  # standardize predictor variables
-  CV_data_X[, (CV_data_X_names):=lapply(.SD, function(x) scale(x, center=TRUE, scale=TRUE)), 
-            .SDcols=CV_data_X_names]
-  # grouping variable
-  CV_data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
-  CV_data_ID=CV_data[, .SD, .SDcols=rand_var]
   # generate array containing fold-number for each sample (row)
   pass.ind=1
   while(sum(pass.ind)>0){
-    folds=sample(rep_len(1:k, nrow(CV_data_y)), 
-                 nrow(CV_data_y))
+    folds=sample(rep_len(1:k, nrow(CV_data)), nrow(CV_data))
     for(k.ind in 1:k){
       #k.ind=1
       # actual split of the CV_data
       fold=which(folds == k.ind)
       
       # divide data into training and test sets
-      CV_data_train=cbind(CV_data_y[-fold,], CV_data_ID[-fold,], CV_data_X[-fold,])
+      CV_data_train=CV_data[-fold, ]
+      CV_data_test=CV_data[fold, ]
       
-      if(sum((CV_data_train[, .SD, .SDcols=CV_data_X_names] %>% 
+      if(sum((CV_data_train[, .SD, .SDcols=pred_vars] %>% 
               lapply(function(x) length(unique(x))) %>% 
               unlist)==1)>0){
-        
-        print(which((CV_data_train[, .SD, .SDcols=CV_data_X_names] %>% 
+        print(which((CV_data_train[, .SD, .SDcols=pred_vars] %>% 
                        lapply(function(x) length(unique(x))) %>% 
                        unlist)==1))
         #print(paste0("Re-diving data"))
@@ -740,7 +723,7 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
     }  
   }
   # speicfy GLMM model (with dummies)
-  CV.model=as.formula(paste(res_var, "~", paste(CV_data_X_names, collapse="+"), sep=""))
+  CV.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
   # generate empty matrix to save Train_Error
   Train_Error=matrix(NA, length(lambda), k)
   rownames(Train_Error)=c(paste0("lambda=", lambda))
@@ -758,10 +741,6 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
       #k.ind=2
       # actual split of the CV_data
       fold=which(folds == k.ind)
-      # divide data into training and test sets
-      CV_data_train=cbind(CV_data_y[-fold,], CV_data_ID[-fold,], CV_data_X[-fold,])
-      CV_data_test=cbind(CV_data_y[fold,], CV_data_ID[fold,], CV_data_X[fold,])
-      # train and test your model with CV_data.train and CV_data.test
       # random effect
       random_effect=list(id=~1)
       names(random_effect)=rand_var
@@ -831,14 +810,9 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
   #****************************
   # exclude missing obsevations
   #****************************
-  missing_obs=unique(which(is.na(data[, 
-                                      .SD, 
-                                      .SDcols=c(res_var, pred_vars, rand_var)]), 
-                           arr.ind=TRUE)[, 1])
-  # 
-  data=data[!missing_obs, 
-            .SD, 
-            .SDcols=c(res_var, pred_vars, rand_var)]
+  data=na.omit(data[, 
+                    .SD, 
+                    .SDcols=c(res_var, pred_vars, rand_var)])
   #***********************
   # convert variable types
   #***********************
@@ -870,31 +844,21 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
   # run algoritm
   #*************
   # specify original GLMM model (before creating dummies)
-  original.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
+  model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
   
-  # generate design matrix (with dummies created for categorical variable with more than 2 levels)
-  data_X=model.matrix(original.model, data) %>% 
-    as.data.table()
-  data_X_names=colnames(data_X[, -1])
-  # response variable
-  data_y=data[, .SD, .SDcols=res_var]
-  # standardize predictor variables
-  data_X[, (data_X_names):=lapply(.SD, function(x) scale(x, center=TRUE, scale=TRUE)), 
-         .SDcols=data_X_names]
   # grouping variable
   data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
-  data_ID=data[, .SD, .SDcols=rand_var]
   # random effect
   random_effect=list(id=~1)
   names(random_effect)=rand_var
   
   # specify GLMM model (after creating dummies)
-  GLMM.model=as.formula(paste(res_var, "~", paste(data_X_names, collapse="+"), sep=""))
+  GLMM.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
   # run glmm Lasso
   glmmLasso.fit=glmmLasso(GLMM.model,
                           rnd=random_effect, 
                           family=binomial(link=logit), 
-                          data=cbind(data_y, data_ID, data_X), 
+                          data=data, 
                           lambda=lambda,
                           switch.NR=TRUE)
   return(glmmLasso.fit)
