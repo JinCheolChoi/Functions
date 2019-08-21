@@ -1281,7 +1281,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   # Sum of values column-wise INCLUDING missing data in Row_Var
   Sum_Col_Wise=Data %>% 
     dplyr::select(Col_Var) %>% 
-    table(useNA="no") %>% c
+    table(useNA=useNA) %>% c
   
   # GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
@@ -1293,6 +1293,12 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     OR.and.CI="Y is not binary"
     P.value="Y is not binary"
   }
+  
+  # compute P.value from Mann-Whitney-Wilcoxon Test
+  unique_outcome_value=unique(Data[, Col_Var])[!is.na(unique(Data[, Col_Var]))]
+  Mann_Whitney_test=wilcox.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var],
+              Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
+  P.value_Mann_Whitney=ifelse(Mann_Whitney_test$p.value<0.001, "<0.001", round(Mann_Whitney_test$p.value, 3))
   
   #
   Data=as.data.table(Data)
@@ -1318,7 +1324,8 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     ),
     # GLM to compute P.value and OR.and.CI
     OR.and.CI,
-    P.value
+    P.value,
+    P.value_Mann_Whitney
   )
   
   # post-processing
@@ -1327,18 +1334,21 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
             Out) %>% as.data.frame
   Out$`OR.and.CI`=as.character(Out$`OR.and.CI`)
   Out$`P.value`=as.character(Out$`P.value`)
-  Out[-1, c("OR.and.CI", "P.value")]=""
+  Out$`P.value_Mann_Whitney`=as.character(Out$`P.value_Mann_Whitney`)
+  Out[-1, c("OR.and.CI", "P.value", "P.value_Mann_Whitney")]=""
   colnames(Out)[1:2]=c("Predictor", "Value")
   
   #
   colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
   colnames(Out)[(3+length(Sum_Col_Wise))]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
-  colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+2)]=c("OR (95% CI)", "P-value (GLM)")
+  colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+3)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)")
   
   # return
   return(Out)
 }
 
+
+  
 #******************************************************************************
 #
 # Example of combining contingency tables of categorical and continuous variables
