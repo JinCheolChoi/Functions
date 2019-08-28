@@ -8,6 +8,9 @@
 # package check
 #
 #**************
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
 checkpackages=function(package){
   # Checking the Availability of packages 
   # Installs them.  
@@ -362,93 +365,6 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   return(output)
 }
 
-#*************
-#
-#
-# [ LMM ] ----
-#
-#
-#******************
-#
-# LMM_Bivariate_Jin
-#
-#******************
-# require(geepack)
-# data("respiratory")
-# Data=respiratory
-# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# Outcome_name="outcome"
-# ID_name="id"
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
-# levels.of.fact[which(ColumnsToUse=="treat")]="P"
-# levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# LMM_Bivariate_Jin(Data, ColumnsToUse, Outcome_name, ID_name, vector.OF.classes.num.fact, levels.of.fact)
-LMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, vector.OF.classes.num.fact, levels.of.fact){
-  # check out packages
-  lapply(c("lme4", 
-           "lmerTest"), # produce p-value of coefficient
-         checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # convert response variable to numeric
-  Data[,Outcome_name]=as.numeric(as.character(Data[,Outcome_name]))
-  
-  # main algorithm
-  coefficient=c()
-  prediction=c()
-  for(i in 1:length(ColumnsToUse)){
-    #i=4
-    # convert variable class
-    if(vector.OF.classes.num.fact[i]=="num"){
-      Data[, ColumnsToUse[i]]=as.numeric(as.character(Data[,ColumnsToUse[i]]))
-    }
-    if(vector.OF.classes.num.fact[i]=="fact"){
-      Data[, ColumnsToUse[i]]=as.factor(Data[,ColumnsToUse[i]])
-      Data[, ColumnsToUse[i]]=relevel(Data[,ColumnsToUse[i]], ref=levels.of.fact[i])
-    }
-    # run model
-    fullmod=as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep=""))
-    myfit=lmer(fullmod, na.action=na.exclude, data=Data)
-    # coefficient
-    Coef=summary(myfit)$coefficients
-    Coef.ind=which(grepl(ColumnsToUse[i], row.names(Coef)))
-    # confidence interval (exponentiated)
-    CI=confint(myfit, level=0.95,method="Wald")
-    CI.ind=which(grepl(ColumnsToUse[i], row.names(CI)))
-    
-    # prediction
-    if(vector.OF.classes.num.fact[i]=="num"){
-      prediction[[i]]=Coef[1, 1]+Coef[2, 1]*sort(unique(Data[,ColumnsToUse[i]]))
-    }else{
-      prediction[[i]]=Coef[1, 1]+Coef[2, 1]*seq(0, 1)
-    }
-    
-    # coefficient
-    coefficient=rbind(coefficient, 
-                      data.frame(
-                        Estimate=round2(Coef[, "Estimate"][Coef.ind], 3),
-                        Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3),
-                        `P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
-                                         format(round2(Coef[, "Pr(>|t|)"][Coef.ind], 3), nsmall=3)),
-                        `95 CI`=paste0("(", format(round2(CI[CI.ind, 1], 3), nsmall=2), ", ",
-                                       format(round2(CI[CI.ind, 2], 3), nsmall=2), ")")
-                      )
-    )
-    #print(paste(i," ", ColumnsToUse[i],sep=""))
-  }
-  # name list
-  names(prediction)=paste0("pred.val.", ColumnsToUse)
-  
-  # output
-  output=list(coefficient, prediction)
-  names(output)=c("Coefficient", "Prediction")
-  return(output)
-}
-
-
 #**************
 #
 #
@@ -470,7 +386,7 @@ LMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, vector.OF.
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # Outcome_name="outcome"
 # ID_name="id"
-# which.family="binomial"
+# which.family="gaussian" # gaussian, binomial, poisson
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
@@ -501,7 +417,12 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
     }
     # run model
     fullmod=as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep=""))
-    myfit=glmer(fullmod, family=which.family,na.action=na.exclude, data=Data,nAGQ=NAGQ)
+    if(which.family=="gaussian"){
+      myfit=lmer(fullmod, na.action=na.exclude, data=Data)
+    }else{
+      myfit=glmer(fullmod, family=which.family,na.action=na.exclude, data=Data, nAGQ=NAGQ)
+    }
+    
     # coefficient
     Coef=summary(myfit)$coefficients
     Coef.ind=which(grepl(ColumnsToUse[i], row.names(Coef)))
@@ -514,8 +435,8 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
                  data.frame(
                    Estimate=round2(Coef[, "Estimate"][Coef.ind], 3),
                    Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3),
-                   `P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
-                                    format(round2(Coef[, "Pr(>|z|)"][Coef.ind], 3), nsmall=3)),
+                   `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                                    format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)),
                    OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2),
                                     " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ",
                                     format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
@@ -541,7 +462,7 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # Outcome_name="outcome"
 # ID_name="id"
-# which.family="binomial"
+# which.family="binomial" # gaussian, binomial, poisson
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
@@ -570,7 +491,12 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
   }
   # run model
   fullmod=as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"),"+(1|", ID_name, ")", sep=""))
-  myfit=glmer(fullmod, family=which.family, na.action=na.exclude, data=Data, nAGQ=NAGQ)
+  if(which.family=="gaussian"){
+    myfit=lmer(fullmod, na.action=na.exclude, data=Data)
+  }else{
+    myfit=glmer(fullmod, family=which.family, na.action=na.exclude, data=Data, nAGQ=NAGQ)
+  }
+  
   # coefficient
   Coef=summary(myfit)$coefficients
   Coef.ind=c()
@@ -591,8 +517,8 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
   output=data.frame(
     Estimate=round2(Coef[, "Estimate"][Coef.ind], 3),
     Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3),
-    `P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
-                     format(round2(Coef[, "Pr(>|z|)"][Coef.ind], 3), nsmall=3)),
+    `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                     format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)),
     OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2),
                      " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ",
                      format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
@@ -600,10 +526,9 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
   return(output)
 }
 
-
-#*****************
+#********
 #
-# Binomial_GLMM_CV
+# GLMM_CV
 #
 #*****************
 # For some reason, the function in library(lmmen) that conducts a cross-validation for the optimal tuning parameter does not work.
@@ -616,28 +541,30 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
 # res_var="outcome"
 # rand_var="id"
+# which.family="binomial(link=logit)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,pred_vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(pred_vars=="treat")]="P"
 # levels.of.fact[which(pred_vars=="sex")]="F"
 # lambda=seq(0, 5, by=0.5)
-# # Binom_GLMM_CV
-# Binom_GLMM_CV=Binomial_GLMM_CV(data=Data,
+# # GLMM_CV_Out
+# GLMM_CV_Out=GLMM_CV(data=Data,
 #                                pred_vars,
 #                                res_var,
 #                                rand_var,
+#                                which.family, 
 #                                vector.OF.classes.num.fact,
 #                                levels.of.fact,
 #                                k=4,
 #                                lambda=lambda)
 # # train error
-# Binom_GLMM_CV$Train_Error
+# GLMM_CV_Out$Train_Error
 # # cv error
-# Binom_GLMM_CV$CV_Error
+# GLMM_CV_Out$CV_Error
 # # plot
 # Error_by_Lambda=data.frame(
 #   lambda=lambda,
-#   Error=c(apply(Binom_GLMM_CV$Train_Error, 1, mean), apply(Binom_GLMM_CV$CV_Error, 1, mean)),
+#   Error=c(apply(GLMM_CV_Out$Train_Error, 1, mean), apply(GLMM_CV_Out$CV_Error, 1, mean)),
 #   Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
 # )
 # Error_by_Lambda %>%
@@ -647,8 +574,8 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 #   scale_color_brewer(palette="Dark2") +
 #   theme_set(theme_bw())
 # # optimal lambda
-# Binom_GLMM_CV$Optimal_Lambda
-Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fact,
+# GLMM_CV_Out$Optimal_Lambda
+GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.classes.num.fact,
                           levels.of.fact, k=4, lambda=seq(0, 10, by=1)){
   #data=data[sample(1:nrow(data), 5000), ]
   
@@ -747,10 +674,11 @@ Binomial_GLMM_CV=function(data, pred_vars, res_var, rand_var, vector.OF.classes.
       ## fit adjacent category model
       glmmLasso.fit=glmmLasso(CV.model,
                               rnd=random_effect, 
-                              family=binomial(link=logit), 
+                              family=eval(parse(text = which.family)), 
                               data=CV_data_train, 
                               lambda=lambda[lambda.ind],
                               switch.NR=TRUE)
+      
       # Make predictions and compute the R2, RMSE and MAE
       predictions_train=glmmLasso.fit %>% predict(CV_data_train)
       predictions_test=glmmLasso.fit %>% predict(CV_data_test)
@@ -1146,7 +1074,7 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
 #                             Row_Var="age_cat",
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="<20",
-#                             Missing="Include")
+#                             Missing="Not_Include")
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
   # Data as data table
   Data=as.data.frame(Data)
@@ -1178,19 +1106,6 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   # Sum of values row-wise EXCLUDING missing data in Col_Var
   Sum_Row_Wise=apply(Contingency_Table, 1, sum)
   
-  # compute odds ratio
-  Odds_ratio=Contingency_Table %>% 
-    oddsratio(method="wald")
-  Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2),
-                              " (",
-                              round(Odds_ratio$measure[, 2], 2), 
-                              " - ", 
-                              round(Odds_ratio$measure[, 3], 2), 
-                              ")"), 
-                       ifelse(Odds_ratio$p.value[, "fisher.exact"]<0.001, "<0.001", round(Odds_ratio$p.value[, "fisher.exact"], 3)), 
-                       ifelse(Odds_ratio$p.value[, "chi.square"]<0.001, "<0.001", round(Odds_ratio$p.value[, "chi.square"], 3)))
-  colnames(Odds_ratio_row)=c("OR (95% CI)", "P-value (Fisher)", "P-value (Chi-square)")
-  
   # merge all results
   Merged=cbind(Row_Var, rownames(Contingency_Table), 
                cbind(
@@ -1204,15 +1119,36 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   colnames(Merged)[1:2]=c("Predictor", "Value")
   colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(Col_Var, "=", colnames(Contingency_Table), " (n=", Sum_Col_Wise, ")")
   colnames(Merged)[3+ncol(Contingency_Table)]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
-  Out=cbind(Merged, Odds_ratio_row)
+  Out=Merged
   
-  Out$`OR (95% CI)`=as.character(Out$`OR (95% CI)`)
-  Out$`P-value (Fisher)`=as.character(Out$`P-value (Fisher)`)
-  Out$`P-value (Chi-square)`=as.character(Out$`P-value (Chi-square)`)
+  # calculate OR given a response variable of two levels
+  if(ncol(Contingency_Table)==2){
+    # compute odds ratio
+    Odds_ratio=Contingency_Table %>% 
+      oddsratio(method="wald")
+    Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2),
+                                " (",
+                                round(Odds_ratio$measure[, 2], 2), 
+                                " - ", 
+                                round(Odds_ratio$measure[, 3], 2), 
+                                ")"), 
+                         ifelse(Odds_ratio$p.value[, "fisher.exact"]<0.001, "<0.001", round(Odds_ratio$p.value[, "fisher.exact"], 3)), 
+                         ifelse(Odds_ratio$p.value[, "chi.square"]<0.001, "<0.001", round(Odds_ratio$p.value[, "chi.square"], 3)))
+    colnames(Odds_ratio_row)=c("OR (95% CI)", "P-value (Fisher)", "P-value (Chi-square)")
+    
+    Out=cbind(Merged, Odds_ratio_row)
+    
+    Out$`OR (95% CI)`=as.character(Out$`OR (95% CI)`)
+    Out$`P-value (Fisher)`=as.character(Out$`P-value (Fisher)`)
+    Out$`P-value (Chi-square)`=as.character(Out$`P-value (Chi-square)`)
+    
+    # 
+    Out=as.data.table(Out)
+    Out[Value==Ref_of_Row_Var, c("OR (95% CI)")]=""
+  }
   
-  #
+  # 
   Out=as.data.table(Out)
-  Out[Value==Ref_of_Row_Var, c("OR (95% CI)")]="OR of first two levels"
   Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 
                                                            "<0.001 (*Ind Test)", 
                                                            paste0(round(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 3), "(*Ind Test)"))
