@@ -1,12 +1,9 @@
 #*******************************
 #
-#
 # [ Operational functions ] ----
-#
 #
 #*******************************
 # package check
-#
 #**************
 # Example
 #********
@@ -22,9 +19,7 @@ checkpackages=function(package){
 }
 
 #********
-#
 # rounds2
-#
 #********
 round2=function(x, n) {
   posneg=sign(x)
@@ -36,9 +31,7 @@ round2=function(x, n) {
 }
 
 #***************
-#
 # elapsed_months
-#
 #***************
 # calculate the difference between two timesteps in month
 #********************************************************
@@ -58,14 +51,10 @@ convert_date=function(data){
 
 #*************
 #
-#
 # [ GLM ] ----
 #
-#
 #******************************
-#
 # GLM_NB_Bivariate_Personal_Jin
-#
 #******************************
 # Run simple GLM models for each explanatory variable with negative binomial distribution 
 # to account for zero-inflated data (i.e. the excessive number of 0s).
@@ -118,7 +107,7 @@ GLM_NB_Bivariate_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_
     
     # IndivID_vecual Wald test and confID_vecence interval for each parameter
     RR.CI=exp(cbind(RR=coef(GEE.m), confint(GEE.m, level=0.95)))
-    colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
+    colnames(RR.CI) = c("Rate Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(GEE.m)$coefficients, RR.CI)
     
     # output
@@ -140,9 +129,7 @@ GLM_NB_Bivariate_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_
 }
 
 #**************************
-#
 # GLM_NB_Multi_Personal_Jin
-#
 #**************************
 # Run a multiple GLM model with negative binomial distribution to account for zero-inflated data
 # (i.e. the excessive number of 0s).
@@ -189,12 +176,12 @@ GLM_NB_Multi_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_name
   }
   
   # run model
-  fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+"), "+offset(log(", Offset_name, "))"))
+  fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse = "+"), "+offset(log(", Offset_name, "))"))
   GEE.m=glm.nb(fullmod, data=Data)
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   RR.CI=exp(cbind(RR=coef(GEE.m), confint(GEE.m, level=0.95)))
-  colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
+  colnames(RR.CI) = c("Rate Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(GEE.m)$coefficients, RR.CI)
   
   data.frame(
@@ -224,14 +211,10 @@ GLM_NB_Multi_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_name
 
 #*************
 #
-#
 # [ GEE ] ----
 #
-#
 #******************
-#
 # GEE_Bivariate_Jin
-#
 #******************
 # Example
 #******************
@@ -293,22 +276,20 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
                    row.names=names(coef(GEE.m))[-1]
                  )
     )
-    print(paste0(i, " ", ColumnsToUse[i]))
+    #print(paste0(i, " ", ColumnsToUse[i]))
   }
   return(output)
 }
 
 #***********************
-#
 # GEE_Multivariable_Jin
-#
 #***********************
 # Example
 #****************
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
-# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # Outcome_name="outcome"
 # ID_name="id"
 # which.family="binomial"
@@ -318,9 +299,6 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
 # GEE_Multivariable_Jin(Data, ColumnsToUse, Outcome_name, ID_name, which.family,
 #                       vector.OF.classes.num.fact, levels.of.fact)
-# Data$treat[sample(1:nrow(Data), 20)]=NA
-# Data$treat[sample(1:nrow(Data), 20)]=NA
-# Data$treat[sample(1:nrow(Data), 20)]=NA
 GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy"), checkpackages)
@@ -329,7 +307,10 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   Data=as.data.frame(Data)
   
   # delete data with missing value
-  Data=na.omit(Data[, c(Outcome_name, ID_name, ColumnsToUse)])
+  del=unique(which(is.na(Data[,c(Outcome_name,ColumnsToUse)]), arr.ind=T)[,1])
+  
+  if(length(del)>0){
+    Data=Data[-del, ]}else{ Data=Data}
   
   # convert variable class
   Data[,Outcome_name]=as.numeric(as.character(Data[,Outcome_name])) # response variable
@@ -347,7 +328,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   
   # run model
   fullmod=as.formula( paste( Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
-  GEE.m=geeglm(fullmod, data=Data[,c(ColumnsToUse, Outcome_name)], id=Data[,ID_name], family=which.family, corstr="exchangeable")
+  GEE.m=geeglm(fullmod, data=Data[,c(ColumnsToUse, ID_name, Outcome_name)], id=Data[,ID_name], family=which.family, corstr="exchangeable")
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1,]
@@ -367,16 +348,10 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
 
 #**************
 #
-#
 # [ GLMM ] ----
 #
-# * This can be used for GLM (glm()) as well provided that there is one observation for each individual.
-#
-#
 #********************
-#
 # GLMM_Bivariate_Jin
-#
 #********************
 # Example
 #******************
@@ -443,16 +418,13 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
                  )
     )
     
-    
-    print(paste(i," ", ColumnsToUse[i],sep=""))
+    #print(paste(i," ", ColumnsToUse[i],sep=""))
   }
   return(output)
 }
 
 #************************
-#
 # GLMM_Multivariable_Jin
-#
 #************************
 # Example
 #******************
@@ -792,8 +764,6 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
   return(glmmLasso.fit)
 }
 
-
-
 #*****************************************************
 #
 # [ Multiple Imputation Analytic Result Combine ] ----
@@ -993,7 +963,7 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 #********
 # # Define arguments
 # # x is a vector
-# ring2D=function(x){exp(-5*abs(x[1]^2+x[2]^2-1))}
+# ring2D=function(x){exp(-5*abs(x[1]^2+x[2]^2-1))}  
 # vcov2D=.01*diag(2)
 # target=ring2D
 # N=400
@@ -1009,7 +979,7 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
   samples=x
   for (i in 2:(burnin+N))
   {
-    prop=mvrnorm(n=1, x, VCOV)
+    prop=mvrnorm(n = 1, x, VCOV)
     if (runif(1) < min(1, target(prop)/target(x)))
       x=prop
     samples=rbind(samples,x)
@@ -1047,7 +1017,7 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
 # Data$sex[sample(1:nrow(Data), 30)]=NA
 # Data$age[sample(1:nrow(Data), 30)]=NA
 # Data$outcome[sample(1:nrow(Data), 30)]=NA
-# Data$outcome[sample(1:nrow(Data), 30)]="2"
+# #Data$outcome[sample(1:nrow(Data), 30)]="2"
 # 
 # # Work on predictor with more than 2 levels
 # Data=as.data.table(Data)
