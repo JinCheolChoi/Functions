@@ -677,6 +677,7 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
   return(out)
 }
 
+
 #***********
 #
 # GLMM_LASSO
@@ -1189,9 +1190,10 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     dplyr::select(Col_Var) %>% 
     table(useNA=useNA) %>% c
   
+  
   # GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
-    GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=Data, binomial(logit))
+    GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=na.omit(Data), binomial(logit))
     est=esticon(GLM_Result, diag(length(coef(GLM_Result))))[-1, ]
     OR.and.CI=paste0(round(exp(est$Estimate), 2), " (", round(exp(est$Lower), 2), " - ", round(exp(est$Upper), 2),")")
     P.value=ifelse(est$`Pr(>|X^2|)`<0.001, "<0.001", round(est$`Pr(>|X^2|)`, 3)) 
