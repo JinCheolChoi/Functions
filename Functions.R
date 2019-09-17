@@ -307,10 +307,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   Data=as.data.frame(Data)
   
   # delete data with missing value
-  del=unique(which(is.na(Data[,c(Outcome_name,ColumnsToUse)]), arr.ind=T)[,1])
-  
-  if(length(del)>0){
-    Data=Data[-del, ]}else{ Data=Data}
+  Data=na.omit(Data[,c(ColumnsToUse, ID_name, Outcome_name)])
   
   # convert variable class
   Data[,Outcome_name]=as.numeric(as.character(Data[,Outcome_name])) # response variable
@@ -521,14 +518,14 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # lambda=seq(0, 5, by=0.5)
 # # GLMM_CV_Out
 # GLMM_CV_Out=GLMM_CV(data=Data,
-#                                pred_vars,
-#                                res_var,
-#                                rand_var,
-#                                which.family, 
-#                                vector.OF.classes.num.fact,
-#                                levels.of.fact,
-#                                k=4,
-#                                lambda=lambda)
+#                     pred_vars,
+#                     res_var,
+#                     rand_var,
+#                     which.family,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact,
+#                     k=4,
+#                     lambda=lambda)
 # # train error
 # GLMM_CV_Out$Train_Error
 # # cv error
@@ -590,6 +587,7 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
   }
   # grouping variable
   CV_data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+  
   
   #***
   # CV
@@ -764,6 +762,83 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
                           switch.NR=TRUE)
   return(glmmLasso.fit)
 }
+
+
+#**************
+#
+# [ GAMM ] ----
+#
+#********************
+#
+# GAMM_Bivariate_Plot
+#
+#********************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# head(Data)
+# GAMM_Bivariate_Plot(Data=Data,
+#                     Pred_Var="age",
+#                     Res_Var="outcome",
+#                     Group_Var="id",
+#                     which.family="binomial",
+#                     xlab="age",
+#                     ylab="outcome",
+#                     title="Title",
+#                     x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
+GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
+  # check out packages
+  lapply(c("mgcv", "ggplot2"), checkpackages)
+  
+  Data=as.data.frame(Data)
+  
+  # Data=Test
+  # Res_Var="TLFB_S"
+  # Pred_Var="FN"
+  # Group_Var="PN"
+  # which.family="poisson"
+  
+  # gamm model
+  gamm_model=as.formula(paste(Res_Var, "~ s(", Pred_Var, ")"))
+  
+  # random effect
+  random_effect=list(id=~1)
+  names(random_effect)=Group_Var
+  
+  # run gamm
+  gaml=gamm(gamm_model, random=random_effect, data=Data, family=which.family)
+  
+  # generate predicted data and confidence interval
+  pdat=with(Data, data.frame(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=100)))
+  colnames(pdat)=Pred_Var
+  predicted_df = data.frame(Res_Var=predict(gaml$gam, newdata=pdat, type="response", se=T)$fit, 
+                            Res_Var_sd=predict(gaml$gam, newdata=pdat, type="response", se=T)$se.fit,
+                            Pred_Var=pdat[, Pred_Var])
+  colnames(predicted_df)=c(Res_Var, paste0(Res_Var, "_sd"),Pred_Var)
+  predicted_df$upper=predicted_df[, Res_Var]+qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
+  predicted_df$lower=predicted_df[, Res_Var]-qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
+  
+  # gaml result
+  Out=c()
+  Out$gaml=gaml
+  # plot
+  Out$plot=ggplot(data=Data, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var)), group=1)) + 
+    geom_ribbon(data=predicted_df, aes(x=eval(parse(text = Pred_Var)), ymax=upper, ymin=lower), fill="gray") +
+    geom_line(color='black', data=predicted_df, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var))), size=1) + 
+    geom_point(color='black') +
+    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=upper)) + 
+    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=lower)) + 
+    scale_x_continuous(breaks=x_breaks) + 
+    theme_set(theme_bw()) + 
+    labs(
+      x=xlab,
+      y=ylab,
+      title=title
+    )
+  
+  return(Out)
+}
+
 
 #*****************************************************
 #
@@ -997,7 +1072,7 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
 # Contingency_Table_Generator
 #
 #****************************
-# Generate summary (contingency) table that outlines baseline characteristics from longitudinal dataset
+# Generate summary (contingency) table that outlines characteristics from dataset
 # Row_Var : Non-continuous predictor variable
 # Col_Var : Categorical response variable
 #********
@@ -1135,7 +1210,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 # Contingency_Table_Generator_Conti_X
 #
 #************************************
-# Generate summary (contingency) table that outlines baseline characteristics from longitudinal dataset
+# Generate summary (contingency) table that outlines characteristics from dataset
 # Row_Var : Non-continuous predictor variable
 # Col_Var : Categorical response variable
 #********
@@ -1193,7 +1268,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   
   # GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
-    GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=na.omit(Data), binomial(logit))
+    GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=na.omit(Data[, c(Row_Var, Col_Var)]), binomial(logit))
     est=esticon(GLM_Result, diag(length(coef(GLM_Result))))[-1, ]
     OR.and.CI=paste0(round(exp(est$Estimate), 2), " (", round(exp(est$Lower), 2), " - ", round(exp(est$Upper), 2),")")
     P.value=ifelse(est$`Pr(>|X^2|)`<0.001, "<0.001", round(est$`Pr(>|X^2|)`, 3)) 
@@ -1255,8 +1330,98 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   return(Out)
 }
 
-
+#******************************
+#
+# Contingency_Table_Univariable
+#
+#************************************
+# Generate summary (contingency) table that outlines characteristics from dataset
+# Var : Categorical variable
+#********
+# Example
+#****************
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools",
+#          "doBy" # for esticon function
+# ),
+# checkpackages)
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data$age[sample(1:nrow(Data), 30)]=NA
+# Data$outcome[sample(1:nrow(Data), 30)]=NA
+# #Data$outcome[sample(1:nrow(Data), 30)]="2"
+# 
+# # Data at baseline
+# BL_Data=Data %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# #
+# Contingency_Table_Univariable(Data=BL_Data,
+#                Var="sex")
+Contingency_Table_Univariable=function(Data, Var){
+  Data=as.data.table(Data)
   
+  Table=table(Data[, .SD, .SDcols=Var], useNA="always")
+  CT=t(as.matrix(paste0(Table, " (", round(Table/sum(Table)*100, 2), "%)")))
+  
+  Out=cbind(Var, c(names(Table), "Total"), t(cbind(CT, paste0(sum(Table), " (100%)"))))
+  colnames(Out)=c("Variable", "Value", "N (%)")
+  
+  return(as.data.table(Out))
+}
+
+#**************************************
+#
+# Contingency_Table_Univariable_Conti_X
+#
+#************************************
+# Generate summary (contingency) table that outlines characteristics from dataset
+# Var : Continuous variable
+#********
+# Example
+#****************
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools",
+#          "doBy" # for esticon function
+# ),
+# checkpackages)
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data$age[sample(1:nrow(Data), 30)]=NA
+# Data$outcome[sample(1:nrow(Data), 30)]=NA
+# #Data$outcome[sample(1:nrow(Data), 30)]="2"
+# 
+# # Data at baseline
+# BL_Data=Data %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# #
+# Contingency_Table_Univariable_Conti_X(Data=BL_Data,
+#                Var="age")
+Contingency_Table_Univariable_Conti_X=function(Data, Var){
+  Data=as.data.frame(Data)
+  
+  Table=round(summary(Data[, Var]), 2)
+  
+  Out=cbind(Var, paste0(Table[4], " (", Table[2], " - ", Table[5], ")"))
+  colnames(Out)=c("Variable", "Mean (IQR)")
+  return(as.data.table(Out))
+}
+
 #******************************************************************************
 #
 # Example of combining contingency tables of categorical and continuous variables
