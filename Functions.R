@@ -790,13 +790,8 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, x
   # check out packages
   lapply(c("mgcv", "ggplot2"), checkpackages)
   
+  # Data as data frame
   Data=as.data.frame(Data)
-  
-  # Data=Test
-  # Res_Var="TLFB_S"
-  # Pred_Var="FN"
-  # Group_Var="PN"
-  # which.family="poisson"
   
   # gamm model
   gamm_model=as.formula(paste(Res_Var, "~ s(", Pred_Var, ")"))
@@ -814,9 +809,21 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, x
   predicted_df = data.frame(Res_Var=predict(gaml$gam, newdata=pdat, type="response", se=T)$fit, 
                             Res_Var_sd=predict(gaml$gam, newdata=pdat, type="response", se=T)$se.fit,
                             Pred_Var=pdat[, Pred_Var])
-  colnames(predicted_df)=c(Res_Var, paste0(Res_Var, "_sd"),Pred_Var)
+  colnames(predicted_df)=c(Res_Var, paste0(Res_Var, "_sd"), Pred_Var)
   predicted_df$upper=predicted_df[, Res_Var]+qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
   predicted_df$lower=predicted_df[, Res_Var]-qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
+  
+  # If binomial distribution, maximum = 1; minimum = 0
+  if(which.family=="binomial"){
+    predicted_df[which(predicted_df[, Res_Var]>1), Res_Var]=1
+    predicted_df[which(predicted_df[, Res_Var]<0), Res_Var]=0
+    
+    predicted_df[which(predicted_df[, "upper"]>1), "upper"]=1
+    predicted_df[which(predicted_df[, "upper"]<0), "upper"]=0
+    
+    predicted_df[which(predicted_df[, "lower"]>1), "lower"]=1
+    predicted_df[which(predicted_df[, "lower"]<0), "lower"]=0
+  }
   
   # gaml result
   Out=c()
