@@ -545,7 +545,7 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # # optimal lambda
 # GLMM_CV_Out$Optimal_Lambda
 GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.classes.num.fact,
-                          levels.of.fact, k=4, lambda=seq(0, 10, by=1)){
+                 levels.of.fact, k=4, lambda=seq(0, 10, by=1)){
   #data=data[sample(1:nrow(data), 5000), ]
   
   # check out packages
@@ -773,6 +773,8 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
 # GAMM_Bivariate_Plot
 #
 #********************
+# Note that for count data (poisson distribution), the currently offset term is not included
+#*******************************************************************************************
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
@@ -1287,7 +1289,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   # compute P.value from Mann-Whitney-Wilcoxon Test
   unique_outcome_value=unique(Data[, Col_Var])[!is.na(unique(Data[, Col_Var]))]
   Mann_Whitney_test=wilcox.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var],
-              Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
+                                Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
   P.value_Mann_Whitney=ifelse(Mann_Whitney_test$p.value<0.001, "<0.001", round(Mann_Whitney_test$p.value, 3))
   
   #
