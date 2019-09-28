@@ -783,12 +783,13 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
 #                     Pred_Var="age",
 #                     Res_Var="outcome",
 #                     Group_Var="id",
+#                     #Group_Var=NA,
 #                     which.family="binomial",
 #                     xlab="age",
 #                     ylab="outcome",
 #                     title="Title",
 #                     x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
-GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
+GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family, xlab="", ylab="", title="", x_breaks=0){
   # check out packages
   lapply(c("mgcv", "ggplot2"), checkpackages)
   
@@ -803,7 +804,11 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, x
   names(random_effect)=Group_Var
   
   # run gamm
-  gaml=gamm(gamm_model, random=random_effect, data=Data, family=which.family)
+  if(is.na(Group_Var)){
+    gaml=gamm(gamm_model, data=Data, family=which.family)
+  }else{
+    gaml=gamm(gamm_model, random=random_effect, data=Data, family=which.family)
+    }
   
   # generate predicted data and confidence interval
   pdat=with(Data, data.frame(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=100)))
@@ -848,6 +853,84 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, x
   return(Out)
 }
 
+#*************
+#
+# [ GAM ] ----
+#
+#*******************
+#
+# GAM_Bivariate_Plot
+#
+#*******************
+# Note that for count data (poisson distribution), the currently offset term is not included
+#*******************************************************************************************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# head(Data)
+# GAM_Bivariate_Plot(Data=Data,
+#                     Pred_Var="age",
+#                     Res_Var="outcome",
+#                     which.family="binomial",
+#                     xlab="age",
+#                     ylab="outcome",
+#                     title="Title",
+#                     x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
+GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
+  # check out packages
+  lapply(c("mgcv", "ggplot2"), checkpackages)
+  
+  # Data as data frame
+  Data=as.data.frame(Data)
+  
+  # gamm model
+  gamm_model=as.formula(paste(Res_Var, "~ s(", Pred_Var, ")"))
+  
+  # run gamm
+  gaml=gam(gamm_model, data=Data, family=which.family)
+  
+  # generate predicted data and confidence interval
+  pdat=with(Data, data.frame(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=100)))
+  colnames(pdat)=Pred_Var
+  predicted_df = data.frame(Res_Var=predict(gaml, newdata=pdat, type="response", se=T)$fit, 
+                            Res_Var_sd=predict(gaml, newdata=pdat, type="response", se=T)$se.fit,
+                            Pred_Var=pdat[, Pred_Var])
+  colnames(predicted_df)=c(Res_Var, paste0(Res_Var, "_sd"), Pred_Var)
+  predicted_df$upper=predicted_df[, Res_Var]+qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
+  predicted_df$lower=predicted_df[, Res_Var]-qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
+  
+  # If binomial distribution, maximum = 1; minimum = 0
+  if(which.family=="binomial"){
+    predicted_df[which(predicted_df[, Res_Var]>1), Res_Var]=1
+    predicted_df[which(predicted_df[, Res_Var]<0), Res_Var]=0
+    
+    predicted_df[which(predicted_df[, "upper"]>1), "upper"]=1
+    predicted_df[which(predicted_df[, "upper"]<0), "upper"]=0
+    
+    predicted_df[which(predicted_df[, "lower"]>1), "lower"]=1
+    predicted_df[which(predicted_df[, "lower"]<0), "lower"]=0
+  }
+  
+  # gaml result
+  Out=c()
+  Out$gaml=gaml
+  # plot
+  Out$plot=ggplot(data=Data, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var)), group=1)) + 
+    geom_ribbon(data=predicted_df, aes(x=eval(parse(text = Pred_Var)), ymax=upper, ymin=lower), fill="gray") +
+    geom_line(color='black', data=predicted_df, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var))), size=1) + 
+    geom_point(color='black') +
+    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=upper)) + 
+    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=lower)) + 
+    scale_x_continuous(breaks=x_breaks) + 
+    theme_set(theme_bw()) + 
+    labs(
+      x=xlab,
+      y=ylab,
+      title=title
+    )
+  
+  return(Out)
+}
 
 #*****************************************************
 #
