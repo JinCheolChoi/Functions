@@ -49,6 +49,11 @@ convert_date=function(data){
   data[, (date.ind):=lapply(.SD, as.Date), .SDcols=date.ind]
 }
 
+#***********************************
+# see related vignettes of a package
+#***********************************
+#browseVignettes(package="simr")
+
 #*************
 #
 # [ GLM ] ----
@@ -107,7 +112,7 @@ GLM_NB_Bivariate_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_
     
     # IndivID_vecual Wald test and confID_vecence interval for each parameter
     RR.CI=exp(cbind(RR=coef(GEE.m), confint(GEE.m, level=0.95)))
-    colnames(RR.CI) = c("Rate Ratio", "Lower RR", "Upper RR")
+    colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(GEE.m)$coefficients, RR.CI)
     
     # output
@@ -176,12 +181,12 @@ GLM_NB_Multi_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_name
   }
   
   # run model
-  fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse = "+"), "+offset(log(", Offset_name, "))"))
+  fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+"), "+offset(log(", Offset_name, "))"))
   GEE.m=glm.nb(fullmod, data=Data)
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   RR.CI=exp(cbind(RR=coef(GEE.m), confint(GEE.m, level=0.95)))
-  colnames(RR.CI) = c("Rate Ratio", "Lower RR", "Upper RR")
+  colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(GEE.m)$coefficients, RR.CI)
   
   data.frame(
@@ -205,6 +210,100 @@ GLM_NB_Multi_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_name
                                      format(round2(as.numeric(est[-1, "Upper RR"]),2), nsmall=2), ")"),
                     row.names=names(coef(GEE.m))[-1]
   )
+  return(output)
+}
+
+#*******************
+# GLM_Bivariate_Plot
+#*******************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# head(Data)
+# GLM_Bivariate_Plot(Data=Data,
+#                    Pred_Var="age",
+#                    Res_Var="outcome",
+#                    which.family="binomial",
+#                    xlab="age",
+#                    ylab="outcome",
+#                    title="Title",
+#                    x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
+GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
+  # output
+  output=c()
+  
+  # change data type & remove missing data 
+  Data=as.data.frame(Data)
+  Data=na.omit(Data[, c(Res_Var, Pred_Var)])
+  
+  # fit GLMM
+  fullmod=as.formula(paste(Res_Var, "~", Pred_Var, sep=""))
+  Model=glm(fullmod, family=which.family,na.action=na.exclude, data=Data)
+  output$glm=Model
+  
+  # prediction
+  newdat=expand.grid(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]),length=50))
+  colnames(newdat)=c(Pred_Var)
+  fit=predict(Model, newdat, type="response", se.fit=T)
+  newdat$fit=fit$fit
+  colnames(newdat)=c(Pred_Var, Res_Var)
+  
+  # confidence interval
+  newdat$plo=fit$fit-qnorm(0.975)*fit$se.fit
+  newdat$pho=fit$fit+qnorm(0.975)*fit$se.fit
+  
+  if(which.family=="binomial"){ # code for 'binomial' family
+    newdat[newdat$plo<0, "plo"]=0
+    newdat[newdat$pho>1, "pho"]=1
+    
+    colnames(newdat)=c(Pred_Var, Res_Var, "CI_Lower", "CI_Upper")
+    
+    #*****
+    # plot
+    # The following code produces the same plot as plot_model(Model, type="pred")
+    library(ggplot2)
+    output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                            
+                                          y=eval(parse(text=Res_Var))
+    )) + 
+      geom_ribbon(data=newdat, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10) +
+      geom_hline(yintercept=0) +
+      geom_hline(yintercept=1) + 
+      scale_y_continuous(labels=scales::percent) + 
+      scale_x_continuous(breaks=x_breaks) +
+      geom_line(aes(y=eval(parse(text=Res_Var))), size=0.8, col="blue") + 
+      theme_bw() + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+  }else if(which.family=="poisson"){ # code for 'poisson' family
+    newdat[newdat$plo<0, "plo"]=0
+    
+    colnames(newdat)=c(Pred_Var, Res_Var, "CI_Lower", "CI_Upper")
+    
+    #*****
+    # plot
+    # The following code produces the same plot as plot_model(Model, type="pred")
+    library(ggplot2)
+    output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                            
+                                          y=eval(parse(text=Res_Var))
+    )) + 
+      geom_ribbon(data=newdat, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10) +
+      geom_hline(yintercept=0) +
+      scale_x_continuous(breaks=x_breaks) +
+      geom_line(aes(y=eval(parse(text=Res_Var))), size=0.8, col="blue") + 
+      theme_bw() + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+  }
+  
+  
+  
+  
   return(output)
 }
 
@@ -644,7 +743,7 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
       ## fit adjacent category model
       glmmLasso.fit=glmmLasso(CV.model,
                               rnd=random_effect, 
-                              family=eval(parse(text = which.family)), 
+                              family=eval(parse(text=which.family)),
                               data=CV_data_train, 
                               lambda=lambda[lambda.ind],
                               switch.NR=TRUE)
@@ -763,6 +862,215 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
   return(glmmLasso.fit)
 }
 
+#********************
+#
+# GLMM_Bivariate_Plot
+#
+#********************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# head(Data)
+# GLMM_Bivariate_Plot(Data=Data,
+#                     Pred_Var="age",
+#                     Res_Var="outcome",
+#                     Group_Var="id",
+#                     which.family="binomial",
+#                     NAGQ=100,
+#                     xlab="age",
+#                     ylab="outcome",
+#                     title="Title",
+#                     x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
+GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, NAGQ=100, xlab="", ylab="", title="", x_breaks=0){
+  library(sjPlot)
+  
+  # output
+  output=c()
+  
+  # change data type & remove missing data
+  Data=as.data.frame(Data)
+  Data=na.omit(Data[, c(Res_Var, Pred_Var, Group_Var)])
+  
+  # fit GLMM
+  fullmod=as.formula(paste(Res_Var, "~", Pred_Var, "+(1|", Group_Var, ")", sep=""))
+  
+  Model=glmer(fullmod, family=which.family,na.action=na.exclude, data=Data, nAGQ=NAGQ)
+  output$glmer=Model
+  
+  # save random effect plot
+  output$re_plot=plot_model(Model, type="re")
+  
+  # generate newdat for prediction
+  newdat=expand.grid(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]),length=50),
+                     Group_Var=unique(Data[, Group_Var]))
+  colnames(newdat)=c(Pred_Var, Group_Var)
+  
+  newdat$conditional_fit=predict(Model, newdat, type="response")
+  colnames(newdat)=c(Pred_Var, Group_Var, Res_Var)
+  
+  # generate marginal effect prediction line and its CIs
+  newdat.margin=data.frame(X=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]),length=50))
+  mm=model.matrix(~X, newdat.margin)
+  raw_fit=mm%*%fixef(Model)
+  pvar1=diag(mm%*%tcrossprod(vcov(Model), mm))
+  VarCorr_out=unlist(VarCorr(Model))
+  tvar1=pvar1+VarCorr_out[names(VarCorr_out)==Group_Var]
+  
+  if(which.family=="poisson"){ # code for 'poisson' family
+    newdat.margin=data.frame(
+      Pred_Var=newdat.margin$X,
+      Res_Var=exp(raw_fit),
+      Group_Var="Fixed Effect", 
+      plo=exp(raw_fit-1.96*sqrt(pvar1)),
+      pho=exp(raw_fit+1.96*sqrt(pvar1)),
+      tlo=exp(raw_fit-1.96*sqrt(tvar1)),
+      tho=exp(raw_fit+1.96*sqrt(tvar1))
+    )
+    newdat.margin[newdat.margin$plo<0, "plo"]=0
+    newdat.margin[newdat.margin$tlo<0, "tlo"]=0
+    
+    colnames(newdat.margin)=c(Pred_Var, Res_Var, Group_Var, "CI_Lower", "CI_Upper", "PI_Lower", "PI_Upper")
+    
+    #*****
+    # plot
+    # The following code produces the same plot as plot_model(Model, type="pred")
+    library(ggplot2)
+    newdat[, Group_Var]=as.factor(newdat[, Group_Var])
+    newdat.margin[, Group_Var]=as.factor(newdat.margin[, Group_Var])
+    
+    # plot with only pure fixed effect
+    output$plot=ggplot(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)),
+                                                 y=eval(parse(text=Res_Var)),
+                                                 group=eval(parse(text=Group_Var))
+    )) + 
+      geom_ribbon(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10) +
+      geom_hline(yintercept=0) + 
+      scale_x_continuous(breaks=x_breaks) +
+      geom_line(aes(y=eval(parse(text=Res_Var))), size=0.8, col="blue") + 
+      theme_bw() + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+    
+    # plot with random effect
+    output$plot_w_re=ggplot(newdat, aes(x=eval(parse(text=Pred_Var)),
+                                        y=eval(parse(text=Res_Var)),
+                                        #col=eval(parse(text=Group_Var)),
+                                        group=eval(parse(text=Group_Var))
+    )) +
+      geom_line(aes(y=eval(parse(text=Res_Var))), size=0.5, alpha=5/10, linetype="longdash") +
+      geom_hline(yintercept=0) + 
+      scale_x_continuous(breaks=x_breaks) +
+      #geom_ribbon(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10, colour=NA) +
+      geom_line(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)),
+                                        y=eval(parse(text=Res_Var)),
+                                        group=eval(parse(text=Group_Var))
+      ), size=0.8, col="blue") +
+      theme_bw() +
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+  }else if(which.family=="binomial"){ # code for 'binomial' family
+    newdat.margin=data.frame(
+      Pred_Var=newdat.margin$X,
+      Res_Var=1/(1+exp(-raw_fit)),
+      Group_Var="Fixed Effect", 
+      plo=1/(1+exp(-(raw_fit-1.96*sqrt(pvar1)))),
+      pho=1/(1+exp(-(raw_fit+1.96*sqrt(pvar1)))),
+      tlo=1/(1+exp(-(raw_fit-1.96*sqrt(tvar1)))),
+      tho=1/(1+exp(-(raw_fit+1.96*sqrt(tvar1))))
+    )
+    newdat.margin[newdat.margin$plo<0, "plo"]=0
+    newdat.margin[newdat.margin$pho>1, "pho"]=1
+    newdat.margin[newdat.margin$tlo<0, "tlo"]=0
+    newdat.margin[newdat.margin$tho>1, "tho"]=1
+    
+    colnames(newdat.margin)=c(Pred_Var, Res_Var, Group_Var, "CI_Lower", "CI_Upper", "PI_Lower", "PI_Upper")
+    
+    #*****
+    # plot
+    # The following code produces the same plot as plot_model(Model, type="pred")
+    library(ggplot2)
+    newdat[, Group_Var]=as.factor(newdat[, Group_Var])
+    newdat.margin[, Group_Var]=as.factor(newdat.margin[, Group_Var])
+    
+    # plot with only pure fixed effect
+    output$plot=ggplot(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)),
+                                                 y=eval(parse(text=Res_Var)),
+                                                 group=eval(parse(text=Group_Var))
+    )) + 
+      geom_ribbon(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10) +
+      geom_hline(yintercept=0) + 
+      geom_hline(yintercept=1) + 
+      scale_y_continuous(labels=scales::percent) + 
+      scale_x_continuous(breaks=x_breaks) +
+      geom_line(aes(y=eval(parse(text=Res_Var))), size=0.8, col="blue") + 
+      theme_bw() + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+    # plot with random effect
+    output$plot_w_re=ggplot(newdat, aes(x=eval(parse(text=Pred_Var)),
+                                        y=eval(parse(text=Res_Var)),
+                                        #col=eval(parse(text=Group_Var)),
+                                        group=eval(parse(text=Group_Var))
+    )) +
+      geom_line(aes(y=eval(parse(text=Res_Var))), size=0.5, alpha=5/10, linetype="longdash") +
+      geom_hline(yintercept=0) + 
+      geom_hline(yintercept=1) + 
+      scale_y_continuous(labels=scales::percent) + 
+      scale_x_continuous(breaks=x_breaks) +
+      #geom_ribbon(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10, colour=NA) +
+      geom_line(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)),
+                                        y=eval(parse(text=Res_Var)),
+                                        group=eval(parse(text=Group_Var))
+      ), size=0.8, col="blue") +
+      theme_bw() +
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+  }else{print("Currently available families include : 'binomial' and 'poisson' ")}
+  
+  return(output)
+}
+
+#*************************
+#
+# GLMM_Overdispersion_Test
+#
+#*************************
+# Test overdispersion with null that the data are not overdispersed.
+# So, rejecting H0 suggests the statistical evidence of overdispersion.
+#**********************************************************************
+# require(lme4)
+# data("respiratory")
+# Data=respiratory
+# myfit=glmer(outcome~treat+age+(1|id), family=binomial, na.action=na.exclude, data=Data, nAGQ=100)
+# GLMM_Overdispersion_Test(myfit)
+GLMM_Overdispersion_Test=function(model){
+  ## number of variance parameters in an n-by-n variance-covariance matrix
+  vpars=function(m){
+    nrow(m)*(nrow(m)+1)/2
+  }
+  # The next two lines calculate the residual degrees of freedom
+  model.df=sum(sapply(VarCorr(model), vpars)) + length(fixef(model))
+  rdf=nrow(model.frame(model)) - model.df
+  # extracts the Pearson residuals
+  rp=residuals(model, type="pearson")
+  Pearson.chisq=sum(rp^2)
+  prat=Pearson.chisq/rdf
+  # Generates a p-value. If less than 0.05, the data are overdispersed.
+  pval=pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq, ratio=prat, rdf=rdf, p=pval)
+}
 
 #**************
 #
@@ -790,6 +1098,9 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
 #                     title="Title",
 #                     x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
 GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family, xlab="", ylab="", title="", x_breaks=0){
+  # result
+  Out=c()
+  
   # check out packages
   lapply(c("mgcv", "ggplot2"), checkpackages)
   
@@ -808,20 +1119,24 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
     gaml=gamm(gamm_model, data=Data, family=which.family)
   }else{
     gaml=gamm(gamm_model, random=random_effect, data=Data, family=which.family)
-    }
+  }
+  Out$gaml=gaml
+  
+  # save random effect
+  Out$re_plot=plot_model(gaml$gam)
   
   # generate predicted data and confidence interval
   pdat=with(Data, data.frame(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=100)))
   colnames(pdat)=Pred_Var
-  predicted_df = data.frame(Res_Var=predict(gaml$gam, newdata=pdat, type="response", se=T)$fit, 
+  predicted_df=data.frame(Res_Var=predict(gaml$gam, newdata=pdat, type="response", se=T)$fit, 
                             Res_Var_sd=predict(gaml$gam, newdata=pdat, type="response", se=T)$se.fit,
                             Pred_Var=pdat[, Pred_Var])
   colnames(predicted_df)=c(Res_Var, paste0(Res_Var, "_sd"), Pred_Var)
   predicted_df$upper=predicted_df[, Res_Var]+qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
   predicted_df$lower=predicted_df[, Res_Var]-qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
   
-  # If binomial distribution, maximum = 1; minimum = 0
-  if(which.family=="binomial"){
+  # If binomial distribution, maximum=1; minimum=0
+  if(which.family=="binomial"){ # code for 'binomial' family
     predicted_df[which(predicted_df[, Res_Var]>1), Res_Var]=1
     predicted_df[which(predicted_df[, Res_Var]<0), Res_Var]=0
     
@@ -830,27 +1145,55 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
     
     predicted_df[which(predicted_df[, "lower"]>1), "lower"]=1
     predicted_df[which(predicted_df[, "lower"]<0), "lower"]=0
+    
+    #*****
+    # plot
+    Out$plot=ggplot(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), y=eval(parse(text=Res_Var)), group=1)) + 
+      geom_ribbon(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), ymax=upper, ymin=lower), fill="blue", alpha=2/10) +
+      geom_line(color='blue', size=0.8) + 
+      geom_hline(yintercept=0) + 
+      geom_hline(yintercept=1) + 
+      scale_y_continuous(labels=scales::percent) + 
+      #geom_point(color='black') +
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=upper)) +
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=lower)) +
+      scale_x_continuous(breaks=x_breaks) + 
+      theme_set(theme_bw()) + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+  }else if(which.family=="poisson"){ # code for 'poisson' family
+    predicted_df[which(predicted_df[, Res_Var]<0), Res_Var]=0
+    
+    predicted_df[which(predicted_df[, "upper"]<0), "upper"]=0
+    
+    predicted_df[which(predicted_df[, "lower"]<0), "lower"]=0
+    
+    #*****
+    # plot
+    Out$plot=ggplot(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), y=eval(parse(text=Res_Var)), group=1)) + 
+      geom_ribbon(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), ymax=upper, ymin=lower), fill="blue", alpha=2/10) +
+      geom_line(color='blue', size=0.8) + 
+      geom_hline(yintercept=0) + 
+      #geom_point(color='black') +
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=upper)) +
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=lower)) +
+      scale_x_continuous(breaks=x_breaks) +
+      theme_set(theme_bw()) + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
   }
   
-  # gaml result
-  Out=c()
-  Out$gaml=gaml
-  # plot
-  Out$plot=ggplot(data=Data, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var)), group=1)) + 
-    geom_ribbon(data=predicted_df, aes(x=eval(parse(text = Pred_Var)), ymax=upper, ymin=lower), fill="gray") +
-    geom_line(color='black', data=predicted_df, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var))), size=1) + 
-    geom_point(color='black') +
-    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=upper)) + 
-    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=lower)) + 
-    scale_x_continuous(breaks=x_breaks) + 
-    theme_set(theme_bw()) + 
-    labs(
-      x=xlab,
-      y=ylab,
-      title=title
-    )
   
   return(Out)
+  
+  # Or the following simple code can be used to generate a estimated smoothing function
+  #plot_model(gaml$gam, type="pred")
 }
 
 #*************
@@ -858,9 +1201,7 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
 # [ GAM ] ----
 #
 #*******************
-#
 # GAM_Bivariate_Plot
-#
 #*******************
 # Note that for count data (poisson distribution), the currently offset term is not included
 #*******************************************************************************************
@@ -869,13 +1210,13 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
 # Data=respiratory
 # head(Data)
 # GAM_Bivariate_Plot(Data=Data,
-#                     Pred_Var="age",
-#                     Res_Var="outcome",
-#                     which.family="binomial",
-#                     xlab="age",
-#                     ylab="outcome",
-#                     title="Title",
-#                     x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
+#                    Pred_Var="age",
+#                    Res_Var="outcome",
+#                    which.family="binomial",
+#                    xlab="age",
+#                    ylab="outcome",
+#                    title="Title",
+#                    x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
 GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
   # check out packages
   lapply(c("mgcv", "ggplot2"), checkpackages)
@@ -892,15 +1233,15 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
   # generate predicted data and confidence interval
   pdat=with(Data, data.frame(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=100)))
   colnames(pdat)=Pred_Var
-  predicted_df = data.frame(Res_Var=predict(gaml, newdata=pdat, type="response", se=T)$fit, 
+  predicted_df=data.frame(Res_Var=predict(gaml, newdata=pdat, type="response", se=T)$fit, 
                             Res_Var_sd=predict(gaml, newdata=pdat, type="response", se=T)$se.fit,
                             Pred_Var=pdat[, Pred_Var])
   colnames(predicted_df)=c(Res_Var, paste0(Res_Var, "_sd"), Pred_Var)
   predicted_df$upper=predicted_df[, Res_Var]+qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
   predicted_df$lower=predicted_df[, Res_Var]-qnorm(0.975)*predicted_df[, paste0(Res_Var, "_sd")]
   
-  # If binomial distribution, maximum = 1; minimum = 0
-  if(which.family=="binomial"){
+  # If binomial distribution, maximum=1; minimum=0
+  if(which.family=="binomial"){ # code for 'binomial' family
     predicted_df[which(predicted_df[, Res_Var]>1), Res_Var]=1
     predicted_df[which(predicted_df[, Res_Var]<0), Res_Var]=0
     
@@ -909,25 +1250,55 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
     
     predicted_df[which(predicted_df[, "lower"]>1), "lower"]=1
     predicted_df[which(predicted_df[, "lower"]<0), "lower"]=0
+    
+    # gaml result
+    Out=c()
+    Out$gaml=gaml
+    # plot
+    Out$plot=ggplot(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), y=eval(parse(text=Res_Var)), group=1)) + 
+      geom_ribbon(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), ymax=upper, ymin=lower), fill="blue", alpha=2/10) +
+      geom_line(color='blue', size=0.8) + 
+      geom_hline(yintercept=0) +
+      geom_hline(yintercept=1) + 
+      scale_y_continuous(labels=scales::percent) + 
+      #geom_point(color='black') +
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=upper)) + 
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=lower)) + 
+      scale_x_continuous(breaks=x_breaks) + 
+      theme_set(theme_bw()) + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
+  }else if(which.family=="poisson"){ # code for 'poisson' family
+    predicted_df[which(predicted_df[, Res_Var]<0), Res_Var]=0
+    
+    predicted_df[which(predicted_df[, "upper"]<0), "upper"]=0
+    
+    predicted_df[which(predicted_df[, "lower"]<0), "lower"]=0
+    
+    # gaml result
+    Out=c()
+    Out$gaml=gaml
+    # plot
+    Out$plot=ggplot(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), y=eval(parse(text=Res_Var)), group=1)) + 
+      geom_ribbon(data=predicted_df, aes(x=eval(parse(text=Pred_Var)), ymax=upper, ymin=lower), fill="blue", alpha=2/10) +
+      geom_line(color='blue', size=0.8) + 
+      geom_hline(yintercept=0) +
+      #geom_point(color='black') +
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=upper)) + 
+      # geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text=Pred_Var)), y=lower)) + 
+      scale_x_continuous(breaks=x_breaks) + 
+      theme_set(theme_bw()) + 
+      labs(
+        x=xlab,
+        y=ylab,
+        title=title
+      )
   }
   
-  # gaml result
-  Out=c()
-  Out$gaml=gaml
-  # plot
-  Out$plot=ggplot(data=Data, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var)), group=1)) + 
-    geom_ribbon(data=predicted_df, aes(x=eval(parse(text = Pred_Var)), ymax=upper, ymin=lower), fill="gray") +
-    geom_line(color='black', data=predicted_df, aes(x=eval(parse(text = Pred_Var)), y=eval(parse(text = Res_Var))), size=1) + 
-    geom_point(color='black') +
-    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=upper)) + 
-    geom_line(color='black', data=predicted_df, linetype="dotted", aes(x=eval(parse(text = Pred_Var)), y=lower)) + 
-    scale_x_continuous(breaks=x_breaks) + 
-    theme_set(theme_bw()) + 
-    labs(
-      x=xlab,
-      y=ylab,
-      title=title
-    )
+  
   
   return(Out)
 }
@@ -1147,7 +1518,7 @@ rwmetro=function(target,N,x,VCOV,burnin=0)
   samples=x
   for (i in 2:(burnin+N))
   {
-    prop=mvrnorm(n = 1, x, VCOV)
+    prop=mvrnorm(n=1, x, VCOV)
     if (runif(1) < min(1, target(prop)/target(x)))
       x=prop
     samples=rbind(samples,x)
@@ -1217,6 +1588,10 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   # Data as data table
   Data=as.data.frame(Data)
   # 
+  Col_Order=c()
+  if(is.numeric(Data[, Col_Var])==T){
+    Col_Order=sort(unique(Data[, Col_Var]))
+  }
   Data[, Col_Var]=as.character(Data[, Col_Var])
   Data[, Row_Var]=as.character(Data[, Row_Var])
   
@@ -1226,8 +1601,13 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   }else if(Missing=="Not_Include"){
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
   
+  
   #
-  Data[, Col_Var]=as.factor(Data[, Col_Var])
+  if(length(Col_Order)>0){
+    Data[, Col_Var]=factor(Data[, Col_Var], levels=c(Col_Order))
+  }else if(length(Col_Order)==0){
+    Data[, Col_Var]=as.factor(Data[, Col_Var])
+  }
   Data[, Row_Var]=as.factor(Data[, Row_Var])
   Data[, Row_Var]=relevel(Data[, Row_Var], ref=Ref_of_Row_Var)
   
@@ -1357,8 +1737,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     dplyr::select(Col_Var) %>% 
     table(useNA=useNA) %>% c
   
-  
-  # GLM to compute P.value and OR.and.CI
+  # If response variable is binary, perform GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
     GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=na.omit(Data[, c(Row_Var, Col_Var)]), binomial(logit))
     est=esticon(GLM_Result, diag(length(coef(GLM_Result))))[-1, ]
@@ -1380,13 +1759,13 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   # summary statistics
   if(Missing=="Include"){
     Sum_Stat=round(t(rbind(
-      with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
-      summary(Data[is.na(eval(parse(text = Col_Var))), eval(parse(text = Row_Var))])[1:6], # missing in outcome
+      with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+      summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
       summary(as.data.frame(Data)[, Row_Var])[1:6] # total
     )), 2)
   }else if(Missing=="Not_Include"){
     Sum_Stat=round(t(rbind(
-      with(Data, do.call(rbind, by(eval(parse(text = Row_Var)), eval(parse(text = Col_Var)), summary)))[, 1:6], # excluding NA's
+      with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
       summary(as.data.frame(Data)[, Row_Var])[1:6] # total
     )), 2)
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
@@ -1545,10 +1924,6 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
 #   fill=TRUE
 #   )
 # Combined_CT
-
-
-
-
 
 
 
