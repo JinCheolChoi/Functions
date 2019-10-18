@@ -54,6 +54,15 @@ convert_date=function(data){
 #***********************************
 #browseVignettes(package="simr")
 
+#********************
+# remove missing data
+#********************
+Remove_missing=function(Data, Columns){
+  Data=as.data.frame(Data)
+  Data=na.omit(Data[, c(Columns)])
+  return(Data)
+}
+
 #*************
 #
 # [ GLM ] ----
@@ -321,15 +330,17 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# Outcome_name="outcome"
-# ID_name="id"
-# which.family="binomial"
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# GEE_Bivariate_Jin(Data, ColumnsToUse, Outcome_name, ID_name, which.family,
-#               vector.OF.classes.num.fact, levels.of.fact)
+# GEE_Bivariate_Jin(Data,
+#                   ColumnsToUse=ColumnsToUse,
+#                   Outcome_name="outcome",
+#                   ID_name="id",
+#                   which.family="binomial",
+#                   vector.OF.classes.num.fact,
+#                   levels.of.fact)
 GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family="binomial", vector.OF.classes.num.fact, levels.of.fact){
   # check out packages
   lapply(c("geepack", "MESS", "doBy"), checkpackages)
@@ -413,23 +424,27 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
 # GEE_Multivariable_Jin
 #***********************
 # Example
-#****************
+#*****************
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
+# # generate missing data
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# Outcome_name="outcome"
-# ID_name="id"
-# which.family="binomial"
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# GEE_Multivariable_Jin(Data, ColumnsToUse, Outcome_name, ID_name, which.family,
-#                       vector.OF.classes.num.fact, levels.of.fact)
+# # run GEE_Multivariable_Jin
+# GEE_Multivariable_Jin(Data,
+#                       ColumnsToUse=ColumnsToUse,
+#                       Outcome_name="outcome",
+#                       ID_name="id",
+#                       which.family="binomial",
+#                       vector.OF.classes.num.fact,
+#                       levels.of.fact)
 GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact){ # names of people should be numeric
   # check out packages
-  lapply(c("geepack", "MESS", "doBy"), checkpackages)
+  lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -452,15 +467,23 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
   }
   
   # run model
-  fullmod=as.formula( paste( Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
-  GEE.m=geeglm(fullmod, data=Data[,c(ColumnsToUse, ID_name, Outcome_name)], id=Data[,ID_name], family=which.family, corstr="exchangeable")
+  #fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
+  GEE.m=geeglm(as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+"))), 
+               data=Data[,c(ColumnsToUse, ID_name, Outcome_name)], 
+               id=Data[,ID_name], 
+               family=which.family, 
+               corstr="exchangeable")
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1,]
   
   # output
+  output=c()
+  output$model_fit=GEE.m
+  #output$vif=HH::vif(GEE.m)
+  
   if(which.family=="gaussian"){
-    output=data.frame(Estimate=round2(est$Estimate, 3),
+    output$summ_table=data.frame(Estimate=round2(est$Estimate, 3),
                       Std.Error=round2(est$Std.Error, 3),
                       `P-value`=ifelse(round2(est$`Pr(>|X^2|)`, 3)<0.001, "<0.001", 
                                        format(round2(est$`Pr(>|X^2|)`, 3), nsmall=3)),
@@ -470,7 +493,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
                       row.names=names(coef(GEE.m))[-1]
     )
   }else if(which.family=="binomial"){
-    output=data.frame(Estimate=round2(est$Estimate, 3),
+    output$summ_table=data.frame(Estimate=round2(est$Estimate, 3),
                       Std.Error=round2(est$Std.Error, 3),
                       `P-value`=ifelse(round2(est$`Pr(>|X^2|)`, 3)<0.001, "<0.001", 
                                        format(round2(est$`Pr(>|X^2|)`, 3), nsmall=3)),
@@ -480,7 +503,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
                       row.names=names(coef(GEE.m))[-1]
     )
   }else if(which.family=="poisson"){
-    output=data.frame(Estimate=round2(est$Estimate, 3),
+    output$summ_table=data.frame(Estimate=round2(est$Estimate, 3),
                       Std.Error=round2(est$Std.Error, 3),
                       `P-value`=ifelse(round2(est$`Pr(>|X^2|)`, 3)<0.001, "<0.001", 
                                        format(round2(est$`Pr(>|X^2|)`, 3), nsmall=3)),
@@ -490,8 +513,116 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
                       row.names=names(coef(GEE.m))[-1]
     )
   }
-  
   return(output)
+  
+}
+
+#*******************************
+# GEE_Multivariable_with_vif_Jin
+#*******************************
+# Example
+#**************************************************************************
+# Note : 1. Input data must not have missing data at variables of interest!
+#        2. Argument must be declared with '<-' in a function for HH::vif!
+#**************************************************************************
+# require(geepack)
+# data("respiratory")
+# Data_original=respiratory
+# # generate missing data
+# Data_original$outcome[1:5]=NA
+# Data_original$treat[c(3, 7, 35, 74)]=NA
+# Data_original$id[c(6, 25, 45, 98)]=NA
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_original[,ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# # remove missing data
+# Data_no_NA=Remove_missing(Data_original,
+#                           c(ColumnsToUse,
+#                             Outcome_name<-"outcome",
+#                             ID_name<-"id"))
+# # run GEE_Multivariable_with_vif_Jin
+# GEE_Multivariable_with_vif_Jin(Data_no_NA,
+#                                ColumnsToUse<-ColumnsToUse,
+#                                Outcome_name<-"outcome",
+#                                ID_name<-"id",
+#                                which.family<-"binomial",
+#                                vector.OF.classes.num.fact,
+#                                levels.of.fact)
+GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact){ # names of people should be numeric
+  # check out packages
+  lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
+  
+  # as data frame
+  Data<<-as.data.frame(Data)
+  
+  # delete data with missing value
+  #Data=na.omit(Data[,c(ColumnsToUse, ID_name, Outcome_name)])
+  
+  # convert variable class
+  Data[,Outcome_name]=as.numeric(as.character(Data[,Outcome_name])) # response variable
+  for(i in 1:length(ColumnsToUse)){
+    #i=1
+    # convert variable class
+    if(vector.OF.classes.num.fact[i]=="num"){
+      Data[, ColumnsToUse[i]]=as.numeric(as.character(Data[,ColumnsToUse[i]]))
+    }
+    if(vector.OF.classes.num.fact[i]=="fact"){
+      Data[, ColumnsToUse[i]]=as.factor(Data[,ColumnsToUse[i]])
+      Data[, ColumnsToUse[i]]=relevel(Data[,ColumnsToUse[i]], ref=levels.of.fact[i])
+    }
+  }
+  
+  # run model
+  #fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
+  GEE.m=geeglm(as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+"))), 
+               data=Data[,c(ColumnsToUse, ID_name, Outcome_name)], 
+               id=Data[,ID_name], 
+               family=which.family, 
+               corstr="exchangeable")
+  
+  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1,]
+  
+  # output
+  output=c()
+  output$model_fit=GEE.m
+  output$vif=HH::vif(GEE.m)
+  
+  if(which.family=="gaussian"){
+    output$summ_table=data.frame(Estimate=round2(est$Estimate, 3),
+                      Std.Error=round2(est$Std.Error, 3),
+                      `P-value`=ifelse(round2(est$`Pr(>|X^2|)`, 3)<0.001, "<0.001", 
+                                       format(round2(est$`Pr(>|X^2|)`, 3), nsmall=3)),
+                      Estimate.and.CI=paste0(format(round2(est$Estimate, 2), nsmall=2),
+                                             " (", format(round2(est$Lower, 2), nsmall=2), " - ",
+                                             format(round2(est$Upper, 2), nsmall=2), ")"),
+                      row.names=names(coef(GEE.m))[-1]
+    )
+  }else if(which.family=="binomial"){
+    output$summ_table=data.frame(Estimate=round2(est$Estimate, 3),
+                      Std.Error=round2(est$Std.Error, 3),
+                      `P-value`=ifelse(round2(est$`Pr(>|X^2|)`, 3)<0.001, "<0.001", 
+                                       format(round2(est$`Pr(>|X^2|)`, 3), nsmall=3)),
+                      OR.and.CI=paste0(format(round2(exp(est$Estimate), 2), nsmall=2),
+                                       " (", format(round2(exp(est$Lower), 2), nsmall=2), " - ",
+                                       format(round2(exp(est$Upper), 2), nsmall=2), ")"),
+                      row.names=names(coef(GEE.m))[-1]
+    )
+  }else if(which.family=="poisson"){
+    output$summ_table=data.frame(Estimate=round2(est$Estimate, 3),
+                      Std.Error=round2(est$Std.Error, 3),
+                      `P-value`=ifelse(round2(est$`Pr(>|X^2|)`, 3)<0.001, "<0.001", 
+                                       format(round2(est$`Pr(>|X^2|)`, 3), nsmall=3)),
+                      RR.and.CI=paste0(format(round2(exp(est$Estimate), 2), nsmall=2),
+                                       " (", format(round2(exp(est$Lower), 2), nsmall=2), " - ",
+                                       format(round2(exp(est$Upper), 2), nsmall=2), ")"),
+                      row.names=names(coef(GEE.m))[-1]
+    )
+  }
+  return(output)
+  
 }
 
 #**************
@@ -507,15 +638,18 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# Outcome_name="outcome"
-# ID_name="id"
-# which.family="binomial" # gaussian, binomial, poisson
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# NAGQ=100
-# GLMM_Bivariate_Jin(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact, NAGQ)
+# GLMM_Bivariate_Jin(Data,
+#                    ColumnsToUse,
+#                    Outcome_name="outcome",
+#                    ID_name="id",
+#                    which.family="gaussian", # gaussian, binomial, poisson
+#                    vector.OF.classes.num.fact,
+#                    levels.of.fact,
+#                    NAGQ=100)
 GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact, NAGQ=100){
   # check out packages
   lapply(c("lme4"), checkpackages)
@@ -539,11 +673,19 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
       Data[, ColumnsToUse[i]]=relevel(Data[,ColumnsToUse[i]], ref=levels.of.fact[i])
     }
     # run model
-    fullmod=as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep=""))
+    #fullmod=as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep=""))
     if(which.family=="gaussian"){
-      myfit=lmer(fullmod, na.action=na.exclude, data=Data)
+      myfit=lmer(as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep="")), 
+                 na.action=na.exclude, 
+                 data=Data, 
+                 control=lmerControl(optimizer=c("bobyqa")))
     }else{
-      myfit=glmer(fullmod, family=which.family,na.action=na.exclude, data=Data, nAGQ=NAGQ)
+      myfit=glmer(as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep="")), 
+                  family=which.family, 
+                  na.action=na.exclude, 
+                  data=Data, 
+                  nAGQ=NAGQ, 
+                  control=glmerControl(optimizer=c("bobyqa")))
     }
     
     # coefficient
@@ -606,15 +748,18 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# Outcome_name="outcome"
-# ID_name="id"
-# which.family="binomial" # gaussian, binomial, poisson
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[,ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA",length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# NAGQ=100
-# GLMM_Multivariable_Jin(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact, NAGQ)
+# GLMM_Multivariable_Jin(Data,
+#                        ColumnsToUse,
+#                        Outcome_name="outcome",
+#                        ID_name="id",
+#                        which.family="gaussian", # gaussian, binomial, poisson
+#                        vector.OF.classes.num.fact,
+#                        levels.of.fact,
+#                        NAGQ=100)
 GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact, NAGQ=100){
   # check out packages
   lapply(c("lme4"), checkpackages)
@@ -623,12 +768,12 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
   Data=as.data.frame(Data)
   
   # convert variable class
-  Data[,Outcome_name]=as.numeric(as.character(Data[,Outcome_name])) # response variable
+  Data[,Outcome_name]=as.numeric(as.character(Data[, Outcome_name])) # response variable
   for(i in 1:length(ColumnsToUse)){
     #i=1
     # convert variable class
     if(vector.OF.classes.num.fact[i]=="num"){
-      Data[, ColumnsToUse[i]]=as.numeric(as.character(Data[,ColumnsToUse[i]]))
+      Data[, ColumnsToUse[i]]=as.numeric(as.character(Data[, ColumnsToUse[i]]))
     }
     if(vector.OF.classes.num.fact[i]=="fact"){
       Data[, ColumnsToUse[i]]=as.factor(Data[,ColumnsToUse[i]])
@@ -636,11 +781,18 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
     }
   }
   # run model
-  fullmod=as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"),"+(1|", ID_name, ")", sep=""))
+  #fullmod=as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"),"+(1|", ID_name, ")", sep=""))
   if(which.family=="gaussian"){
-    myfit=lmer(fullmod, na.action=na.exclude, data=Data)
+    myfit=lmer(as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"),"+(1|", ID_name, ")", sep="")), 
+               na.action=na.exclude, 
+               data=Data, 
+               control=lmerControl(optimizer=c("bobyqa")))
   }else{
-    myfit=glmer(fullmod, family=which.family, na.action=na.exclude, data=Data, nAGQ=NAGQ)
+    myfit=glmer(as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"),"+(1|", ID_name, ")", sep="")), 
+                family=which.family, 
+                na.action=na.exclude, 
+                data=Data, nAGQ=NAGQ, 
+                control=glmerControl(optimizer=c("bobyqa"))) # try "Nelder_Mead" if the algorithm fails to converge.
   }
   
   # coefficient
@@ -668,8 +820,13 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
   CI.ind=sort(unique(CI.ind))
   
   # output
+  output=c()
+  output$model_fit=myfit
+  #output$power=powerSim(myfit, nsim=10)
+  output$vif=car::vif(myfit)
+  
   if(which.family=="gaussian"){
-    output=data.frame(
+    output$summ_table=data.frame(
       Estimate=round2(Coef[, "Estimate"][Coef.ind], 3),
       Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3),
       `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
@@ -679,7 +836,7 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
     )
   }else if(which.family=="binomial"){
-    output=data.frame(
+    output$summ_table=data.frame(
       Estimate=round2(Coef[, "Estimate"][Coef.ind], 3),
       Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3),
       `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
@@ -689,7 +846,7 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
     )
   }else if(which.family=="poisson"){
-    output=data.frame(
+    output$summ_table=data.frame(
       Estimate=round2(Coef[, "Estimate"][Coef.ind], 3),
       Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3),
       `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
@@ -699,7 +856,6 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
     )
   }
-  
   return(output)
 }
 
@@ -1297,7 +1453,6 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
         title=title
       )
   }
-  
   
   return(Out)
   
