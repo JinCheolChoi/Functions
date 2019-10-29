@@ -575,7 +575,7 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
   # output
   output=c()
   output$model_fit=GEE.m
-  output$vif=HH::vif(GEE.m)
+  if(length(ColumnsToUse)>=2){output$vif=HH::vif(GEE.m)}
   
   if(which.family=="gaussian"){
     output$summ_table=data.frame(Estimate=round2(est$Estimate, 3), 
@@ -629,15 +629,27 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# GLMM_Bivariate_Jin(Data, 
-#                    ColumnsToUse, 
-#                    Outcome_name="outcome", 
-#                    ID_name="id", 
-#                    which.family="gaussian", # gaussian, binomial, poisson
-#                    vector.OF.classes.num.fact, 
-#                    levels.of.fact, 
-#                    NAGQ=100)
-GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact, NAGQ=100){
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Bivariate_Jin(Data,
+#                    ColumnsToUse,
+#                    Outcome_name="outcome",
+#                    ID_name="id",
+#                    which.family<-"binomial", # gaussian, binomial, poisson
+#                    vector.OF.classes.num.fact,
+#                    levels.of.fact,
+#                    NAGQ<-1,
+#                    Compute.Power=T,
+#                    nsim=5)
+GLMM_Bivariate_Jin=function(Data,
+                            ColumnsToUse,
+                            Outcome_name,
+                            ID_name,
+                            which.family,
+                            vector.OF.classes.num.fact,
+                            levels.of.fact,
+                            NAGQ=100,
+                            Compute.Power=FALSE,
+                            nsim=1000){
   # check out packages
   lapply(c("lme4"), checkpackages)
   
@@ -665,16 +677,15 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
       myfit=lmer(as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep="")), 
                  na.action=na.exclude, 
                  data=Data, 
-                 control=lmerControl(optimizer=c("bobyqa")))
+                 control=lmerControl(optimizer=c("bobyqa"))) # the other optimizer : "Nelder_Mead"
     }else{
       myfit=glmer(as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep="")), 
                   family=which.family, 
                   na.action=na.exclude, 
                   data=Data, 
                   nAGQ=NAGQ, 
-                  control=glmerControl(optimizer=c("bobyqa")))
+                  control=glmerControl(optimizer=c("bobyqa"))) # the other optimizer : "Nelder_Mead"
     }
-    
     # coefficient
     Coef=summary(myfit)$coefficients
     Coef.ind=which(grepl(ColumnsToUse[i], row.names(Coef)))
@@ -683,46 +694,43 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
     CI.raw.ind=which(grepl(ColumnsToUse[i], row.names(CI.raw)))
     CI=exp(CI.raw)
     CI.ind=which(grepl(ColumnsToUse[i], row.names(CI)))
+    # power
+    if(Compute.Power==T){Var.Power=powerSim(myfit, fixed(ColumnsToUse[i], "lr"), nsim=nsim, progress=F)}
     # output
+    temp_out=c()
+    temp_out$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
+    temp_out$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
+    temp_out$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                              format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3))
     if(which.family=="gaussian"){
-      output=rbind(output, 
-                   data.frame(
-                     Estimate=round2(Coef[, "Estimate"][Coef.ind], 3), 
-                     Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3), 
-                     `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                                      format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)), 
-                     Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
-                                            " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
-                                            format(round2(CI.raw[CI.raw.ind, 2], 2), nsmall=2), ")")
-                   )
-      )
+      temp_out$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
+                                      " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
+                                      format(round2(CI.raw[CI.raw.ind, 2], 2), nsmall=2), ")")
     }else if(which.family=="binomial"){
-      output=rbind(output, 
-                   data.frame(
-                     Estimate=round2(Coef[, "Estimate"][Coef.ind], 3), 
-                     Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3), 
-                     `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                                      format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)), 
-                     OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
-                                      " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
-                                      format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
-                   )
-      )
+      temp_out$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+                                " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
+                                format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
     }else if(which.family=="poisson"){
-      output=rbind(output, 
-                   data.frame(
-                     Estimate=round2(Coef[, "Estimate"][Coef.ind], 3), 
-                     Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3), 
-                     `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                                      format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)), 
-                     RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
-                                      " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
-                                      format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
-                   )
+      temp_out$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+                                " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
+                                format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
+    }
+    # power
+    if(Compute.Power==T){
+      temp_out$power=paste0(
+        paste0(round(summary(Var.Power)["mean"]*100, 2), "%"),
+        " (",
+        round(summary(Var.Power)["lower"]*100, 2),
+        ", ",
+        round(summary(Var.Power)["upper"]*100, 2),
+        ")"
       )
     }
+    output=rbind(output, temp_out)
     #print(paste(i, " ", ColumnsToUse[i], sep=""))
   }
+  output=as.data.frame(output)
+  rownames(output)=ColumnsToUse
   return(output)
 }
 
@@ -734,20 +742,31 @@ GLMM_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fam
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
-# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# GLMM_Multivariable_Jin(Data, 
-#                        ColumnsToUse, 
-#                        Outcome_name="outcome", 
-#                        ID_name="id", 
-#                        which.family="gaussian", # gaussian, binomial, poisson
-#                        vector.OF.classes.num.fact, 
-#                        levels.of.fact, 
-#                        NAGQ=100)
-GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.family, vector.OF.classes.num.fact, levels.of.fact, NAGQ=100){
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Multivariable_Jin(Data,
+#                        ColumnsToUse,
+#                        Outcome_name="outcome",
+#                        ID_name="id",
+#                        which.family<-"binomial", # gaussian, binomial, poisson
+#                        vector.OF.classes.num.fact,
+#                        levels.of.fact,
+#                        NAGQ<-1,
+#                        Compute.Power=T,
+#                        nsim=5)
+GLMM_Multivariable_Jin=function(Data, 
+                                ColumnsToUse, 
+                                Outcome_name, 
+                                ID_name, which.family, 
+                                vector.OF.classes.num.fact, 
+                                levels.of.fact, 
+                                NAGQ=100,
+                                Compute.Power=FALSE,
+                                nsim=1000){
   # check out packages
   lapply(c("lme4"), checkpackages)
   
@@ -781,68 +800,64 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
                 data=Data, nAGQ=NAGQ, 
                 control=glmerControl(optimizer=c("bobyqa"))) # try "Nelder_Mead" if the algorithm fails to converge.
   }
-  
   # coefficient
   Coef=summary(myfit)$coefficients
   Coef.ind=c()
-  for(i in 1:length(ColumnsToUse)){
-    Coef.ind=c(Coef.ind, which(grepl(ColumnsToUse[i], row.names(Coef))))
-  }
-  Coef.ind=sort(unique(Coef.ind))
-  
   # confidence interval (raw)
   CI.raw=confint(myfit, level=0.95, method="Wald")
   CI.raw.ind=c()
-  for(i in 1:length(ColumnsToUse)){
-    CI.raw.ind=c(CI.raw.ind, which(grepl(ColumnsToUse[i], row.names(CI.raw))))
-  }
-  CI.raw.ind=sort(unique(CI.raw.ind))
-  
   # confidence interval (exponentiated)
   CI=exp(confint(myfit, level=0.95, method="Wald"))
   CI.ind=c()
+  # power
+  Var.Power=list()
   for(i in 1:length(ColumnsToUse)){
+    Coef.ind=c(Coef.ind, which(grepl(ColumnsToUse[i], row.names(Coef))))
+    CI.raw.ind=c(CI.raw.ind, which(grepl(ColumnsToUse[i], row.names(CI.raw))))
     CI.ind=c(CI.ind, which(grepl(ColumnsToUse[i], row.names(CI))))
+    if(Compute.Power==T){Var.Power[[i]]=powerSim(myfit, fixed(ColumnsToUse[i], "lr"), nsim=nsim, progress=F)}
   }
+  Coef.ind=sort(unique(Coef.ind))
+  CI.raw.ind=sort(unique(CI.raw.ind))
   CI.ind=sort(unique(CI.ind))
-  
+  #*******
   # output
+  #*******
   output=c()
+  # info of model fit
   output$model_fit=myfit
-  #output$power=powerSim(myfit, nsim=10)
-  output$vif=car::vif(myfit)
-  
+  # vif
+  if(length(ColumnsToUse)>=2){output$vif=car::vif(myfit)}else{output$vif=""}
+  # summary table
+  output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
+  output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
+  output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                                     format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3))
   if(which.family=="gaussian"){
-    output$summ_table=data.frame(
-      Estimate=round2(Coef[, "Estimate"][Coef.ind], 3), 
-      Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3), 
-      `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                       format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)), 
-      Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
+    output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
-    )
   }else if(which.family=="binomial"){
-    output$summ_table=data.frame(
-      Estimate=round2(Coef[, "Estimate"][Coef.ind], 3), 
-      Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3), 
-      `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                       format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)), 
-      OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+    output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
-    )
   }else if(which.family=="poisson"){
-    output$summ_table=data.frame(
-      Estimate=round2(Coef[, "Estimate"][Coef.ind], 3), 
-      Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3), 
-      `P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                       format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3)), 
-      RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+    output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
-    )
   }
+  # power
+  if(Compute.Power==T){
+    output$summ_table$power=sapply(Var.Power, function(x) paste0(
+      paste0(round(summary(x)["mean"]*100, 2), "%"),
+      " (",
+      round(summary(x)["lower"]*100, 2),
+      ", ",
+      round(summary(x)["upper"]*100, 2),
+      ")"
+    ))
+  }
+  output$summ_table=as.data.frame(output$summ_table)
   return(output)
 }
 
@@ -866,37 +881,47 @@ GLMM_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(pred_vars=="treat")]="P"
 # levels.of.fact[which(pred_vars=="sex")]="F"
+# Data$sex=as.character(Data$sex)
+# Data[sample(nrow(Data), 150), "sex"]="N"
 # lambda=seq(0, 5, by=0.5)
 # # GLMM_CV_Out
-# GLMM_CV_Out=GLMM_CV(data=Data, 
-#                     pred_vars, 
-#                     res_var, 
-#                     rand_var, 
-#                     which.family, 
-#                     vector.OF.classes.num.fact, 
-#                     levels.of.fact, 
-#                     k=4, 
+# GLMM_CV_Out=GLMM_CV(data=Data,
+#                     pred_vars,
+#                     res_var,
+#                     rand_var,
+#                     which.family,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact,
+#                     k=6,
 #                     lambda=lambda)
 # # train error
 # GLMM_CV_Out$Train_Error
 # # cv error
 # GLMM_CV_Out$CV_Error
 # # plot
-# Error_by_Lambda=data.frame(
-#   lambda=lambda, 
-#   Error=c(apply(GLMM_CV_Out$Train_Error, 1, mean), apply(GLMM_CV_Out$CV_Error, 1, mean)), 
-#   Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
-# )
-# Error_by_Lambda %>%
-#   ggplot(aes(x=lambda, y=Error, group=Label)) +
-#   geom_line(aes(color=Label)) +
-#   geom_point(aes(color=Label)) +
-#   scale_color_brewer(palette="Dark2") +
-#   theme_set(theme_bw())
+# GLMM_CV_Out$CV_plot
 # # optimal lambda
 # GLMM_CV_Out$Optimal_Lambda
-GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.classes.num.fact, 
-                 levels.of.fact, k=4, lambda=seq(0, 10, by=1)){
+
+# # There's a function that performs a CV for GLMM, called cv.glmmLasso, in lmmen package.
+# # However, there appears to be some issues when the function is excuted (fun a code below). I googled to find how to troubleshoot, but there's even not
+# # a single example that shows the use of the function.
+# # https://raw.githubusercontent.com/cran/glmmLasso/master/demo/glmmLasso-soccer.r
+# library(lmmen)
+# cv.glmmLasso(dat=Data,
+#              form.fixed=outcome ~ center + as.factor(treat) + as.factor(sex) + age + baseline + visit,
+#              form.rnd=list(id=~1),
+#              family=binomial(link=logit),
+#              lambda=seq(0, 20, by=5))
+GLMM_CV=function(data,
+                 pred_vars,
+                 res_var,
+                 rand_var,
+                 which.family,
+                 vector.OF.classes.num.fact,
+                 levels.of.fact,
+                 k=4,
+                 lambda=seq(0, 10, by=1)){
   #data=data[sample(1:nrow(data), 5000), ]
   
   # check out packages
@@ -971,7 +996,8 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
     }  
   }
   # speicfy GLMM model (with dummies)
-  CV.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
+  CV.model=as.formula(paste(res_var, "~", paste(ifelse(vector.OF.classes.num.fact=="fact", paste0("as.factor(", pred_vars, ")"), pred_vars), collapse="+"), sep=""))
+  
   # generate empty matrix to save Train_Error
   Train_Error=matrix(NA, length(lambda), k)
   rownames(Train_Error)=c(paste0("lambda=", lambda))
@@ -980,6 +1006,14 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
   CV_Error=matrix(NA, length(lambda), k)
   rownames(CV_Error)=c(paste0("lambda=", lambda))
   colnames(CV_Error)=c(paste0(1:k, "nd sub"))
+  # generate empty matrix to save CV_AIC
+  CV_AIC=matrix(NA, length(lambda), k)
+  rownames(CV_AIC)=c(paste0("lambda=", lambda))
+  colnames(CV_AIC)=c(paste0(1:k, "nd sub"))
+  # generate empty matrix to save CV_BIC
+  CV_BIC=matrix(NA, length(lambda), k)
+  rownames(CV_BIC)=c(paste0("lambda=", lambda))
+  colnames(CV_BIC)=c(paste0(1:k, "nd sub"))
   
   # run algorithm
   for(lambda.ind in 1:length(lambda)){
@@ -997,8 +1031,7 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
                               rnd=random_effect, 
                               family=eval(parse(text=which.family)), 
                               data=CV_data_train, 
-                              lambda=lambda[lambda.ind], 
-                              switch.NR=TRUE)
+                              lambda=lambda[lambda.ind])
       
       # Make predictions and compute the R2, RMSE and MAE
       predictions_train=glmmLasso.fit %>% predict(CV_data_train)
@@ -1007,6 +1040,9 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
       # Train_Error and CV_Error
       Train_Error[lambda.ind, k.ind]=mean(unlist(predictions_train - CV_data_train[, .SD, .SDcol=res_var])^2)
       CV_Error[lambda.ind, k.ind]=mean(unlist(predictions_test - CV_data_test[, .SD, .SDcol=res_var])^2)
+      
+      CV_AIC[lambda.ind, k.ind]=glmmLasso.fit$aic
+      CV_BIC[lambda.ind, k.ind]=glmmLasso.fit$bic
       
       if(k.ind == k){
         # print process
@@ -1019,12 +1055,28 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
   out=list()
   out$Train_Error=Train_Error
   out$CV_Error=CV_Error
+  out$CV_AIC=CV_AIC
+  out$CV_BIC=CV_BIC
   
   # optimal lambda
   out$Optimal_Lambda=lambda[which.min(apply(CV_Error, 1, mean))]
   
+  # plot
+  Error_by_Lambda=data.frame(
+    lambda=lambda,
+    Error=c(apply(out$Train_Error, 1, mean), apply(out$CV_Error, 1, mean)),
+    Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
+  )
+  out$CV_plot=Error_by_Lambda %>%
+    ggplot(aes(x=lambda, y=Error, group=Label)) +
+    geom_line(aes(color=Label)) +
+    geom_point(aes(color=Label)) +
+    scale_color_brewer(palette="Dark2") +
+    theme_set(theme_bw())
+  
   return(out)
 }
+
 
 
 #***********
@@ -1038,19 +1090,21 @@ GLMM_CV=function(data, pred_vars, res_var, rand_var, which.family, vector.OF.cla
 # pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
 # res_var="outcome"
 # rand_var="id"
+# which.family="binomial(link=logit)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, pred_vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(pred_vars=="treat")]="P"
 # levels.of.fact[which(pred_vars=="sex")]="F"
-# GLMM.LASSO.fit=GLMM_LASSO(data=Data, 
-#                      pred_vars, 
-#                      res_var, 
-#                      rand_var, 
-#                      vector.OF.classes.num.fact, 
-#                      levels.of.fact, 
+# GLMM.LASSO.fit=GLMM_LASSO(data=Data,
+#                      pred_vars,
+#                      res_var,
+#                      rand_var,
+#                      which.family,
+#                      vector.OF.classes.num.fact,
+#                      levels.of.fact,
 #                      lambda=10)
 # summary(GLMM.LASSO.fit)
-GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fact, 
+GLMM_LASSO=function(data, pred_vars, res_var, rand_var, which.family="binomial(link=logit)", vector.OF.classes.num.fact, 
                     levels.of.fact, lambda=10){
   # check out packages
   lapply(c("glmmLasso", "data.table", "dplyr"), checkpackages)
@@ -1093,23 +1147,20 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, vector.OF.classes.num.fa
   #*************
   # run algoritm
   #*************
-  # specify original GLMM model (before creating dummies)
-  model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
-  
   # grouping variable
   data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
   # random effect
   random_effect=list(id=~1)
   names(random_effect)=rand_var
   
-  # specify GLMM model (after creating dummies)
-  GLMM.model=as.formula(paste(res_var, "~", paste(pred_vars, collapse="+"), sep=""))
+  # specify GLMM model
+  GLMM.model=as.formula(paste(res_var, "~", paste(ifelse(vector.OF.classes.num.fact=="fact", paste0("as.factor(", pred_vars, ")"), pred_vars), collapse="+"), sep=""))
   # run glmm Lasso
   glmmLasso.fit=glmmLasso(GLMM.model, 
                           rnd=random_effect, 
-                          family=binomial(link=logit), 
+                          family=eval(parse(text=which.family)), 
                           data=data, 
-                          lambda=lambda, 
+                          lambda=lambda,
                           switch.NR=TRUE)
   return(glmmLasso.fit)
 }
@@ -1796,12 +1847,12 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 #********
 # Example
 #****************
-# lapply(c("dplyr", 
-#          "data.table", 
+# lapply(c("dplyr",
+#          "data.table",
 # 
-#          "lme4", 
+#          "lme4",
 #          "epitools"
-# ), 
+# ),
 # checkpackages)
 # require(geepack)
 # data("respiratory")
@@ -1811,7 +1862,7 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 # Data$sex[sample(1:nrow(Data), 30)]=NA
 # Data$age[sample(1:nrow(Data), 30)]=NA
 # Data$outcome[sample(1:nrow(Data), 30)]=NA
-# #Data$outcome[sample(1:nrow(Data), 30)]="2"
+# #Data$outcome[sample(1:nrow(Data), 30)]=2
 # 
 # # Work on predictor with more than 2 levels
 # Data=as.data.table(Data)
@@ -1829,15 +1880,15 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 #   filter(visit==min(visit)) %>%
 #   ungroup()
 # #
-# Contingency_Table_Generator(Data=Data, 
-#                             Row_Var="sex", 
-#                             Col_Var="outcome", 
-#                             Ref_of_Row_Var="F", 
+# Contingency_Table_Generator(Data=Data,
+#                             Row_Var="sex",
+#                             Col_Var="outcome",
+#                             Ref_of_Row_Var="F",
 #                             Missing="Not_Include")
-# Contingency_Table_Generator(Data=Data, 
-#                             Row_Var="age_cat", 
-#                             Col_Var="outcome", 
-#                             Ref_of_Row_Var="<20", 
+# Contingency_Table_Generator(Data=Data,
+#                             Row_Var="age_cat",
+#                             Col_Var="outcome",
+#                             Ref_of_Row_Var="<20",
 #                             Missing="Not_Include")
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
   # Data as data table
@@ -1847,7 +1898,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   if(is.numeric(Data[, Col_Var])==T){
     Col_Order=sort(unique(Data[, Col_Var]))
   }
-  Data[, Col_Var]=as.character(Data[, Col_Var])
+  #Data[, Col_Var]=as.character(Data[, Col_Var])
   Data[, Row_Var]=as.character(Data[, Row_Var])
   
   if(Missing=="Include"){
@@ -1855,7 +1906,6 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
     Data[is.na(Data[, Row_Var]), Row_Var]="NA"
   }else if(Missing=="Not_Include"){
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
-  
   
   #
   if(length(Col_Order)>0){
@@ -1922,15 +1972,17 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   
   # 
   Out=as.data.table(Out)
-  Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 
+  Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value<0.001, 
                                                            "<0.001 (*Ind Test)", 
-                                                           paste0(round(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 3), "(*Ind Test)"))
+                                                           paste0(round(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 3), " (*Ind Test)"))
   Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table)$p.value<0.001, 
                                                                "<0.001 (*Ind Test)", 
                                                                paste0(round(chisq.test(Contingency_Table)$p.value, 3), " (*Ind Test)"))
   # return
   return(Out)
 }
+
+
 
 #************************************
 #
@@ -1943,13 +1995,13 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #********
 # Example
 #****************
-# lapply(c("dplyr", 
-#          "data.table", 
+# lapply(c("dplyr",
+#          "data.table",
 # 
-#          "lme4", 
-#          "epitools", 
+#          "lme4",
+#          "epitools",
 #          "doBy" # for esticon function
-# ), 
+# ),
 # checkpackages)
 # require(geepack)
 # data("respiratory")
@@ -1958,7 +2010,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 # # randomly generate NAs in some variables
 # Data$age[sample(1:nrow(Data), 30)]=NA
 # Data$outcome[sample(1:nrow(Data), 30)]=NA
-# #Data$outcome[sample(1:nrow(Data), 30)]="2"
+# Data$outcome[sample(1:nrow(Data), 30)]="2"
 # 
 # # Data at baseline
 # BL_Data=Data %>%
@@ -1966,48 +2018,77 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #   filter(visit==min(visit)) %>%
 #   ungroup()
 # #
-# Contingency_Table_Generator_Conti_X(Data=BL_Data, 
-#                                     Row_Var="age", 
-#                                     Col_Var="outcome", 
+# Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                                     Row_Var="age",
+#                                     Col_Var="outcome",
 #                                     Missing="Include")
-# Contingency_Table_Generator_Conti_X(Data=BL_Data, 
-#                                     Row_Var="age", 
-#                                     Col_Var="outcome", 
+# Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                                     Row_Var="age",
+#                                     Col_Var="outcome",
 #                                     Missing="Not_Include")
 Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
   # Data as data table
   Data=as.data.frame(Data)
-  #
-  Data[, Col_Var]=as.numeric(Data[, Col_Var])
-  Data[, Row_Var]=as.numeric(Data[, Row_Var])
-  #
-  if(Missing=="Include"){
-    useNA="always"
-  }else if(Missing=="Not_Include"){
-    useNA="no"
-  }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
-  
-  # Sum of values column-wise INCLUDING missing data in Row_Var
-  Sum_Col_Wise=Data %>% 
-    dplyr::select(Col_Var) %>% 
-    table(useNA=useNA) %>% c
   
   # If response variable is binary, perform GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
+    #
+    Levels=levels(Data[, Col_Var])
+    Data[, Col_Var]=as.numeric(Data[, Col_Var])
+    Data[, Row_Var]=as.numeric(Data[, Row_Var])
+    #
+    if(Missing=="Include"){
+      useNA="always"
+    }else if(Missing=="Not_Include"){
+      useNA="no"
+    }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+    
+    # Sum of values column-wise INCLUDING missing data in Row_Var
+    Sum_Col_Wise=Data %>% 
+      dplyr::select(Col_Var) %>% 
+      table(useNA=useNA) %>% c
+    names(Sum_Col_Wise)=Levels
+    
     GLM_Result=glm(as.formula(paste(Col_Var, "~", Row_Var)), data=na.omit(Data[, c(Row_Var, Col_Var)]), binomial(logit))
     est=esticon(GLM_Result, diag(length(coef(GLM_Result))))[-1, ]
     OR.and.CI=paste0(round(exp(est$Estimate), 2), " (", round(exp(est$Lower), 2), " - ", round(exp(est$Upper), 2), ")")
     P.value=ifelse(est$`Pr(>|X^2|)`<0.001, "<0.001", round(est$`Pr(>|X^2|)`, 3)) 
     
-    # compute P.value from Mann-Whitney-Wilcoxon Test
+    # compute P.values
     unique_outcome_value=unique(Data[, Col_Var])[!is.na(unique(Data[, Col_Var]))]
     Mann_Whitney_test=wilcox.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var], 
                                   Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
     P.value_Mann_Whitney=ifelse(Mann_Whitney_test$p.value<0.001, "<0.001", round(Mann_Whitney_test$p.value, 3))
+    T.test=t.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var], 
+                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative = "two.sided")
+    P.value_T_test=ifelse(T.test$p.value<0.001, "<0.001", round(T.test$p.value, 3))
+    P.value_ANOVA="Y is binary"
   }else{
+    #
+    Data[, Col_Var]=as.factor(Data[, Col_Var])
+    Data[, Row_Var]=as.numeric(Data[, Row_Var])
+    #
+    if(Missing=="Include"){
+      useNA="always"
+    }else if(Missing=="Not_Include"){
+      useNA="no"
+    }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+    
+    # Sum of values column-wise INCLUDING missing data in Row_Var
+    Sum_Col_Wise=Data %>% 
+      dplyr::select(Col_Var) %>% 
+      table(useNA=useNA) %>% c
+    
+    # compute P.values
     OR.and.CI="Y is not binary"
     P.value="Y is not binary"
     P.value_Mann_Whitney="Y is not binary"
+    P.value_T_test="Y is not binary"
+    
+    ANOVA=summary(aov(as.formula(paste(Row_Var, "~", Col_Var)), data=Data, na.action=na.omit))
+    P.value_ANOVA=ANOVA[[1]][["Pr(>F)"]][1]
+    P.value_ANOVA=ifelse(P.value_ANOVA<0.001, "<0.001", round(P.value_ANOVA, 3))
+    
   }
   
   #
@@ -2035,7 +2116,9 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     # GLM to compute P.value and OR.and.CI
     OR.and.CI, 
     P.value, 
-    P.value_Mann_Whitney
+    P.value_Mann_Whitney, 
+    P.value_T_test,
+    P.value_ANOVA
   )
   
   # post-processing
@@ -2045,13 +2128,15 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   Out$`OR.and.CI`=as.character(Out$`OR.and.CI`)
   Out$`P.value`=as.character(Out$`P.value`)
   Out$`P.value_Mann_Whitney`=as.character(Out$`P.value_Mann_Whitney`)
-  Out[-1, c("OR.and.CI", "P.value", "P.value_Mann_Whitney")]=""
+  Out$`P.value_T_test`=as.character(Out$`P.value_T_test`)
+  Out$`P.value_ANOVA`=as.character(Out$`P.value_ANOVA`)
+  Out[-1, c("OR.and.CI", "P.value", "P.value_Mann_Whitney", "P.value_T_test", "P.value_ANOVA")]=""
   colnames(Out)[1:2]=c("Predictor", "Value")
   
   #
   colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
   colnames(Out)[(3+length(Sum_Col_Wise))]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
-  colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+3)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)")
+  colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+5)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)", "P-value (T_test)", "P-value (ANOVA)")
   
   # return
   return(Out)
@@ -2092,14 +2177,23 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
 # #
 # Contingency_Table_Univariable(Data=BL_Data, 
 #                Var="sex")
-Contingency_Table_Univariable=function(Data, Var){
+Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
   Data=as.data.table(Data)
   
-  Table=table(Data[, .SD, .SDcols=Var], useNA="always")
-  CT=t(as.matrix(paste0(Table, " (", round(Table/sum(Table)*100, 2), "%)")))
+  Table_with_missing=table(Data[, .SD, .SDcols=Var], useNA="always")
   
-  Out=cbind(Var, c(names(Table), "Total"), t(cbind(CT, paste0(sum(Table), " (100%)"))))
-  colnames(Out)=c("Variable", "Value", "N (%)")
+  if(Missing=="Include"){
+    Table=table(Data[, .SD, .SDcols=Var], useNA="always")
+  }else if(Missing=="Not_Include"){
+    Table=table(Data[, .SD, .SDcols=Var])
+  }
+  
+  CT=t(as.matrix(paste0(Table, " (", round(Table/sum(Table_with_missing)*100, 2), "%)")))
+  
+  Out=cbind(Var, 
+            names(Table), 
+            t(CT))
+  colnames(Out)=c("Predictor", "Value", paste0("Total (n=", sum(Table_with_missing), ")"))
   
   return(as.data.table(Out))
 }
@@ -2144,23 +2238,24 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
   
   Table=round(summary(Data[, Var]), 2)
   
-  Out=cbind(Var, paste0(Table[4], " (", Table[2], " - ", Table[5], ")"))
-  colnames(Out)=c("Variable", "Mean (IQR)")
+  Out=cbind(Var, paste0(Table[3], " (", Table[5]-Table[2], ")"))
+  colnames(Out)=c("Variable", "Median (IQR)")
   return(as.data.table(Out))
 }
+
 
 #******************************************************************************
 #
 # Example of combining contingency tables of categorical and continuous variables
 #
 #******************************************************************************
-# lapply(c("dplyr", 
-#          "data.table", 
+# lapply(c("dplyr",
+#          "data.table",
 # 
-#          "lme4", 
-#          "epitools", 
+#          "lme4",
+#          "epitools",
 #          "doBy" # for esticon function
-# ), 
+# ),
 # checkpackages)
 # require(geepack)
 # data("respiratory")
@@ -2168,15 +2263,15 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
 # 
 # #
 # Combined_CT=rbind(
-#   Contingency_Table_Generator(Data=Data, 
-#                               Row_Var="sex", 
-#                               Col_Var="outcome", 
-#                               Ref_of_Row_Var="F", 
-#                               Missing="Include"), 
-#   Contingency_Table_Generator_Conti_X(Data=Data, 
-#                                       Row_Var="age", 
-#                                       Col_Var="outcome", 
-#                                       Missing="Include"), 
+#   Contingency_Table_Generator(Data=Data,
+#                               Row_Var="sex",
+#                               Col_Var="outcome",
+#                               Ref_of_Row_Var="F",
+#                               Missing="Include"),
+#   Contingency_Table_Generator_Conti_X(Data=Data,
+#                                       Row_Var="age",
+#                                       Col_Var="outcome",
+#                                       Missing="Include"),
 #   fill=TRUE
 #   )
 # Combined_CT
