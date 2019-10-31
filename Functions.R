@@ -758,7 +758,7 @@ GLMM_Bivariate_Jin=function(Data,
 #                        NAGQ<-1,
 #                        Compute.Power=T,
 #                        nsim=5)
-GLMM_Multivariable_Jin=function(Data, 
+GLMM_Multivariable_Jin=function(Data,
                                 ColumnsToUse, 
                                 Outcome_name, 
                                 ID_name, which.family, 
@@ -817,6 +817,7 @@ GLMM_Multivariable_Jin=function(Data,
     CI.ind=c(CI.ind, which(grepl(ColumnsToUse[i], row.names(CI))))
     if(Compute.Power==T){Var.Power[[i]]=powerSim(myfit, fixed(ColumnsToUse[i], "lr"), nsim=nsim, progress=F)}
   }
+  
   Coef.ind=sort(unique(Coef.ind))
   CI.raw.ind=sort(unique(CI.raw.ind))
   CI.ind=sort(unique(CI.ind))
@@ -1602,8 +1603,6 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
       )
   }
   
-  
-  
   return(Out)
 }
 
@@ -1641,12 +1640,12 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # # multiple imputation using Amelia
 # set.seed(2019) # set seed in order to obtain the same imputed values for the future reproduction of analysis results
 # m=2 # the number of imputed datasets to creates
-# amelia.imp=amelia(Data[, 
-#                              .SD, 
-#                              .SDcols=c(ColumnsToUse, Outcome_name)], 
-#                   p2s=0, 
-#                   Mvalue="NA", 
-#                   m=m, 
+# amelia.imp=amelia(Data[,
+#                        .SD,
+#                        .SDcols=c(ColumnsToUse, Outcome_name)],
+#                   p2s=0,
+#                   Mvalue="NA",
+#                   m=m,
 #                   noms=c(ColumnsToUse[vector.OF.classes.num.fact=="fact"], "outcome"), # all time-varying variates with missing data are nominal, so we need to specify them
 #                   ts=c("visit"), # column number or variable name indicating the variable identifying time in time series data
 #                   cs=c("id"), # column number or variable name indicating the cross section variable
@@ -1655,11 +1654,11 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                   interacs=FALSE # TRUE if time effects of polytime vary across the cross-section
 # )
 # # GEE using the 1st imputed data set
-# GEE.result.1=GEE_Multivariable_Jin(amelia.imp$imputations$imp1, ColumnsToUse, Outcome_name, ID_name, which.family, 
-#                       vector.OF.classes.num.fact, levels.of.fact) %>% as.data.table(keep.rownames=TRUE)
+# GEE.result.1=GEE_Multivariable_Jin(amelia.imp$imputations$imp1, ColumnsToUse, Outcome_name, ID_name, which.family,
+#                       vector.OF.classes.num.fact, levels.of.fact)$summ_table %>% as.data.table(keep.rownames=TRUE)
 # # GEE using the 2nd imputed data set
-# GEE.result.2=GEE_Multivariable_Jin(amelia.imp$imputations$imp2, ColumnsToUse, Outcome_name, ID_name, which.family, 
-#                       vector.OF.classes.num.fact, levels.of.fact) %>% as.data.table(keep.rownames=TRUE)
+# GEE.result.2=GEE_Multivariable_Jin(amelia.imp$imputations$imp2, ColumnsToUse, Outcome_name, ID_name, which.family,
+#                       vector.OF.classes.num.fact, levels.of.fact)$summ_table %>% as.data.table(keep.rownames=TRUE)
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
 # GEE.combined.result
@@ -2208,13 +2207,13 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 #********
 # Example
 #****************
-# lapply(c("dplyr", 
-#          "data.table", 
+# lapply(c("dplyr",
+#          "data.table",
 # 
-#          "lme4", 
-#          "epitools", 
+#          "lme4",
+#          "epitools",
 #          "doBy" # for esticon function
-# ), 
+# ),
 # checkpackages)
 # require(geepack)
 # data("respiratory")
@@ -2231,7 +2230,7 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 #   filter(visit==min(visit)) %>%
 #   ungroup()
 # #
-# Contingency_Table_Univariable_Conti_X(Data=BL_Data, 
+# Contingency_Table_Univariable_Conti_X(Data=BL_Data,
 #                Var="age")
 Contingency_Table_Univariable_Conti_X=function(Data, Var){
   Data=as.data.frame(Data)
