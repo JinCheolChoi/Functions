@@ -528,7 +528,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
 # # run GEE_Multivariable_with_vif_Jin
 # GEE_Multivariable_with_vif_Jin(Remove_missing(Data_original, # remove missing data
-#                                               c(ColumnsToUse, 
+#                                               c(ColumnsToUse<-ColumnsToUse, 
 #                                                 Outcome_name<-"outcome", 
 #                                                 ID_name<-"id")), 
 #                                ColumnsToUse<-ColumnsToUse, 
@@ -612,6 +612,126 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
   
 }
 
+#*************************
+# GEE_Confounder_Selection
+#*************************
+# Example
+#******************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GEE.fit=GEE_Multivariable_Jin(Remove_missing(Data_original, # remove missing data
+#                                               c(ColumnsToUse<-ColumnsToUse, 
+#                                                 Outcome_name<-"outcome", 
+#                                                 ID_name<-"id")), 
+#                                ColumnsToUse<-ColumnsToUse, 
+#                                Outcome_name<-Outcome_name, 
+#                                ID_name<-ID_name, 
+#                                which.family<-"binomial", 
+#                                vector.OF.classes.num.fact, 
+#                                levels.of.fact)
+# Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
+#                                           Main_Pred_Var="sex",
+#                                           Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
+#                                           which.family="binomial") # distribution of the response variable
+# Confounder_Steps
+GEE_Confounder_Selection=function(Full_Model, 
+                                  Main_Pred_Var, 
+                                  Potential_Con_Vars, 
+                                  which.family="binomial"){
+  
+  # Full_Model=GEE.example$model_fit
+  # Main_Pred_Var="sex"
+  # Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Potential_Con_Vars=Potential_Con_Vars
+  Include_Index=c(1:length(Potential_Con_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Fixed_Effects_Current_Full_Model=coef(Current_Full_Model)
+    Main_Effect_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    Main_Effect_Current_Reduced_Model=c()
+    
+    # run GEE excluding one variable at once
+    for(i in 1:length(Potential_Con_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse = "-"))))
+      Fixed_Effects_Current_Reduced_Model=coef(Current_Reduced_Model)
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Reduced_Model))]
+      
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
+    }
+    
+    # summary table
+    if(which.family=="gaussian"){
+      Temp_Table=data.table(
+        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+        Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(which.family=="binomial"){
+      Temp_Table=data.table(
+        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(which.family=="poisson"){
+      Temp_Table=data.table(
+        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(min(as.numeric(Temp_Table$Delta[-1]))>10){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+      loop.key=1
+    }else{
+      # decide the variable to remove
+      Var_to_Remove=Temp_Table[Rank==min(Rank, na.rm=T), Removed_Var]
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse = "-"))))
+      # increase step
+      step=step+1
+      
+      # if there's no more variable left
+      if(length(Include_Index)==0){
+        loop.key=1
+      }
+    }
+    
+  } # while - end
+  
+  return(Out)
+}
+
 #**************
 #
 # [ GLMM ] ----
@@ -662,7 +782,7 @@ GLMM_Bivariate_Jin=function(Data,
   # main algorithm
   output=c()
   for(i in 1:length(ColumnsToUse)){
-    #i=1
+    #i=22
     # convert variable class
     if(vector.OF.classes.num.fact[i]=="num"){
       Data[, ColumnsToUse[i]]=as.numeric(as.character(Data[, ColumnsToUse[i]]))
@@ -768,7 +888,7 @@ GLMM_Multivariable_Jin=function(Data,
                                 Compute.Power=FALSE,
                                 nsim=1000){
   # check out packages
-  lapply(c("lme4"), checkpackages)
+  lapply(c("lme4", "simr"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -786,20 +906,22 @@ GLMM_Multivariable_Jin=function(Data,
       Data[, ColumnsToUse[i]]=relevel(Data[, ColumnsToUse[i]], ref=levels.of.fact[i])
     }
   }
+  
   # run model
   #fullmod=as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"), "+(1|", ID_name, ")", sep=""))
   if(which.family=="gaussian"){
     myfit=lmer(as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"), "+(1|", ID_name, ")", sep="")), 
                na.action=na.exclude, 
                data=Data, 
-               control=lmerControl(optimizer=c("bobyqa")))
+               control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)))
   }else{
     myfit=glmer(as.formula(paste(Outcome_name, "~", paste(ColumnsToUse, collapse="+"), "+(1|", ID_name, ")", sep="")), 
                 family=which.family, 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
-                control=glmerControl(optimizer=c("bobyqa"))) # try "Nelder_Mead" if the algorithm fails to converge.
+                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }
+  
   # coefficient
   Coef=summary(myfit)$coefficients
   Coef.ind=c()
@@ -836,16 +958,16 @@ GLMM_Multivariable_Jin=function(Data,
                                      format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3))
   if(which.family=="gaussian"){
     output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
-                             " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
-                             format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
+                                             " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
+                                             format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(which.family=="binomial"){
     output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
-                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
-                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
+                                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
+                                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(which.family=="poisson"){
     output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
-                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
-                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
+                                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
+                                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
   # power
   if(Compute.Power==T){
@@ -860,6 +982,126 @@ GLMM_Multivariable_Jin=function(Data,
   }
   output$summ_table=as.data.frame(output$summ_table)
   return(output)
+}
+
+#**************************
+# GLMM_Confounder_Selection
+#**************************
+# Example
+#******************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM.fit=GLMM_Multivariable_Jin(Data,
+#                                 ColumnsToUse,
+#                                 Outcome_name="outcome",
+#                                 ID_name="id",
+#                                 which.family="binomial", # gaussian, binomial, poisson
+#                                 vector.OF.classes.num.fact,
+#                                 levels.of.fact,
+#                                 NAGQ<-1,
+#                                 Compute.Power=F,
+#                                 nsim=5)
+# Confounder_Steps=GLMM_Confounder_Selection(Full_Model=GLMM.fit$model_fit,
+#                                            Main_Pred_Var="sex",
+#                                            Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
+#                                            which.family="binomial")
+# Confounder_Steps
+GLMM_Confounder_Selection=function(Full_Model, 
+                                   Main_Pred_Var, 
+                                   Potential_Con_Vars, 
+                                   which.family="binomial"){
+  
+  # Full_Model=GLMM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Potential_Con_Vars=Potential_Con_Vars
+  Include_Index=c(1:length(Potential_Con_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Fixed_Effects_Current_Full_Model=fixef(Current_Full_Model)
+    Main_Effect_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    Main_Effect_Current_Reduced_Model=c()
+    
+    # run GLMM excluding one variable at once
+    for(i in 1:length(Potential_Con_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse = "-"))))
+      Fixed_Effects_Current_Reduced_Model=fixef(Current_Reduced_Model)
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Reduced_Model))]
+      
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
+    }
+    
+    # summary table
+    if(which.family=="gaussian"){
+      Temp_Table=data.table(
+        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+        Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(which.family=="binomial"){
+      Temp_Table=data.table(
+        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(which.family=="poisson"){
+      Temp_Table=data.table(
+        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(min(as.numeric(Temp_Table$Delta[-1]))>10){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+      loop.key=1
+    }else{
+      # decide the variable to remove
+      Var_to_Remove=Temp_Table[Rank==min(Rank, na.rm=T), Removed_Var]
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse = "-"))))
+      # increase step
+      step=step+1
+      
+      # if there's no more variable left
+      if(length(Include_Index)==0){
+        loop.key=1
+      }
+    }
+    
+  } # while - end
+  
+  return(Out)
 }
 
 #********
@@ -1890,6 +2132,9 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 #                             Ref_of_Row_Var="<20",
 #                             Missing="Not_Include")
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+  # library
+  library(epitools)
+  
   # Data as data table
   Data=as.data.frame(Data)
   # 
@@ -2026,13 +2271,16 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #                                     Col_Var="outcome",
 #                                     Missing="Not_Include")
 Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+  # library
+  library(doBy)
+  
   # Data as data table
   Data=as.data.frame(Data)
   
   # If response variable is binary, perform GLM to compute P.value and OR.and.CI
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
     #
-    Levels=levels(Data[, Col_Var])
+    Levels=levels(as.factor(Data[, Col_Var]))
     Data[, Col_Var]=as.numeric(Data[, Col_Var])
     Data[, Row_Var]=as.numeric(Data[, Row_Var])
     #
@@ -2043,7 +2291,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
     
     # Sum of values column-wise INCLUDING missing data in Row_Var
-    Sum_Col_Wise=Data %>% 
+    Sum_Col_Wise=as.data.frame(Data) %>% 
       dplyr::select(Col_Var) %>% 
       table(useNA=useNA) %>% c
     names(Sum_Col_Wise)=Levels
@@ -2074,7 +2322,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
     }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
     
     # Sum of values column-wise INCLUDING missing data in Row_Var
-    Sum_Col_Wise=Data %>% 
+    Sum_Col_Wise=as.data.frame(Data) %>% 
       dplyr::select(Col_Var) %>% 
       table(useNA=useNA) %>% c
     
@@ -2151,13 +2399,13 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
 #********
 # Example
 #****************
-# lapply(c("dplyr", 
-#          "data.table", 
+# lapply(c("dplyr",
+#          "data.table",
 # 
-#          "lme4", 
-#          "epitools", 
+#          "lme4",
+#          "epitools",
 #          "doBy" # for esticon function
-# ), 
+# ),
 # checkpackages)
 # require(geepack)
 # data("respiratory")
@@ -2174,7 +2422,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
 #   filter(visit==min(visit)) %>%
 #   ungroup()
 # #
-# Contingency_Table_Univariable(Data=BL_Data, 
+# Contingency_Table_Univariable(Data=BL_Data,
 #                Var="sex")
 Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
   Data=as.data.table(Data)
