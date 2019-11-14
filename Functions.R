@@ -639,12 +639,14 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
 # Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
 #                                           Main_Pred_Var="sex",
 #                                           Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
-#                                           which.family="binomial") # distribution of the response variable
+#                                           which.family="binomial",
+#                                           Min.Change.Percentage=5) # distribution of the response variable
 # Confounder_Steps
 GEE_Confounder_Selection=function(Full_Model, 
                                   Main_Pred_Var, 
                                   Potential_Con_Vars, 
-                                  which.family="binomial"){
+                                  which.family="binomial",
+                                  Min.Change.Percentage=10){ # minimum percentage of change-in-estimate to terminate the algorithm
   
   # Full_Model=GEE.example$model_fit
   # Main_Pred_Var="sex"
@@ -709,7 +711,7 @@ GEE_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>10){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
       loop.key=1
     }else{
       # decide the variable to remove
@@ -1018,12 +1020,14 @@ GLMM_Multivariable_Jin=function(Data,
 # Confounder_Steps=GLMM_Confounder_Selection(Full_Model=GLMM.fit$model_fit,
 #                                            Main_Pred_Var="sex",
 #                                            Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
-#                                            which.family="binomial")
+#                                            which.family="binomial",
+#                                            Min.Change.Percentage=5)
 # Confounder_Steps
 GLMM_Confounder_Selection=function(Full_Model, 
                                    Main_Pred_Var, 
                                    Potential_Con_Vars, 
-                                   which.family="binomial"){
+                                   which.family="binomial",
+                                   Min.Change.Percentage=10){ # minimum percentage of change-in-estimate to terminate the algorithm
   
   # Full_Model=GLMM.example$model_fit
   # Main_Pred_Var="sex"
@@ -1088,7 +1092,7 @@ GLMM_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>10){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
       loop.key=1
     }else{
       # decide the variable to remove
