@@ -626,15 +626,15 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GEE.fit=GEE_Multivariable_Jin(Remove_missing(Data_original, # remove missing data
-#                                               c(ColumnsToUse<-ColumnsToUse, 
-#                                                 Outcome_name<-"outcome", 
-#                                                 ID_name<-"id")), 
-#                                ColumnsToUse<-ColumnsToUse, 
-#                                Outcome_name<-Outcome_name, 
-#                                ID_name<-ID_name, 
-#                                which.family<-"binomial", 
-#                                vector.OF.classes.num.fact, 
+# GEE.fit=GEE_Multivariable_Jin(Remove_missing(Data, # remove missing data
+#                                               c(ColumnsToUse<-ColumnsToUse,
+#                                                 Outcome_name<-"outcome",
+#                                                 ID_name<-"id")),
+#                                ColumnsToUse<-ColumnsToUse,
+#                                Outcome_name<-Outcome_name,
+#                                ID_name<-ID_name,
+#                                which.family<-"binomial",
+#                                vector.OF.classes.num.fact,
 #                                levels.of.fact)
 # Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
 #                                           Main_Pred_Var="sex",
@@ -723,6 +723,13 @@ GEE_Confounder_Selection=function(Full_Model,
       
       # if there's no more variable left
       if(length(Include_Index)==0){
+        Temp_Table=data.table(
+          Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+          Estimate=c(coef(Current_Full_Model)[-1]),
+          Delta="",
+          Rank=""
+        )
+        Out$summ_table[[step]]=Temp_Table
         loop.key=1
       }
     }
@@ -1095,6 +1102,13 @@ GLMM_Confounder_Selection=function(Full_Model,
       
       # if there's no more variable left
       if(length(Include_Index)==0){
+        Temp_Table=data.table(
+          Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+          Estimate=c(fixef(Current_Full_Model)[-1]),
+          Delta="",
+          Rank=""
+        )
+        Out$summ_table[[step]]=Temp_Table
         loop.key=1
       }
     }
