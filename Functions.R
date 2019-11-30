@@ -542,7 +542,7 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
   
   # as data frame
   Data<<-as.data.frame(Data)
-  
+
   # delete data with missing value
   #Data=na.omit(Data[, c(ColumnsToUse, ID_name, Outcome_name)])
   
@@ -574,7 +574,9 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
   # output
   output=c()
   output$model_fit=GEE.m
+  
   if(length(ColumnsToUse)>=2){output$vif=HH::vif(GEE.m)}
+  if(length(ColumnsToUse)==1 & !is.numeric(Data[, ColumnsToUse])){output$vif=HH::vif(GEE.m)} # if the only variable is not numeric (that's, if it is categorical), compute vif
   
   if(which.family=="gaussian"){
     output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -624,28 +626,48 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# 
+# Data$sex=as.character(Data$sex)
+# Data[sample(nrow(Data), 30), "sex"]="N"
+# Data[sample(nrow(Data), 30), "sex"]="P"
+# Data$sex=as.factor(Data$sex)
+# 
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GEE.fit=GEE_Multivariable_Jin(Remove_missing(Data, # remove missing data
-#                                               c(ColumnsToUse<-ColumnsToUse,
-#                                                 Outcome_name<-"outcome",
-#                                                 ID_name<-"id")),
-#                                ColumnsToUse<-ColumnsToUse,
-#                                Outcome_name<-Outcome_name,
-#                                ID_name<-ID_name,
-#                                which.family<-"binomial",
-#                                vector.OF.classes.num.fact,
-#                                levels.of.fact)
+# GEE.fit=GEE_Multivariable_with_vif_Jin(Remove_missing(Data, # remove missing data
+#                                                       c(ColumnsToUse<-ColumnsToUse,
+#                                                         Outcome_name<-"outcome",
+#                                                         ID_name<-"id")),
+#                                        ColumnsToUse<-ColumnsToUse,
+#                                        Outcome_name<-Outcome_name,
+#                                        ID_name<-ID_name,
+#                                        which.family<-"binomial",
+#                                        vector.OF.classes.num.fact,
+#                                        levels.of.fact)
 # Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
 #                                           Main_Pred_Var="sex",
 #                                           Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
-#                                           which.family="binomial",
-#                                           Min.Change.Percentage=5) # distribution of the response variable
-# Confounder_Steps
+#                                           which.family="binomial", # distribution of the response variable
+#                                           Min.Change.Percentage=30,
+#                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
+# Confounder_Ind=which(ColumnsToUse%in%Confounder_Steps$Confounders)
+# GEE.confound.fit=GEE_Multivariable_with_vif_Jin(Remove_missing(Data, # remove missing data
+#                                                                c(ColumnsToUse<-ColumnsToUse,
+#                                                                  Outcome_name<-"outcome",
+#                                                                  ID_name<-"id")),
+#                                                 ColumnsToUse<-ColumnsToUse[Confounder_Ind],
+#                                                 Outcome_name<-Outcome_name,
+#                                                 ID_name<-ID_name,
+#                                                 which.family<-"binomial",
+#                                                 vector.OF.classes.num.fact[Confounder_Ind],
+#                                                 levels.of.fact[Confounder_Ind])
+# GEE.fit$summ_table
+# GEE.confound.fit$summ_table
 GEE_Confounder_Selection=function(Full_Model, 
                                   Main_Pred_Var, 
                                   Potential_Con_Vars, 
                                   which.family="binomial",
-                                  Min.Change.Percentage=10){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                  Min.Change.Percentage=10,
+                                  Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   
   # Full_Model=GEE.example$model_fit
   # Main_Pred_Var="sex"
@@ -670,7 +692,11 @@ GEE_Confounder_Selection=function(Full_Model,
     
     #
     Fixed_Effects_Current_Full_Model=coef(Current_Full_Model)
-    Main_Effect_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    Main_Effects_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    
+    # when indep_var is factor, we pick max coef of its levels
+    Main_Cov_Level=names(which.max(abs(Main_Effects_Current_Full_Model)))
+    Main_Effect_Current_Full_Model=Main_Effects_Current_Full_Model[Main_Cov_Level]
     Main_Effect_Current_Reduced_Model=c()
     
     # run GEE excluding one variable at once
@@ -678,33 +704,43 @@ GEE_Confounder_Selection=function(Full_Model,
       #i=1
       Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse = "-"))))
       Fixed_Effects_Current_Reduced_Model=coef(Current_Reduced_Model)
-      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Reduced_Model))]
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
       
       print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
     }
     
-    # summary table
-    if(which.family=="gaussian"){
+    if(Estimate=="raw_estimate"){
+      #**** refer to the raw coefficient estimate ****
       Temp_Table=data.table(
-        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
         Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
         Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
         Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
       )
-    }else if(which.family=="binomial"){
-      Temp_Table=data.table(
-        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
-        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
-        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
-        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
-      )
-    }else if(which.family=="poisson"){
-      Temp_Table=data.table(
-        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
-        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
-        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
-        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
-      )
+    }else if(Estimate=="converted_estimate"){
+      # summary table
+      if(which.family=="gaussian"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+          Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }else if(which.family=="binomial"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Est_Odds=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+          Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }else if(which.family=="poisson"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Est_RR=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+          Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }
     }
     
     # save summary table at the current step
@@ -712,6 +748,7 @@ GEE_Confounder_Selection=function(Full_Model,
     
     if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
       loop.key=1
+      
     }else{
       # decide the variable to remove
       Var_to_Remove=Temp_Table[Rank==min(Rank, na.rm=T), Removed_Var]
@@ -725,7 +762,7 @@ GEE_Confounder_Selection=function(Full_Model,
       # if there's no more variable left
       if(length(Include_Index)==0){
         Temp_Table=data.table(
-          Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+          Removed_Var=c(paste0("Full (", names(Current_Full_Model$coefficients)[-1], ")"), Potential_Con_Vars[Include_Index]),
           Estimate=c(coef(Current_Full_Model)[-1]),
           Delta="",
           Rank=""
@@ -737,7 +774,97 @@ GEE_Confounder_Selection=function(Full_Model,
     
   } # while - end
   
+  # get the list of primary predictor and confounders
+  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  
   return(Out)
+}
+
+#**********************
+# GEE_Confounder_Model
+#**********************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# Data$sex=as.character(Data$sex)
+# Data[sample(nrow(Data), 30), "sex"]="N"
+# Data[sample(nrow(Data), 30), "sex"]="P"
+# Data$sex=as.factor(Data$sex)
+# 
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# 
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# Main_Pred_Var="sex"
+# Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
+# Reordered_vector.OF.classes.num.fact=vector.OF.classes.num.fact[match(c(Main_Pred_Var, Potential_Con_Vars), ColumnsToUse)]
+# Reordered_levels.of.fact=levels.of.fact[match(c(Main_Pred_Var, Potential_Con_Vars), ColumnsToUse)]
+# GEE_Confounder=GEE_Confounder_Model(Data,
+#                                     Main_Pred_Var<-Main_Pred_Var,
+#                                     Potential_Con_Vars<-Potential_Con_Vars,
+#                                     Outcome_name<-"outcome",
+#                                     ID_name<-"id",
+#                                     which.family<-"binomial", # gaussian, binomial, poisson
+#                                     vector.OF.classes.num.fact=Reordered_vector.OF.classes.num.fact,
+#                                     levels.of.fact=Reordered_levels.of.fact,
+#                                     Min.Change.Percentage=5,
+#                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
+# GEE_Confounder$Full_Multivariable_Model$summ_table
+# GEE_Confounder$Confounder_Steps$Confounders
+# GEE_Confounder$Confounder_Model$summ_table
+GEE_Confounder_Model=function(Data,
+                              Main_Pred_Var,
+                              Potential_Con_Vars,
+                              Outcome_name,
+                              ID_name,
+                              which.family,
+                              vector.OF.classes.num.fact,
+                              levels.of.fact,
+                              Min.Change.Percentage=5,
+                              Estimate="raw_estimate"){
+  
+  Output=c()
+  
+  # Full multivariable model
+  ColumnsToUse=c(Main_Pred_Var, Potential_Con_Vars)
+
+  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif_Jin(Data<<-Remove_missing(Data, # remove missing data
+                                                                                       c(ColumnsToUse,
+                                                                                         Outcome_name,
+                                                                                         ID_name)),
+                                                                 ColumnsToUse<<-ColumnsToUse,
+                                                                 Outcome_name<<-Outcome_name,
+                                                                 ID_name<<-ID_name,
+                                                                 which.family<<-which.family,
+                                                                 vector.OF.classes.num.fact<<-vector.OF.classes.num.fact,
+                                                                 levels.of.fact<<-levels.of.fact)
+  
+  # Confounder selection
+  Confounder_Steps=GEE_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
+                                            Main_Pred_Var=Main_Pred_Var,
+                                            Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+                                            which.family=which.family, # distribution of the response variable
+                                            Min.Change.Percentage=Min.Change.Percentage,
+                                            Estimate=Estimate) # raw_estimate, converted_estimate
+  Output$Confounder_Steps=Confounder_Steps
+  Confounder_Ind=which(ColumnsToUse%in%Output$Confounder_Steps$Confounders)
+  
+  # Multivariable model with confounders
+  Output$Confounder_Model=GEE_Multivariable_with_vif_Jin(Data<<-Remove_missing(Data, # remove missing data
+                                                                               c(ColumnsToUse[Confounder_Ind],
+                                                                                 Outcome_name,
+                                                                                 ID_name)),
+                                                         ColumnsToUse<<-ColumnsToUse[Confounder_Ind],
+                                                         Outcome_name<<-Outcome_name,
+                                                         ID_name<<-ID_name,
+                                                         which.family<<-which.family,
+                                                         vector.OF.classes.num.fact<<-vector.OF.classes.num.fact[Confounder_Ind],
+                                                         levels.of.fact<<-levels.of.fact[Confounder_Ind])
+  return(Output)
 }
 
 #**************
@@ -880,18 +1007,18 @@ GLMM_Bivariate_Jin=function(Data,
 #                        ColumnsToUse,
 #                        Outcome_name="outcome",
 #                        ID_name="id",
-#                        which.family<-"binomial", # gaussian, binomial, poisson
+#                        which.family<-"gaussian", # gaussian, binomial, poisson
 #                        vector.OF.classes.num.fact,
 #                        levels.of.fact,
-#                        NAGQ<-1,
-#                        Compute.Power=T,
-#                        nsim=5)
+#                        NAGQ<-100,
+#                        Compute.Power=F,
+#                        nsim=100)
 GLMM_Multivariable_Jin=function(Data,
-                                ColumnsToUse, 
-                                Outcome_name, 
-                                ID_name, which.family, 
-                                vector.OF.classes.num.fact, 
-                                levels.of.fact, 
+                                ColumnsToUse,
+                                Outcome_name,
+                                ID_name, which.family,
+                                vector.OF.classes.num.fact,
+                                levels.of.fact,
                                 NAGQ=100,
                                 Compute.Power=FALSE,
                                 nsim=1000){
@@ -959,6 +1086,7 @@ GLMM_Multivariable_Jin=function(Data,
   output$model_fit=myfit
   # vif
   if(length(ColumnsToUse)>=2){output$vif=car::vif(myfit)}else{output$vif=""}
+  
   # summary table
   output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
   output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
@@ -1000,6 +1128,12 @@ GLMM_Multivariable_Jin=function(Data,
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
+# 
+# Data$sex=as.character(Data$sex)
+# Data[sample(nrow(Data), 30), "sex"]="N"
+# Data[sample(nrow(Data), 30), "sex"]="P"
+# Data$sex=as.factor(Data$sex)
+# 
 # ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
@@ -1015,18 +1149,20 @@ GLMM_Multivariable_Jin=function(Data,
 #                                 levels.of.fact,
 #                                 NAGQ<-1,
 #                                 Compute.Power=F,
-#                                 nsim=5)
+#                                 nsim=30)
 # Confounder_Steps=GLMM_Confounder_Selection(Full_Model=GLMM.fit$model_fit,
 #                                            Main_Pred_Var="sex",
 #                                            Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
-#                                            which.family="binomial",
-#                                            Min.Change.Percentage=5)
-# Confounder_Steps
+#                                            which.family="binomial", # distribution of the response variable
+#                                            Min.Change.Percentage=5,
+#                                            Estimate="raw_estimate") # raw_estimate, converted_estimate
+# Confounder_Steps$Confounders
 GLMM_Confounder_Selection=function(Full_Model, 
                                    Main_Pred_Var, 
                                    Potential_Con_Vars, 
                                    which.family="binomial",
-                                   Min.Change.Percentage=10){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                   Min.Change.Percentage=10,
+                                   Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   
   # Full_Model=GLMM.example$model_fit
   # Main_Pred_Var="sex"
@@ -1051,7 +1187,11 @@ GLMM_Confounder_Selection=function(Full_Model,
     
     #
     Fixed_Effects_Current_Full_Model=fixef(Current_Full_Model)
-    Main_Effect_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    Main_Effects_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    
+    # when indep_var is factor, we pick max coef of its levels
+    Main_Cov_Level=names(which.max(abs(Main_Effects_Current_Full_Model)))
+    Main_Effect_Current_Full_Model=Main_Effects_Current_Full_Model[Main_Cov_Level]
     Main_Effect_Current_Reduced_Model=c()
     
     # run GLMM excluding one variable at once
@@ -1059,33 +1199,43 @@ GLMM_Confounder_Selection=function(Full_Model,
       #i=1
       Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse = "-"))))
       Fixed_Effects_Current_Reduced_Model=fixef(Current_Reduced_Model)
-      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Reduced_Model))]
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
       
       print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
     }
     
-    # summary table
-    if(which.family=="gaussian"){
+    if(Estimate=="raw_estimate"){
+      #**** refer to the raw coefficient estimate ****
       Temp_Table=data.table(
-        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
         Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
         Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
         Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
       )
-    }else if(which.family=="binomial"){
-      Temp_Table=data.table(
-        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
-        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
-        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
-        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
-      )
-    }else if(which.family=="poisson"){
-      Temp_Table=data.table(
-        Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
-        Estimate=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
-        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
-        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
-      )
+    }else if(Estimate=="converted_estimate"){
+      # summary table
+      if(which.family=="gaussian"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+          Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }else if(which.family=="binomial"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Est_Odds=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+          Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }else if(which.family=="poisson"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Est_RR=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+          Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }
     }
     
     # save summary table at the current step
@@ -1118,8 +1268,96 @@ GLMM_Confounder_Selection=function(Full_Model,
     
   } # while - end
   
+  # get the list of primary predictor and confounders
+  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  
   return(Out)
 }
+
+
+
+#**********************
+# GLMM_Confounder_Model
+#**********************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# 
+# Data$sex=as.character(Data$sex)
+# Data[sample(nrow(Data), 30), "sex"]="N"
+# Data[sample(nrow(Data), 30), "sex"]="P"
+# Data$sex=as.factor(Data$sex)
+# 
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# Main_Pred_Var="sex"
+# Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
+# Reordered_vector.OF.classes.num.fact=vector.OF.classes.num.fact[match(c(Main_Pred_Var, Potential_Con_Vars), ColumnsToUse)]
+# Reordered_levels.of.fact=levels.of.fact[match(c(Main_Pred_Var, Potential_Con_Vars), ColumnsToUse)]
+# 
+# GLMM_Confounder=GLMM_Confounder_Model(Data,
+#                                       Main_Pred_Var=Main_Pred_Var,
+#                                       Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+#                                       Outcome_name="outcome",
+#                                       ID_name="id",
+#                                       which.family="gaussian", # gaussian, binomial, poisson
+#                                       vector.OF.classes.num.fact=Reordered_vector.OF.classes.num.fact,
+#                                       levels.of.fact=Reordered_levels.of.fact,
+#                                       NAGQ=1,
+#                                       Min.Change.Percentage=30,
+#                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
+# GLMM_Confounder$Full_Multivariable_Model$summ_table
+# GLMM_Confounder$Confounder_Steps$Confounders
+# GLMM_Confounder$Confounder_Model$summ_table
+GLMM_Confounder_Model=function(Data,
+                               Main_Pred_Var,
+                               Potential_Con_Vars,
+                               Outcome_name,
+                               ID_name,
+                               which.family,
+                               vector.OF.classes.num.fact,
+                               levels.of.fact,
+                               NAGQ=100,
+                               Min.Change.Percentage=5,
+                               Estimate="raw_estimate"){
+  Output=c()
+  # Full multivariable model
+  ColumnsToUse=c(Main_Pred_Var, Potential_Con_Vars)
+  Output$Full_Multivariable_Model=GLMM_Multivariable_Jin(Data,
+                                                         ColumnsToUse=ColumnsToUse,
+                                                         Outcome_name=Outcome_name,
+                                                         ID_name=ID_name,
+                                                         which.family=which.family,
+                                                         vector.OF.classes.num.fact,
+                                                         levels.of.fact,
+                                                         NAGQ=NAGQ)
+  
+  # Confounder selection
+  Confounder_Steps=GLMM_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
+                                             Main_Pred_Var=Main_Pred_Var,
+                                             Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+                                             which.family=which.family, # distribution of the response variable
+                                             Min.Change.Percentage=Min.Change.Percentage,
+                                             Estimate=Estimate) # raw_estimate, converted_estimate
+  Output$Confounder_Steps=Confounder_Steps
+  Confounder_Ind=which(ColumnsToUse%in%Output$Confounder_Steps$Confounders)
+  
+  # Multivariable model with confounders
+  Output$Confounder_Model=GLMM_Multivariable_Jin(Data,
+                                                 ColumnsToUse=ColumnsToUse[Confounder_Ind],
+                                                 Outcome_name=Outcome_name,
+                                                 ID_name=ID_name,
+                                                 which.family=which.family,
+                                                 vector.OF.classes.num.fact[Confounder_Ind],
+                                                 levels.of.fact[Confounder_Ind],
+                                                 NAGQ=NAGQ)
+  return(Output)
+}
+
 
 #********
 #
@@ -2456,7 +2694,7 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
   Out=cbind(Var, 
             names(Table), 
             t(CT))
-  colnames(Out)=c("Predictor", "Value", paste0("Total (n=", sum(Table_with_missing), ")"))
+  colnames(Out)=c("Variable", "Value", paste0("Total (n=", sum(Table_with_missing), ")"))
   
   return(as.data.table(Out))
 }
