@@ -1598,6 +1598,21 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, which.family="binomial(l
 # require(geepack)
 # data("respiratory")
 # Data=respiratory
+# pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# res_var="outcome"
+# rand_var="id"
+# which.family="binomial(link=logit)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, pred_vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(pred_vars=="treat")]="P"
+# levels.of.fact[which(pred_vars=="sex")]="F"
+# 
+# Data=Format_Columns(Data,
+#                     Outcome_name="outcome",
+#                     ColumnsToUse=pred_vars,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# 
 # head(Data)
 # GLMM_Bivariate_Plot(Data<-Data,
 #                     Pred_Var<-"age",
@@ -1785,7 +1800,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
 # myfit=glmer(outcome~treat+age+(1|id), family=binomial, na.action=na.exclude, data=Data, nAGQ=100)
 # GLMM_Overdispersion_Test(myfit)
 GLMM_Overdispersion_Test=function(model){
-  ## number of variance parameters in an n-by-n variance-covariance matrix
+  # number of variance parameters in an n-by-n variance-covariance matrix
   vpars=function(m){
     nrow(m)*(nrow(m)+1)/2
   }
@@ -2084,57 +2099,57 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                   interacs=FALSE # TRUE if time effects of polytime vary across the cross-section
 # )
 # # GEE using the 1st imputed data set
-# GEE.result.1=GEE_Multivariable_Jin(amelia.imp$imputations$imp1, ColumnsToUse, Outcome_name, ID_name, which.family)$summ_table %>% 
+# GEE.result.1=GEE_Multivariable_Jin(amelia.imp$imputations$imp1, ColumnsToUse, Outcome_name, ID_name, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # GEE using the 2nd imputed data set
-# GEE.result.2=GEE_Multivariable_Jin(amelia.imp$imputations$imp2, ColumnsToUse, Outcome_name, ID_name, which.family)$summ_table %>% 
+# GEE.result.2=GEE_Multivariable_Jin(amelia.imp$imputations$imp2, ColumnsToUse, Outcome_name, ID_name, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
 # GEE.combined.result
-Combine_Multiple_Results=function(Input_Data_Names){
-  library(data.table)
-  library(magrittr)
-  library(dplyr)
-  Estimate_rbind=c()
-  Std.Error_rbind=c()
-  
-  for(m.ind in 1:length(Input_Data_Names)){
-    #m.ind=1
-    Estimate_rbind=rbind(Estimate_rbind, get(paste0(Input_Data_Names[m.ind]))[, Estimate])
-    Std.Error_rbind=rbind(Std.Error_rbind, get(paste0(Input_Data_Names[m.ind]))[, Std.Error])
-  }
-  # conver the results to the data table format
-  Estimate_rbind %<>% as.data.table
-  Std.Error_rbind %<>% as.data.table
-  # name columns
-  colnames(Estimate_rbind)=colnames(Std.Error_rbind)=get(paste0(Input_Data_Names[m.ind]))[, rn]
-  # mean of parameter coefficient estimated
-  est.coef.mean=sapply(Estimate_rbind, mean)
-  # mean of parameter variance estimated
-  est.var.mean=sapply(Std.Error_rbind^2, mean)
-  # variance of parameter estimates
-  par.var=sapply(Estimate_rbind, var)
-  # compute P.value
-  P.value=2*(1-pnorm(abs((est.coef.mean)/sqrt(est.var.mean+par.var*(1+1/m)))))
-  # compute parameters
-  output=data.table(
-    rn=get(paste0(Input_Data_Names[m.ind]))[, rn], 
-    Estimate=round(est.coef.mean, 3), 
-    Std.Error=round(sqrt(est.var.mean+par.var*(1+1/m)), 3), # standard error of the multiple imputation point estimate
-    P.value=ifelse(P.value<0.001, "<0.001", 
-                   format(round2(P.value, 3), nsmall=3)) # assuming that the sampling distribution of statistic is normal distribution
-  )
-  # compute OR and 95% CI
-  output[, 
-         OR.and.CI:=paste0(round(exp(Estimate), 2), 
-                           " (", round(exp(output[, Estimate]-qnorm(0.975)*output[, Std.Error]), 2), 
-                           " - ", 
-                           round(exp(output[, Estimate]+qnorm(0.975)*output[, Std.Error]), 2), ")")
-         ]
-  
-  return(output)
-}
+# Combine_Multiple_Results=function(Input_Data_Names){
+#   library(data.table)
+#   library(magrittr)
+#   library(dplyr)
+#   Estimate_rbind=c()
+#   Std.Error_rbind=c()
+#   
+#   for(m.ind in 1:length(Input_Data_Names)){
+#     #m.ind=1
+#     Estimate_rbind=rbind(Estimate_rbind, get(paste0(Input_Data_Names[m.ind]))[, Estimate])
+#     Std.Error_rbind=rbind(Std.Error_rbind, get(paste0(Input_Data_Names[m.ind]))[, Std.Error])
+#   }
+#   # conver the results to the data table format
+#   Estimate_rbind %<>% as.data.table
+#   Std.Error_rbind %<>% as.data.table
+#   # name columns
+#   colnames(Estimate_rbind)=colnames(Std.Error_rbind)=get(paste0(Input_Data_Names[m.ind]))[, rn]
+#   # mean of parameter coefficient estimated
+#   est.coef.mean=sapply(Estimate_rbind, mean)
+#   # mean of parameter variance estimated
+#   est.var.mean=sapply(Std.Error_rbind^2, mean)
+#   # variance of parameter estimates
+#   par.var=sapply(Estimate_rbind, var)
+#   # compute P.value
+#   P.value=2*(1-pnorm(abs((est.coef.mean)/sqrt(est.var.mean+par.var*(1+1/m)))))
+#   # compute parameters
+#   output=data.table(
+#     rn=get(paste0(Input_Data_Names[m.ind]))[, rn], 
+#     Estimate=round(est.coef.mean, 3), 
+#     Std.Error=round(sqrt(est.var.mean+par.var*(1+1/m)), 3), # standard error of the multiple imputation point estimate
+#     P.value=ifelse(P.value<0.001, "<0.001", 
+#                    format(round2(P.value, 3), nsmall=3)) # assuming that the sampling distribution of statistic is normal distribution
+#   )
+#   # compute OR and 95% CI
+#   output[, 
+#          OR.and.CI:=paste0(round(exp(Estimate), 2), 
+#                            " (", round(exp(output[, Estimate]-qnorm(0.975)*output[, Std.Error]), 2), 
+#                            " - ", 
+#                            round(exp(output[, Estimate]+qnorm(0.975)*output[, Std.Error]), 2), ")")
+#          ]
+#   
+#   return(output)
+# }
 
 
 #***************************
