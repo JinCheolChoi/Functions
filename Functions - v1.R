@@ -994,25 +994,25 @@ GLMM_Bivariate_Jin=function(Data,
 #************************
 # Example
 #******************
-require(geepack)
-data("respiratory")
-Data=respiratory
-ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
-vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
-levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-levels.of.fact[which(ColumnsToUse=="treat")]="P"
-levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-GLMM_Multivariable_Jin(Data,
-                       ColumnsToUse,
-                       Outcome_name="outcome",
-                       ID_name="id",
-                       which.family<-"gaussian", # gaussian, binomial, poisson
-                       vector.OF.classes.num.fact,
-                       levels.of.fact,
-                       NAGQ<-100,
-                       Compute.Power=T,
-                       nsim=100)
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Multivariable_Jin(Data,
+#                        ColumnsToUse,
+#                        Outcome_name="outcome",
+#                        ID_name="id",
+#                        which.family<-"gaussian", # gaussian, binomial, poisson
+#                        vector.OF.classes.num.fact,
+#                        levels.of.fact,
+#                        NAGQ<-100,
+#                        Compute.Power=T,
+#                        nsim=100)
 GLMM_Multivariable_Jin=function(Data,
                                 ColumnsToUse,
                                 Outcome_name,

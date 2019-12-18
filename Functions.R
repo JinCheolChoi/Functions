@@ -85,7 +85,9 @@ Format_Columns=function(Data, Outcome_name, ColumnsToUse, vector.OF.classes.num.
   Data=as.data.frame(Data)
 
   # convert variable class
-  Data[, Outcome_name]=as.numeric(as.character(Data[, Outcome_name])) # response variable
+  for(i in 1:length(Outcome_name)){
+    Data[, Outcome_name[i]]=as.numeric(as.character(Data[, Outcome_name[i]])) # response variable
+  }
   
   for(i in 1:length(ColumnsToUse)){
     # convert variable class
@@ -808,13 +810,13 @@ GEE_Confounder_Selection=function(Full_Model,
 #                                     Potential_Con_Vars<-Potential_Con_Vars,
 #                                     Outcome_name<-"outcome",
 #                                     ID_name<-"id",
-#                                     which.family<-"binomial", # gaussian, binomial, poisson
-#                                     Min.Change.Percentage=5,
+#                                     which.family<-"gaussian", # gaussian, binomial, poisson
+#                                     Min.Change.Percentage=15,
 #                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
 # GEE_Confounder$Full_Multivariable_Model$summ_table
 # GEE_Confounder$Confounder_Steps$Confounders
 # GEE_Confounder$Confounder_Model$summ_table
-GEE_Confounder_Model=function(Data,
+GEE_Confounder_Model=function(Input_Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
                               Outcome_name,
@@ -824,11 +826,11 @@ GEE_Confounder_Model=function(Data,
                               Estimate="raw_estimate"){
 
   Output=c()
-
+  
   # Full multivariable model
   ColumnsToUse=c(Main_Pred_Var, Potential_Con_Vars)
-
-  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif_Jin(Data<-Remove_missing(Data, # remove missing data
+  
+  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif_Jin(Data=Remove_missing(Input_Data, # remove missing data
                                                                                        c(ColumnsToUse,
                                                                                          Outcome_name,
                                                                                          ID_name)),
@@ -848,7 +850,7 @@ GEE_Confounder_Model=function(Data,
   Confounder_Ind=which(ColumnsToUse%in%Output$Confounder_Steps$Confounders)
 
   # Multivariable model with confounders
-  Output$Confounder_Model=GEE_Multivariable_with_vif_Jin(Data<-Remove_missing(Data, # remove missing data
+  Output$Confounder_Model=GEE_Multivariable_with_vif_Jin(Data=Remove_missing(Input_Data, # remove missing data
                                                                                c(ColumnsToUse[Confounder_Ind],
                                                                                  Outcome_name,
                                                                                  ID_name)),
@@ -1283,7 +1285,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
 #                                       Outcome_name="outcome",
 #                                       ID_name="id",
-#                                       which.family="gaussian", # gaussian, binomial, poisson
+#                                       which.family="poisson", # gaussian, binomial, poisson
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=30,
 #                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
@@ -2107,49 +2109,49 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
 # GEE.combined.result
-# Combine_Multiple_Results=function(Input_Data_Names){
-#   library(data.table)
-#   library(magrittr)
-#   library(dplyr)
-#   Estimate_rbind=c()
-#   Std.Error_rbind=c()
-#   
-#   for(m.ind in 1:length(Input_Data_Names)){
-#     #m.ind=1
-#     Estimate_rbind=rbind(Estimate_rbind, get(paste0(Input_Data_Names[m.ind]))[, Estimate])
-#     Std.Error_rbind=rbind(Std.Error_rbind, get(paste0(Input_Data_Names[m.ind]))[, Std.Error])
-#   }
-#   # conver the results to the data table format
-#   Estimate_rbind %<>% as.data.table
-#   Std.Error_rbind %<>% as.data.table
-#   # name columns
-#   colnames(Estimate_rbind)=colnames(Std.Error_rbind)=get(paste0(Input_Data_Names[m.ind]))[, rn]
-#   # mean of parameter coefficient estimated
-#   est.coef.mean=sapply(Estimate_rbind, mean)
-#   # mean of parameter variance estimated
-#   est.var.mean=sapply(Std.Error_rbind^2, mean)
-#   # variance of parameter estimates
-#   par.var=sapply(Estimate_rbind, var)
-#   # compute P.value
-#   P.value=2*(1-pnorm(abs((est.coef.mean)/sqrt(est.var.mean+par.var*(1+1/m)))))
-#   # compute parameters
-#   output=data.table(
-#     rn=get(paste0(Input_Data_Names[m.ind]))[, rn], 
-#     Estimate=round(est.coef.mean, 3), 
-#     Std.Error=round(sqrt(est.var.mean+par.var*(1+1/m)), 3), # standard error of the multiple imputation point estimate
-#     P.value=ifelse(P.value<0.001, "<0.001", 
-#                    format(round2(P.value, 3), nsmall=3)) # assuming that the sampling distribution of statistic is normal distribution
-#   )
-#   # compute OR and 95% CI
-#   output[, 
-#          OR.and.CI:=paste0(round(exp(Estimate), 2), 
-#                            " (", round(exp(output[, Estimate]-qnorm(0.975)*output[, Std.Error]), 2), 
-#                            " - ", 
-#                            round(exp(output[, Estimate]+qnorm(0.975)*output[, Std.Error]), 2), ")")
-#          ]
-#   
-#   return(output)
-# }
+Combine_Multiple_Results=function(Input_Data_Names){
+  library(data.table)
+  library(magrittr)
+  library(dplyr)
+  Estimate_rbind=c()
+  Std.Error_rbind=c()
+
+  for(m.ind in 1:length(Input_Data_Names)){
+    #m.ind=1
+    Estimate_rbind=rbind(Estimate_rbind, get(paste0(Input_Data_Names[m.ind]))[, Estimate])
+    Std.Error_rbind=rbind(Std.Error_rbind, get(paste0(Input_Data_Names[m.ind]))[, Std.Error])
+  }
+  # conver the results to the data table format
+  Estimate_rbind %<>% as.data.table
+  Std.Error_rbind %<>% as.data.table
+  # name columns
+  colnames(Estimate_rbind)=colnames(Std.Error_rbind)=get(paste0(Input_Data_Names[m.ind]))[, rn]
+  # mean of parameter coefficient estimated
+  est.coef.mean=sapply(Estimate_rbind, mean)
+  # mean of parameter variance estimated
+  est.var.mean=sapply(Std.Error_rbind^2, mean)
+  # variance of parameter estimates
+  par.var=sapply(Estimate_rbind, var)
+  # compute P.value
+  P.value=2*(1-pnorm(abs((est.coef.mean)/sqrt(est.var.mean+par.var*(1+1/m)))))
+  # compute parameters
+  output=data.table(
+    rn=get(paste0(Input_Data_Names[m.ind]))[, rn],
+    Estimate=round(est.coef.mean, 3),
+    Std.Error=round(sqrt(est.var.mean+par.var*(1+1/m)), 3), # standard error of the multiple imputation point estimate
+    P.value=ifelse(P.value<0.001, "<0.001",
+                   format(round2(P.value, 3), nsmall=3)) # assuming that the sampling distribution of statistic is normal distribution
+  )
+  # compute OR and 95% CI
+  output[,
+         OR.and.CI:=paste0(round(exp(Estimate), 2),
+                           " (", round(exp(output[, Estimate]-qnorm(0.975)*output[, Std.Error]), 2),
+                           " - ",
+                           round(exp(output[, Estimate]+qnorm(0.975)*output[, Std.Error]), 2), ")")
+         ]
+
+  return(output)
+}
 
 
 #***************************
