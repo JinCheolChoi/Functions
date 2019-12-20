@@ -2335,7 +2335,7 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 #                             Row_Var="age_cat",
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="<20",
-#                             Missing="Not_Include")
+#                             Missing="Include") # independence test does not account for missing data
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
   # library
   library(epitools)
@@ -2421,12 +2421,13 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   
   # 
   Out=as.data.table(Out)
-  Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value<0.001, 
-                                                           "<0.001 (*Ind Test)", 
-                                                           paste0(round(fisher.test(Contingency_Table, simulate.p.value=TRUE)$p.value, 3), " (*Ind Test)"))
-  Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table)$p.value<0.001, 
-                                                               "<0.001 (*Ind Test)", 
-                                                               paste0(round(chisq.test(Contingency_Table)$p.value, 3), " (*Ind Test)"))
+  Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value<0.001,
+                                                           "<0.001 (*Ind Test)",
+                                                           paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value, 3), " (*Ind Test)"))
+  Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value<0.001,
+                                                               "<0.001 (*Ind Test)",
+                                                               paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value, 3), " (*Ind Test)"))
+  
   # return
   return(Out)
 }
@@ -2486,8 +2487,8 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
     #
     Levels=levels(as.factor(Data[, Col_Var]))
-    Data[, Col_Var]=as.numeric(Data[, Col_Var])
-    Data[, Row_Var]=as.numeric(Data[, Row_Var])
+    Data[, Col_Var]=as.numeric(as.character(Data[, Col_Var]))
+    Data[, Row_Var]=as.numeric(as.character(Data[, Row_Var]))
     #
     if(Missing=="Include"){
       useNA="always"
