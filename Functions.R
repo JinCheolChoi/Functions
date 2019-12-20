@@ -1954,13 +1954,13 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
 # data("respiratory")
 # Data=respiratory
 # head(Data)
-# GAM_Bivariate_Plot(Data=Data, 
-#                    Pred_Var="age", 
-#                    Res_Var="outcome", 
-#                    which.family="binomial", 
-#                    xlab="age", 
-#                    ylab="outcome", 
-#                    title="Title", 
+# GAM_Bivariate_Plot(Data=Data,
+#                    Pred_Var="age",
+#                    Res_Var="outcome",
+#                    which.family="binomial",
+#                    xlab="age",
+#                    ylab="outcome",
+#                    title="Title",
 #                    x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
 GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
   # check out packages
