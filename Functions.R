@@ -865,9 +865,9 @@ GEE_Confounder_Model=function(Input_Data,
 #
 # [ GLMM ] ----
 #
-#********************
+#*******************
 # GLMM_Bivariate_Jin
-#********************
+#*******************
 # Example
 #******************
 # require(geepack)
@@ -909,7 +909,7 @@ GLMM_Bivariate_Jin=function(Data,
   # main algorithm
   output=c()
   for(i in 1:length(ColumnsToUse)){
-    #i=22
+    #i=1
     # run model
     #fullmod=as.formula(paste(Outcome_name, "~", ColumnsToUse[i], "+(1|", ID_name, ")", sep=""))
     if(which.family=="gaussian"){
@@ -925,6 +925,7 @@ GLMM_Bivariate_Jin=function(Data,
                   nAGQ=NAGQ, 
                   control=glmerControl(optimizer=c("bobyqa"))) # the other optimizer : "Nelder_Mead"
     }
+    
     # coefficient
     Coef=summary(myfit)$coefficients
     Coef.ind=which(grepl(ColumnsToUse[i], row.names(Coef)))
@@ -973,9 +974,9 @@ GLMM_Bivariate_Jin=function(Data,
   return(output)
 }
 
-#************************
+#***********************
 # GLMM_Multivariable_Jin
-#************************
+#***********************
 # Example
 #******************
 # require(geepack)
@@ -1088,6 +1089,107 @@ GLMM_Multivariable_Jin=function(Data,
     ))
   }
   output$summ_table=as.data.frame(output$summ_table)
+  return(output)
+}
+
+#***************************
+# GLMM_Multinomial_Bivariate
+#***************************
+# require(geepack)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
+# Data=Format_Columns(Data,
+#                     Outcome_name="outcome",
+#                     ColumnsToUse,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Multinomial_Bivariate(Data,
+#                                ColumnsToUse,
+#                                Outcome_name="outcome",
+#                                ID_name="id")
+GLMM_Multinomial_Bivariate=function(Data,
+                                    ColumnsToUse,
+                                    Outcome_name,
+                                    ID_name,
+                                    k=2){
+  # check out packages
+  lapply(c("mixcat"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  
+  # values
+  Data[, Outcome_name]=as.factor(Data[, Outcome_name])
+  Y_Levels=levels(Data[, Outcome_name])
+  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1]))
+  ID=Data[, ID_name]
+  
+  # main algorithm
+  output=c()
+  for(i in 1:length(ColumnsToUse)){
+    #i=1
+    X=Data[, ColumnsToUse[i]]
+    
+    # run model
+    myfit=npmlt(Y~X,
+                formula.npo=~X,
+                random=~1,
+                id=ID,
+                k=k,
+                link="blogit", # specify that the model is a baseline logit random effects model
+                EB=FALSE)
+    
+    # coefficient
+    Coef=myfit$coefficients
+    Coef.ind=which(grepl("X", row.names(Coef)))
+    # standard error
+    SE.Coef=myfit$SE.coefficients
+    # confidence interval (exponentiated)
+    Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
+    Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
+    # p-values
+    Z_value=Coef/SE.Coef # Wald test statistic
+    P_values=(1-pnorm(abs(Z_value), 0, 1))*2
+    # CI (upper and lower bounds)
+    Upper_Bound=exp(Raw_Upper_Bound)
+    Lower_Bound=exp(Raw_Lower_Bound)
+    
+    # output
+    temp_out=c()
+    temp_out$Estimate=round2(Coef[Coef.ind], 3)
+    temp_out$Std.Error=round2(SE.Coef[Coef.ind], 3)
+    temp_out$`P-value`=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                              format(round2(P_values[Coef.ind], 3), nsmall=3))
+    temp_out$OR.and.CI=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                              " (",
+                              format(round(Lower_Bound, 2), nsmall=2),
+                              " - ",
+                              format(round(Upper_Bound, 2), nsmall=2),
+                              ")")
+    
+    #
+    temp_out=data.frame(temp_out)
+    
+    if(is.factor(X)){
+      X_Levels=levels(X)
+      Temp_Name=expand.grid(Y_Levels[-1], X_Levels[-1])
+      rownames(temp_out)=paste0(ColumnsToUse[i], " ",Temp_Name[, 2], " / ", Temp_Name[, 1])
+    }else if(is.numeric(X)){
+      Temp_Name=expand.grid(Y_Levels[-1], ColumnsToUse[i])
+      rownames(temp_out)=paste0(Temp_Name[, 2], " / ", Temp_Name[, 1])
+    }
+    
+    output=rbind(output, data.frame(temp_out))
+    #print(paste(i, " ", ColumnsToUse[i], sep=""))
+  }
   return(output)
 }
 
@@ -2346,8 +2448,10 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   Col_Order=c()
   if(is.numeric(Data[, Col_Var])==T){
     Col_Order=sort(unique(Data[, Col_Var]))
+  }else if(is.factor(Data[, Col_Var])){
+    Col_Order=levels(Data[, Col_Var])
   }
-  #Data[, Col_Var]=as.character(Data[, Col_Var])
+  Data[, Col_Var]=as.character(Data[, Col_Var])
   Data[, Row_Var]=as.character(Data[, Row_Var])
   
   if(Missing=="Include"){
