@@ -83,7 +83,7 @@ Remove_missing=function(Data, Columns){
 Format_Columns=function(Data, Outcome_name, ColumnsToUse, vector.OF.classes.num.fact, levels.of.fact){
   # as data frame
   Data=as.data.frame(Data)
-
+  
   # convert variable class
   for(i in 1:length(Outcome_name)){
     Data[, Outcome_name[i]]=as.numeric(as.character(Data[, Outcome_name[i]])) # response variable
@@ -555,7 +555,7 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
   
   # as data frame
   Data<<-as.data.frame(Data)
-
+  
   # run model
   #fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
   GEE.m=geeglm(as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+"))), 
@@ -824,21 +824,21 @@ GEE_Confounder_Model=function(Input_Data,
                               which.family,
                               Min.Change.Percentage=5,
                               Estimate="raw_estimate"){
-
+  
   Output=c()
   
   # Full multivariable model
   ColumnsToUse=c(Main_Pred_Var, Potential_Con_Vars)
   
   Output$Full_Multivariable_Model=GEE_Multivariable_with_vif_Jin(Data=Remove_missing(Input_Data, # remove missing data
-                                                                                       c(ColumnsToUse,
-                                                                                         Outcome_name,
-                                                                                         ID_name)),
+                                                                                     c(ColumnsToUse,
+                                                                                       Outcome_name,
+                                                                                       ID_name)),
                                                                  ColumnsToUse<<-ColumnsToUse,
                                                                  Outcome_name<<-Outcome_name,
                                                                  ID_name<<-ID_name,
                                                                  which.family<<-which.family)
-
+  
   # Confounder selection
   Confounder_Steps=GEE_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
                                             Main_Pred_Var=Main_Pred_Var,
@@ -848,12 +848,12 @@ GEE_Confounder_Model=function(Input_Data,
                                             Estimate=Estimate) # raw_estimate, converted_estimate
   Output$Confounder_Steps=Confounder_Steps
   Confounder_Ind=which(ColumnsToUse%in%Output$Confounder_Steps$Confounders)
-
+  
   # Multivariable model with confounders
   Output$Confounder_Model=GEE_Multivariable_with_vif_Jin(Data=Remove_missing(Input_Data, # remove missing data
-                                                                               c(ColumnsToUse[Confounder_Ind],
-                                                                                 Outcome_name,
-                                                                                 ID_name)),
+                                                                             c(ColumnsToUse[Confounder_Ind],
+                                                                               Outcome_name,
+                                                                               ID_name)),
                                                          ColumnsToUse<<-ColumnsToUse[Confounder_Ind],
                                                          Outcome_name<<-Outcome_name,
                                                          ID_name<<-ID_name,
@@ -957,6 +957,8 @@ GLMM_Bivariate_Jin=function(Data,
     }
     # power
     if(Compute.Power==T){
+      # import the package
+      lapply(c("simr"), checkpackages)
       temp_out$power=paste0(
         paste0(round(summary(Var.Power)["mean"]*100, 2), "%"),
         " (",
@@ -1110,21 +1112,26 @@ GLMM_Multivariable_Jin=function(Data,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Multinomial_Bivariate(Data,
-#                                ColumnsToUse,
-#                                Outcome_name="outcome",
-#                                ID_name="id")
-GLMM_Multinomial_Bivariate=function(Data,
-                                    ColumnsToUse,
-                                    Outcome_name,
-                                    ID_name,
-                                    k=2){
+# GLMM_Multinomial_Bivariate_Format_1(Data,
+#                                     ColumnsToUse,
+#                                     Outcome_name="outcome",
+#                                     ID_name="id")
+# GLMM_Multinomial_Bivariate_Format_2(Data,
+#                                     ColumnsToUse,
+#                                     Outcome_name="outcome",
+#                                     ID_name="id")
+#************************************
+# GLMM_Multinomial_Bivariate_Format_1
+GLMM_Multinomial_Bivariate_Format_1=function(Data,
+                                             ColumnsToUse,
+                                             Outcome_name,
+                                             ID_name,
+                                             k=2){
   # check out packages
   lapply(c("mixcat"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
-  
   
   # values
   Data[, Outcome_name]=as.factor(Data[, Outcome_name])
@@ -1187,11 +1194,128 @@ GLMM_Multinomial_Bivariate=function(Data,
       rownames(temp_out)=paste0(Temp_Name[, 2], " / ", Temp_Name[, 1])
     }
     
-    output=rbind(output, data.frame(temp_out))
+    output=rbind(output, temp_out)
     #print(paste(i, " ", ColumnsToUse[i], sep=""))
   }
   return(output)
 }
+
+#************************************
+# GLMM_Multinomial_Bivariate_Format_2
+GLMM_Multinomial_Bivariate_Format_2=function(Data,
+                                             ColumnsToUse,
+                                             Outcome_name,
+                                             ID_name,
+                                             k=2){
+  # check out packages
+  lapply(c("mixcat"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Outcome_name]=as.factor(Data[, Outcome_name])
+  Y_Levels=levels(Data[, Outcome_name])
+  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1]))
+  ID=Data[, ID_name]
+  
+  # main algorithm
+  output=c()
+  for(i in 1:length(ColumnsToUse)){
+    #i=1
+    X=Data[, ColumnsToUse[i]]
+    
+    # run model
+    myfit=npmlt(Y~X,
+                formula.npo=~X,
+                random=~1,
+                id=ID,
+                k=k,
+                link="blogit", # specify that the model is a baseline logit random effects model
+                EB=FALSE)
+    
+    # coefficient
+    Coef=myfit$coefficients
+    Coef.ind=which(grepl("X", row.names(Coef)))
+    # standard error
+    SE.Coef=myfit$SE.coefficients
+    # confidence interval (exponentiated)
+    Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
+    Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
+    # p-values
+    Z_value=Coef/SE.Coef # Wald test statistic
+    P_values=(1-pnorm(abs(Z_value), 0, 1))*2
+    # CI (upper and lower bounds)
+    Upper_Bound=exp(Raw_Upper_Bound)
+    Lower_Bound=exp(Raw_Lower_Bound)
+    
+    # output
+    temp_out=c()
+    
+    # record 
+    if(is.factor(X)){
+      temp_out$Estimate=matrix(round2(Coef[Coef.ind], 3), 
+                               ncol=length(levels(X))-1, 
+                               nrow=length(levels(Y))-1)
+      temp_out$Std.Error=matrix(round2(SE.Coef[Coef.ind], 3), 
+                                ncol=length(levels(X))-1, 
+                                nrow=length(levels(Y))-1)
+      temp_out$`P-value`=matrix(
+        ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+               format(round2(P_values[Coef.ind], 3), nsmall=3)), 
+        ncol=length(levels(X))-1, 
+        nrow=length(levels(Y))-1)
+      temp_out$OR.and.CI=matrix(
+        paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+               " (",
+               format(round(Lower_Bound, 2), nsmall=2),
+               " - ",
+               format(round(Upper_Bound, 2), nsmall=2),
+               ")"), 
+        ncol=length(levels(X))-1, 
+        nrow=length(levels(Y))-1)
+      # names for row and column
+      X_Levels=levels(X)
+      Temp_Row_Names=Y_Levels[-1]
+      Temp_Column_Names=paste0(ColumnsToUse[i], " / ", X_Levels[-1])
+    }else if(is.numeric(X)){
+      temp_out$Estimate=data.frame(X=round2(Coef[Coef.ind], 3))
+      temp_out$Std.Error=data.frame(X=round2(SE.Coef[Coef.ind], 3))
+      temp_out$`P-value`=data.frame(
+        X=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                 format(round2(P_values[Coef.ind], 3), nsmall=3))
+      )
+      temp_out$OR.and.CI=data.frame(
+        X=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                 " (",
+                 format(round(Lower_Bound, 2), nsmall=2),
+                 " - ",
+                 format(round(Upper_Bound, 2), nsmall=2),
+                 ")")
+      )
+      # names for row and column
+      Temp_Row_Names=Y_Levels[-1]
+      Temp_Column_Names=ColumnsToUse[i]
+    }
+    
+    rownames(temp_out$Estimate)=Temp_Row_Names
+    colnames(temp_out$Estimate)=Temp_Column_Names
+    rownames(temp_out$Std.Error)=Temp_Row_Names
+    colnames(temp_out$Std.Error)=Temp_Column_Names
+    rownames(temp_out$`P-value`)=Temp_Row_Names
+    colnames(temp_out$`P-value`)=Temp_Column_Names
+    rownames(temp_out$OR.and.CI)=Temp_Row_Names
+    colnames(temp_out$OR.and.CI)=Temp_Column_Names
+    
+    output$Estimate=rbind(output$Estimate, t(temp_out$Estimate))
+    output$Std.Error=rbind(output$Std.Error, t(temp_out$Std.Error))
+    output$`P-value`=rbind(output$`P-value`,t(temp_out$`P-value`))
+    output$OR.and.CI=rbind(output$OR.and.CI, t(temp_out$OR.and.CI))
+    #print(paste(i, " ", ColumnsToUse[i], sep=""))
+  }
+  return(output)
+}
+
 
 #**************************
 # GLMM_Confounder_Selection
@@ -2217,7 +2341,7 @@ Combine_Multiple_Results=function(Input_Data_Names){
   library(dplyr)
   Estimate_rbind=c()
   Std.Error_rbind=c()
-
+  
   for(m.ind in 1:length(Input_Data_Names)){
     #m.ind=1
     Estimate_rbind=rbind(Estimate_rbind, get(paste0(Input_Data_Names[m.ind]))[, Estimate])
@@ -2251,7 +2375,7 @@ Combine_Multiple_Results=function(Input_Data_Names){
                            " - ",
                            round(exp(output[, Estimate]+qnorm(0.975)*output[, Std.Error]), 2), ")")
          ]
-
+  
   return(output)
 }
 
