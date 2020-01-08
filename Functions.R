@@ -2784,7 +2784,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   }else if(Missing=="Not_Include"){
     Sum_Stat=round(t(rbind(
       with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
-      summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+      summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
     )), 2)
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
   
