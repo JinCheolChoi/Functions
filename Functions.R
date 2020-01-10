@@ -1391,7 +1391,7 @@ GLMM_Confounder_Selection=function(Full_Model,
     Fixed_Effects_Current_Full_Model=fixef(Current_Full_Model)
     Main_Effects_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
     
-    # when indep_var is factor, we pick max coef of its levels
+    # [ IMPORTANT ] - When indep_var is a factor with more than two levels, we pick max coef of its levels.
     Main_Cov_Level=names(which.max(abs(Main_Effects_Current_Full_Model)))
     Main_Effect_Current_Full_Model=Main_Effects_Current_Full_Model[Main_Cov_Level]
     Main_Effect_Current_Reduced_Model=c()
