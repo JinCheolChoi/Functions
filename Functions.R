@@ -66,7 +66,7 @@ Remove_missing=function(Data, Columns){
 #***************
 # Format_Columns
 #***************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
@@ -117,7 +117,7 @@ Format_Columns=function(Data, Outcome_name, ColumnsToUse, vector.OF.classes.num.
 #********
 # Example
 #*****************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # require(dplyr)
 # data("respiratory")
 # Data=respiratory %>%
@@ -185,7 +185,7 @@ GLM_NB_Bivariate_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_
 #********
 # Example
 #*****************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # require(dplyr)
 # data("respiratory")
 # Data=respiratory %>%
@@ -240,7 +240,7 @@ GLM_NB_Multi_Personal_Jin=function(Data, ColumnsToUse, Outcome_name, Offset_name
 #*******************
 # GLM_Bivariate_Plot
 #*******************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # head(Data)
@@ -339,7 +339,7 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #******************
 # Example
 #******************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
@@ -433,7 +433,7 @@ GEE_Bivariate_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.fami
 #***********************
 # Example
 #*****************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # # generate missing data
@@ -523,7 +523,7 @@ GEE_Multivariable_Jin=function(Data, ColumnsToUse, Outcome_name, ID_name, which.
 # Note : 1. Input data must not have missing data at variables of interest!
 #        2. Argument must be declared with '<-' in a function for HH::vif!
 #**************************************************************************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_original=respiratory
 # # generate missing data
@@ -614,7 +614,7 @@ GEE_Multivariable_with_vif_Jin=function(Data, ColumnsToUse, Outcome_name, ID_nam
 #*************************
 # Example
 #******************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
@@ -700,7 +700,7 @@ GEE_Confounder_Selection=function(Full_Model,
     # run GEE excluding one variable at once
     for(i in 1:length(Potential_Con_Vars[Include_Index])){
       #i=1
-      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse = "-"))))
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse="-"))))
       Fixed_Effects_Current_Reduced_Model=coef(Current_Reduced_Model)
       Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
       
@@ -753,7 +753,7 @@ GEE_Confounder_Selection=function(Full_Model,
       # update Include_Index
       Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove)]
       # update the current full model
-      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse = "-"))))
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse="-"))))
       # increase step
       step=step+1
       
@@ -781,7 +781,7 @@ GEE_Confounder_Selection=function(Full_Model,
 #**********************
 # GEE_Confounder_Model
 #**********************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
 # 
@@ -870,7 +870,7 @@ GEE_Confounder_Model=function(Input_Data,
 #*******************
 # Example
 #******************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
@@ -981,7 +981,7 @@ GLMM_Bivariate_Jin=function(Data,
 #***********************
 # Example
 #******************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
@@ -1097,13 +1097,19 @@ GLMM_Multivariable_Jin=function(Data,
 #***************************
 # GLMM_Multinomial_Bivariate
 #***************************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# 
+# Data$sex=as.character(Data$sex) # make sex categorical
+# Data$sex[sample(1:length(Data$sex), 100)]="N"
+# Data$sex=factor(Data$sex)
+# 
+# 
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
 # Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
 # Data=Format_Columns(Data,
@@ -1120,13 +1126,15 @@ GLMM_Multivariable_Jin=function(Data,
 #                                     ColumnsToUse,
 #                                     Outcome_name="outcome",
 #                                     ID_name="id")
-#************************************
+# ************************************
 # GLMM_Multinomial_Bivariate_Format_1
 GLMM_Multinomial_Bivariate_Format_1=function(Data,
                                              ColumnsToUse,
                                              Outcome_name,
                                              ID_name,
-                                             k=2){
+                                             k=2,
+                                             maxit=500,
+                                             tol=1e-04){
   # check out packages
   lapply(c("mixcat"), checkpackages)
   
@@ -1136,7 +1144,7 @@ GLMM_Multinomial_Bivariate_Format_1=function(Data,
   # values
   Data[, Outcome_name]=as.factor(Data[, Outcome_name])
   Y_Levels=levels(Data[, Outcome_name])
-  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1]))
+  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
   ID=Data[, ID_name]
   
   # main algorithm
@@ -1145,14 +1153,48 @@ GLMM_Multinomial_Bivariate_Format_1=function(Data,
     #i=1
     X=Data[, ColumnsToUse[i]]
     
-    # run model
-    myfit=npmlt(Y~X,
-                formula.npo=~X,
-                random=~1,
-                id=ID,
-                k=k,
-                link="blogit", # specify that the model is a baseline logit random effects model
-                EB=FALSE)
+    # run algorithm until convergence
+    while_trs=0
+    count=0
+    temp_k=k
+    temp_maxit=maxit
+    temp_tol=tol
+    while(while_trs==0){
+      count=count+1
+      
+      # run model
+      myfit=npmlt(Y~X,
+                  formula.npo=~X,
+                  random=~1,
+                  id=ID,
+                  k=temp_k,
+                  link="blogit", # specify that the model is a baseline logit random effects model
+                  EB=T,
+                  maxit=temp_maxit,
+                  tol=temp_tol)
+      
+      #
+      while_trs=1
+      if(is.na(myfit$coefficients[1])){
+        # temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+        # if(temp_k==1){temp_k=2}else if(temp_k>=length(ColumnsToUse)-1){temp_k=2}
+        print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
+        while_trs=0 # re-run algorithm
+        Sys.sleep(0.5)
+      }else{
+        if(myfit$flagcvm>0 | myfit$flaginfo>0){
+          print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Reduce 'tol' from ", temp_tol, " to ", temp_tol/100))
+          temp_tol=temp_tol/100
+          while_trs=0 # re-run algorithm
+        }
+        if(myfit$iter==myfit$maxit){
+          print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Increase 'maxit' from ", temp_maxit, " to ", temp_maxit+10000))
+          temp_maxit=temp_maxit+10000
+          while_trs=0 # re-run algorithm
+        }
+      }
+    }
+    print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Algorithm converged (k=", temp_k, ", maxit=", temp_maxit, ", tol=", temp_tol, ")"))
     
     # coefficient
     Coef=myfit$coefficients
@@ -1206,7 +1248,9 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
                                              ColumnsToUse,
                                              Outcome_name,
                                              ID_name,
-                                             k=2){
+                                             k=2,
+                                             maxit=500,
+                                             tol=1e-04){
   # check out packages
   lapply(c("mixcat"), checkpackages)
   
@@ -1216,7 +1260,7 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
   # values
   Data[, Outcome_name]=as.factor(Data[, Outcome_name])
   Y_Levels=levels(Data[, Outcome_name])
-  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1]))
+  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
   ID=Data[, ID_name]
   
   # main algorithm
@@ -1225,14 +1269,48 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
     #i=1
     X=Data[, ColumnsToUse[i]]
     
-    # run model
-    myfit=npmlt(Y~X,
-                formula.npo=~X,
-                random=~1,
-                id=ID,
-                k=k,
-                link="blogit", # specify that the model is a baseline logit random effects model
-                EB=FALSE)
+    # run algorithm until convergence
+    while_trs=0
+    count=0
+    temp_k=k
+    temp_maxit=maxit
+    temp_tol=tol
+    while(while_trs==0){
+      count=count+1
+      
+      # run model
+      myfit=npmlt(Y~X,
+                  formula.npo=~X,
+                  random=~1,
+                  id=ID,
+                  k=temp_k,
+                  link="blogit", # specify that the model is a baseline logit random effects model
+                  EB=T,
+                  maxit=temp_maxit,
+                  tol=temp_tol)
+      
+      #
+      while_trs=1
+      if(is.na(myfit$coefficients[1])){
+        # temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+        # if(temp_k==1){temp_k=2}else if(temp_k>=length(ColumnsToUse)-1){temp_k=2}
+        print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
+        while_trs=0 # re-run algorithm
+        Sys.sleep(0.5)
+      }else{
+        if(myfit$flagcvm>0 | myfit$flaginfo>0){
+          print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Reduce 'tol' from ", temp_tol, " to ", temp_tol/100))
+          temp_tol=temp_tol/100
+          while_trs=0 # re-run algorithm
+        }
+        if(myfit$iter==myfit$maxit){
+          print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Increase 'maxit' from ", temp_maxit, " to ", temp_maxit+10000))
+          temp_maxit=temp_maxit+10000
+          while_trs=0 # re-run algorithm
+        }
+      }
+    }
+    print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Algorithm converged (k=", temp_k, ", maxit=", temp_maxit, ", tol=", temp_tol, ")"))
     
     # coefficient
     Coef=myfit$coefficients
@@ -1316,13 +1394,280 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
   return(output)
 }
 
+#******************************
+# GLMM_Multinomial_Multivariate
+#******************************
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# 
+# Data$sex=as.character(Data$sex) # make sex categorical
+# Data$sex[sample(1:length(Data$sex), 100)]="N"
+# Data$sex=factor(Data$sex)
+# 
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
+# Data=Format_Columns(Data,
+#                     Outcome_name="outcome",
+#                     ColumnsToUse,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Multinomial_Multivariate_Format_1(Data,
+#                                        ColumnsToUse,
+#                                        Outcome_name="outcome",
+#                                        ID_name="id")
+# GLMM_Multinomial_Multivariate_Format_2(Data,
+#                                        ColumnsToUse,
+#                                        Outcome_name="outcome",
+#                                        ID_name="id")
+#***************************************
+# GLMM_Multinomial_Multivariate_Format_1
+GLMM_Multinomial_Multivariate_Format_1=function(Data,
+                                                ColumnsToUse,
+                                                Outcome_name,
+                                                ID_name,
+                                                k=2,
+                                                maxit=500,
+                                                tol=1e-04){
+  # check out packages
+  lapply(c("mixcat"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Outcome_name]=as.factor(Data[, Outcome_name])
+  Y_Levels=levels(Data[, Outcome_name])
+  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
+  ID=Data[, ID_name]
+  
+  # assign predictors to values
+  for(i in 1:length(ColumnsToUse)){
+    assign(paste0("X_", i), Data[, ColumnsToUse[i]])
+  }
+  
+  # run algorithm until convergence
+  while_trs=0
+  count=0
+  while(while_trs==0){
+    count=count+1
+    
+    # run model
+    myfit=npmlt(formula(paste0("Y~", paste0("X_", c(1:length(ColumnsToUse)), collapse="+"))),
+                formula.npo=formula(paste0("~", paste0("X_", c(1:length(ColumnsToUse)), collapse="+"))),
+                random=~1,
+                id=ID,
+                k=k,
+                link="blogit", # specify that the model is a baseline logit random effects model
+                EB=FALSE,
+                maxit=maxit,
+                tol=tol)
+    
+    #
+    while_trs=1
+    if(is.na(myfit$coefficients[1])){
+      k=k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+      if(k==1){k=2}else if(k>=length(ColumnsToUse)-1){k=2}
+      print(paste0("[ ", count, "th run ] - Fail to converge. Try k=", k))
+      while_trs=0 # re-run algorithm
+      Sys.sleep(0.5)
+    }else{
+      if(myfit$flagcvm>0 | myfit$flaginfo>0){
+        print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
+        tol=tol/100
+        while_trs=0 # re-run algorithm
+      }
+      if(myfit$iter==myfit$maxit){
+        print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
+        maxit=maxit+10000
+        while_trs=0 # re-run algorithm
+      }
+    }
+  }
+  print(paste0("[ ", count, "th run ] - Algorithm converged (k=", k, ", maxit=", maxit, ", tol=", tol, ")"))
+  
+  
+  # coefficient
+  Coef=myfit$coefficients
+  Coef.ind=which(grepl("X_", row.names(Coef)))
+  # standard error
+  SE.Coef=myfit$SE.coefficients
+  # confidence interval (exponentiated)
+  Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
+  Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
+  # p-values
+  Z_value=Coef/SE.Coef # Wald test statistic
+  P_values=(1-pnorm(abs(Z_value), 0, 1))*2
+  # CI (upper and lower bounds)
+  Upper_Bound=exp(Raw_Upper_Bound)
+  Lower_Bound=exp(Raw_Lower_Bound)
+  
+  # output
+  output=c()
+  output$Estimate=round2(Coef[Coef.ind], 3)
+  output$Std.Error=round2(SE.Coef[Coef.ind], 3)
+  output$`P-value`=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                          format(round2(P_values[Coef.ind], 3), nsmall=3))
+  output$OR.and.CI=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                          " (",
+                          format(round(Lower_Bound, 2), nsmall=2),
+                          " - ",
+                          format(round(Upper_Bound, 2), nsmall=2),
+                          ")")
+  output=data.frame(output)
+  
+  # name output rows
+  row_names=c()
+  for(i in 1:length(ColumnsToUse)){
+    X=get(paste0("X_", i))
+    if(is.factor(X)){
+      X_Levels=levels(X)
+      Temp_Name=expand.grid(Y_Levels[-1], X_Levels[-1])
+      row_names=c(row_names, paste0(ColumnsToUse[i], " ", Temp_Name[, 2], " / ", Temp_Name[, 1]))
+    }else if(is.numeric(X)){
+      Temp_Name=expand.grid(Y_Levels[-1], ColumnsToUse[i])
+      row_names=c(row_names, paste0(Temp_Name[, 2], " / ", Temp_Name[, 1]))
+    }
+  }
+  rownames(output)=row_names
+  
+  #
+  output_to_return=c()
+  output_to_return$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
+  output_to_return$summ_table=output
+  # return output
+  return(output_to_return)
+}
+
+#***************************************
+# GLMM_Multinomial_Multivariate_Format_2
+GLMM_Multinomial_Multivariate_Format_2=function(Data,
+                                                ColumnsToUse,
+                                                Outcome_name,
+                                                ID_name,
+                                                k=2,
+                                                maxit=500,
+                                                tol=1e-04){
+  # check out packages
+  lapply(c("mixcat"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Outcome_name]=as.factor(Data[, Outcome_name])
+  Y_Levels=levels(Data[, Outcome_name])
+  Y=factor(Data[, Outcome_name], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
+  ID=Data[, ID_name]
+  
+  # assign predictors to values
+  for(i in 1:length(ColumnsToUse)){
+    assign(paste0("X_", i), Data[, ColumnsToUse[i]])
+  }
+  
+  # run algorithm until convergence
+  while_trs=0
+  count=0
+  while(while_trs==0){
+    count=count+1
+    
+    # run model
+    myfit=npmlt(formula(paste0("Y~", paste0("X_", c(1:length(ColumnsToUse)), collapse="+"))),
+                formula.npo=formula(paste0("~", paste0("X_", c(1:length(ColumnsToUse)), collapse="+"))),
+                random=~1,
+                id=ID,
+                k=k,
+                link="blogit", # specify that the model is a baseline logit random effects model
+                EB=FALSE,
+                maxit=maxit,
+                tol=tol)
+    
+    #
+    while_trs=1
+    if(is.na(myfit$coefficients[1])){
+      k=k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+      if(k==1){k=2}else if(k>=length(ColumnsToUse)-1){k=2}
+      print(paste0("[ ", count, "th run ] - Fail to converge. Try k=", k))
+      while_trs=0 # re-run algorithm
+      Sys.sleep(0.5)
+    }else{
+      if(myfit$flagcvm>0 | myfit$flaginfo>0){
+        print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
+        tol=tol/100
+        while_trs=0 # re-run algorithm
+      }
+      if(myfit$iter==myfit$maxit){
+        print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
+        maxit=maxit+10000
+        while_trs=0 # re-run algorithm
+      }
+    }
+  }
+  print(paste0("[ ", count, "th run ] - Algorithm converged (k=", k, ", maxit=", maxit, ", tol=", tol, ")"))
+  
+  # coefficient
+  Coef=myfit$coefficients
+  Coef.ind=which(grepl("X_", row.names(Coef)))
+  # standard error
+  SE.Coef=myfit$SE.coefficients
+  # confidence interval (exponentiated)
+  Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
+  Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
+  # p-values
+  Z_value=Coef/SE.Coef # Wald test statistic
+  P_values=(1-pnorm(abs(Z_value), 0, 1))*2
+  # CI (upper and lower bounds)
+  Upper_Bound=exp(Raw_Upper_Bound)
+  Lower_Bound=exp(Raw_Lower_Bound)
+  
+  # output
+  output=c()
+  output$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
+  output$Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  output$Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  output$`P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                                   format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
+  output$OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                                   " (",
+                                   format(round(Lower_Bound, 2), nsmall=2),
+                                   " - ",
+                                   format(round(Upper_Bound, 2), nsmall=2),
+                                   ")"), nrow=length(levels(Y))-1))
+  
+  # name output rows
+  row_names=c()
+  for(i in 1:length(ColumnsToUse)){
+    X=get(paste0("X_", i))
+    if(is.factor(X)){
+      X_Levels=levels(X)
+      row_names=c(row_names, paste0(ColumnsToUse[i], " / ", X_Levels[-1]))
+    }else if(is.numeric(X)){
+      row_names=c(row_names, ColumnsToUse[i])
+    }
+  }
+  colnames(output$Estimate)=levels(Y)[-length(levels(Y))]
+  colnames(output$Std.Error)=levels(Y)[-length(levels(Y))]
+  colnames(output$`P-value`)=levels(Y)[-length(levels(Y))]
+  colnames(output$OR.and.CI)=levels(Y)[-length(levels(Y))]
+  rownames(output$Estimate)=row_names
+  rownames(output$Std.Error)=row_names
+  rownames(output$`P-value`)=row_names
+  rownames(output$OR.and.CI)=row_names
+  
+  return(output)
+}
 
 #**************************
 # GLMM_Confounder_Selection
 #**************************
 # Example
 #******************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
@@ -1399,7 +1744,7 @@ GLMM_Confounder_Selection=function(Full_Model,
     # run GLMM excluding one variable at once
     for(i in 1:length(Potential_Con_Vars[Include_Index])){
       #i=1
-      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse = "-"))))
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse="-"))))
       Fixed_Effects_Current_Reduced_Model=fixef(Current_Reduced_Model)
       Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
       
@@ -1451,7 +1796,7 @@ GLMM_Confounder_Selection=function(Full_Model,
       # update Include_Index
       Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove[1])]
       # update the current full model
-      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse = "-"))))
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse="-"))))
       # increase step
       step=step+1
       
@@ -1481,7 +1826,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #**********************
 # GLMM_Confounder_Model
 #**********************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
@@ -1511,7 +1856,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
 #                                       Outcome_name="outcome",
 #                                       ID_name="id",
-#                                       which.family="poisson", # gaussian, binomial, poisson
+#                                       which.family="gaussian", # gaussian, binomial, poisson
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=30,
 #                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
@@ -1544,7 +1889,11 @@ GLMM_Confounder_Model=function(Data,
                                              which.family=which.family, # distribution of the response variable
                                              Min.Change.Percentage=Min.Change.Percentage,
                                              Estimate=Estimate) # raw_estimate, converted_estimate
+  
+  # save all stepwise procedure
   Output$Confounder_Steps=Confounder_Steps
+  
+  # index of confounders
   Confounder_Ind=which(ColumnsToUse%in%Output$Confounder_Steps$Confounders)
   
   # Multivariable model with confounders
@@ -1557,7 +1906,6 @@ GLMM_Confounder_Model=function(Data,
   return(Output)
 }
 
-
 #********
 #
 # GLMM_CV
@@ -1567,7 +1915,7 @@ GLMM_Confounder_Model=function(Data,
 #cv.glmmLasso(initialize_example(seed=1))
 # Thus, I wrote my own code that perform a k-fold cross-validation as below.
 #***************************************************************************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
@@ -1757,7 +2105,7 @@ GLMM_CV=function(data,
 # GLMM_LASSO
 #
 #***********
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
@@ -1823,7 +2171,7 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, which.family="binomial(l
 # GLMM_Bivariate_Plot
 #
 #********************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
@@ -2055,7 +2403,7 @@ GLMM_Overdispersion_Test=function(model){
 #********************
 # Note that for count data (poisson distribution), the currently offset term is not included
 #*******************************************************************************************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # head(Data)
@@ -2176,7 +2524,7 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
 #*******************
 # Note that for count data (poisson distribution), the currently offset term is not included
 #*******************************************************************************************
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # head(Data)
@@ -2526,7 +2874,7 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 #          "epitools"
 # ),
 # checkpackages)
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
@@ -2562,7 +2910,7 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="<20",
 #                             Missing="Include") # independence test does not account for missing data
-Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include", Ind_P_Value=F){
   # library
   library(epitools)
   
@@ -2639,9 +2987,10 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
     Out=cbind(Merged, Odds_ratio_row)
     
     Out$`OR (95% CI)`=as.character(Out$`OR (95% CI)`)
-    Out$`P-value (Fisher)`=as.character(Out$`P-value (Fisher)`)
-    Out$`P-value (Chi-square)`=as.character(Out$`P-value (Chi-square)`)
-    
+    if(Ind_P_Value==F){
+      Out$`P-value (Fisher)`=""
+      Out$`P-value (Chi-square)`=""
+    }
     # 
     Out=as.data.table(Out)
     Out[Value==Ref_of_Row_Var, c("OR (95% CI)")]=""
@@ -2654,9 +3003,8 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
                                                            paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value, 3), " (*Ind Test)"))
   Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value<0.001,
                                                                "<0.001 (*Ind Test)",
-                                                               paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value, 3), " (*Ind Test)"))
+                                                               paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value, 3), " (*Ind Test)"))  # return
   
-  # return
   return(Out)
 }
 
@@ -2681,7 +3029,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #          "doBy" # for esticon function
 # ),
 # checkpackages)
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
@@ -2741,7 +3089,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
                                   Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
     P.value_Mann_Whitney=ifelse(Mann_Whitney_test$p.value<0.001, "<0.001", round(Mann_Whitney_test$p.value, 3))
     T.test=t.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var], 
-                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative = "two.sided")
+                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative="two.sided")
     P.value_T_test=ifelse(T.test$p.value<0.001, "<0.001", round(T.test$p.value, 3))
     P.value_ANOVA="Y is binary"
   }else{
@@ -2841,7 +3189,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
 #          "doBy" # for esticon function
 # ),
 # checkpackages)
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
@@ -2897,7 +3245,7 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 #          "doBy" # for esticon function
 # ),
 # checkpackages)
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
@@ -2938,7 +3286,7 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
 #          "doBy" # for esticon function
 # ),
 # checkpackages)
-# require(geepack)
+# lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
 # 
