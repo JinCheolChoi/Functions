@@ -1011,7 +1011,7 @@ GLMM_Multivariable_Jin=function(Data,
                                 Compute.Power=FALSE,
                                 nsim=1000){
   # check out packages
-  lapply(c("lme4", "simr"), checkpackages)
+  lapply(c("lme4", "simr", "sjPlot"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1056,6 +1056,8 @@ GLMM_Multivariable_Jin=function(Data,
   # output
   #*******
   output=c()
+  # random effect plot (exponentiated)
+  output$re_plot=plot_model(myfit, type="re")
   # info of model fit
   output$model_fit=myfit
   # vif
@@ -2523,7 +2525,7 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
 # GAM_Bivariate_Plot
 #*******************
 # Note that for count data (poisson distribution), the currently offset term is not included
-#*******************************************************************************************
+# *******************************************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
