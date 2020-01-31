@@ -110,6 +110,69 @@ Format_Columns=function(Data, Outcome_name, ColumnsToUse, vector.OF.classes.num.
 # [ GLM ] ----
 #
 #******************************
+# GLM_Bivariate
+#**************
+# lapply(c("stats", "geepack"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline")
+# Outcome_name="outcome"
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# Data=Format_Columns(Data,
+#                     Outcome_name="outcome",
+#                     ColumnsToUse,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# GLM_Bivariate(Data,
+#               ColumnsToUse,
+#               Outcome_name=Outcome_name,
+#               which.family="binomial")
+GLM_Bivariate=function(Data, ColumnsToUse, Outcome_name, which.family){
+  # check out packages
+  lapply(c("MASS"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  Data=na.omit(Data[, c(Outcome_name, ColumnsToUse)])
+  
+  # main algorithm
+  output=c()
+  for(i in 1:length(ColumnsToUse)){
+    #i=1
+    # run model
+    fullmod=as.formula( paste( Outcome_name, " ~ ", ColumnsToUse[i]))
+    model.fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
+    
+    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    OR.CI=exp(cbind(OR=coef(model.fit), confint(model.fit, level=0.95)))
+    colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
+    est=cbind(summary(model.fit)$coefficients, OR.CI)
+    
+    # output
+    output=rbind(output, 
+                 data.frame(
+                   Estimate=round2(est[-1, "Estimate"], 3), 
+                   Std.Error=round2(est[-1, "Std. Error"], 3), 
+                   `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001", 
+                                    format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
+                   OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2), 
+                                    " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ", 
+                                    format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"), 
+                   row.names=names(coef(model.fit))[-1]
+                 )
+    )
+    #print(paste0(i, " ", ColumnsToUse[i]))
+  }
+  return(output)
+}
+
+#******************************
 # GLM_NB_Bivariate_Personal_Jin
 #******************************
 # Run simple GLM models for each explanatory variable with negative binomial distribution 
@@ -861,6 +924,8 @@ GEE_Confounder_Model=function(Input_Data,
   return(Output)
 }
 
+
+
 #**************
 #
 # [ GLMM ] ----
@@ -1268,7 +1333,7 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
   # main algorithm
   output=c()
   for(i in 1:length(ColumnsToUse)){
-    #i=1
+    #i=17
     X=Data[, ColumnsToUse[i]]
     
     # run algorithm until convergence
@@ -1287,15 +1352,15 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
                   id=ID,
                   k=temp_k,
                   link="blogit", # specify that the model is a baseline logit random effects model
-                  EB=T,
+                  EB=FALSE,
                   maxit=temp_maxit,
                   tol=temp_tol)
       
       #
       while_trs=1
       if(is.na(myfit$coefficients[1])){
-        # temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
-        # if(temp_k==1){temp_k=2}else if(temp_k>=length(ColumnsToUse)-1){temp_k=2}
+        temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+        if(temp_k==1){temp_k=2}else if(temp_k>=length(ColumnsToUse)-1){temp_k=2}
         print(paste0("[ ", ColumnsToUse[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
         while_trs=0 # re-run algorithm
         Sys.sleep(0.5)
@@ -1426,7 +1491,9 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
 # GLMM_Multinomial_Multivariate_Format_2(Data,
 #                                        ColumnsToUse,
 #                                        Outcome_name="outcome",
-#                                        ID_name="id")
+#                                        ID_name="id",
+#                                        maxit=10,
+#                                        par.update=T)
 #***************************************
 # GLMM_Multinomial_Multivariate_Format_1
 GLMM_Multinomial_Multivariate_Format_1=function(Data,
@@ -1554,7 +1621,8 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
                                                 ID_name,
                                                 k=2,
                                                 maxit=500,
-                                                tol=1e-04){
+                                                tol=1e-04,
+                                                par.update=FALSE){
   # check out packages
   lapply(c("mixcat"), checkpackages)
   
@@ -1598,15 +1666,17 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
       while_trs=0 # re-run algorithm
       Sys.sleep(0.5)
     }else{
-      if(myfit$flagcvm>0 | myfit$flaginfo>0){
-        print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
-        tol=tol/100
-        while_trs=0 # re-run algorithm
-      }
-      if(myfit$iter==myfit$maxit){
-        print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
-        maxit=maxit+10000
-        while_trs=0 # re-run algorithm
+      if(par.update==T){
+        if(myfit$flagcvm>0 | myfit$flaginfo>0){
+          print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
+          tol=tol/100
+          while_trs=0 # re-run algorithm
+        }
+        if(myfit$iter==myfit$maxit){
+          print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
+          maxit=maxit+10000
+          while_trs=0 # re-run algorithm
+        }
       }
     }
   }
@@ -1858,7 +1928,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
 #                                       Outcome_name="outcome",
 #                                       ID_name="id",
-#                                       which.family="gaussian", # gaussian, binomial, poisson
+#                                       which.family="binomial", # gaussian, binomial, poisson
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=30,
 #                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
@@ -2697,7 +2767,7 @@ Combine_Multiple_Results=function(Input_Data_Names){
     Estimate_rbind=rbind(Estimate_rbind, get(paste0(Input_Data_Names[m.ind]))[, Estimate])
     Std.Error_rbind=rbind(Std.Error_rbind, get(paste0(Input_Data_Names[m.ind]))[, Std.Error])
   }
-  # conver the results to the data table format
+  # convert the results to the data table format
   Estimate_rbind %<>% as.data.table
   Std.Error_rbind %<>% as.data.table
   # name columns
