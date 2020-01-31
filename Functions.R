@@ -1111,7 +1111,9 @@ GLMM_Multivariable_Jin=function(Data,
     Coef.ind=c(Coef.ind, which(grepl(ColumnsToUse[i], row.names(Coef))))
     CI.raw.ind=c(CI.raw.ind, which(grepl(ColumnsToUse[i], row.names(CI.raw))))
     CI.ind=c(CI.ind, which(grepl(ColumnsToUse[i], row.names(CI))))
-    if(Compute.Power==T){Var.Power[[i]]=powerSim(myfit, fixed(ColumnsToUse[i], "lr"), nsim=nsim, progress=F)}
+    if(Compute.Power==T){
+      lapply(c("simr"), checkpackages)
+      Var.Power[[i]]=powerSim(myfit, fixed(ColumnsToUse[i], "lr"), nsim=nsim, progress=F)}
   }
   
   Coef.ind=sort(unique(Coef.ind))
