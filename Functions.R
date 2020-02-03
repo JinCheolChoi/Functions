@@ -1033,13 +1033,14 @@ GLMM_Bivariate_Jin=function(Data,
         ")"
       )
     }
-    output=rbind(output, temp_out)
+    
+    output=rbind(output, data.frame(temp_out))
     #print(paste(i, " ", ColumnsToUse[i], sep=""))
   }
   output=as.data.frame(output)
-  rownames(output)=ColumnsToUse
   return(output)
 }
+
 
 #***********************
 # GLMM_Multivariable_Jin
