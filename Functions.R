@@ -1196,7 +1196,7 @@ GLMM_Multivariable_Jin=function(Data,
 #                                     ColumnsToUse,
 #                                     Outcome_name="outcome",
 #                                     ID_name="id")
-# ************************************
+#************************************
 # GLMM_Multinomial_Bivariate_Format_1
 GLMM_Multinomial_Bivariate_Format_1=function(Data,
                                              ColumnsToUse,
@@ -1736,6 +1736,223 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
   
   return(output)
 }
+
+
+#***********************
+# GLMM_Ordinal_Bivariate
+#***********************
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# 
+# Data$sex=as.character(Data$sex) # make sex categorical
+# Data$sex[sample(1:length(Data$sex), 100)]="N"
+# Data$sex=factor(Data$sex)
+# 
+# 
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
+# Data$outcome=as.factor(Data$outcome)
+# Data=Format_Columns(Data,
+#                     Outcome_name="outcome",
+#                     ColumnsToUse,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Ordinal_Bivariate_Format_1(Data,
+#                                 ColumnsToUse,
+#                                 Outcome_name<-"outcome",
+#                                 ID_name<-"id",
+#                                 NAGQ<-2)
+# GLMM_Ordinal_Bivariate_Format_2(Data,
+#                                 ColumnsToUse,
+#                                 Outcome_name<-"outcome",
+#                                 ID_name<-"id",
+#                                 NAGQ<-2)
+#********************************
+# GLMM_Ordinal_Bivariate_Format_1
+GLMM_Ordinal_Bivariate_Format_1=function(Data,
+                                         ColumnsToUse,
+                                         Outcome_name,
+                                         ID_name,
+                                         NAGQ=3){
+  # check out packages
+  lapply(c("ordinal"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Outcome_name]=factor(Data[, Outcome_name], order=T)
+  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  
+  # main algorithm
+  output=c()
+  
+  for(i in 1:length(ColumnsToUse)){
+    #i=1
+    i<<-i
+    model.fit=clmm2(as.formula(paste0(Outcome_name, "~ 1")),
+                    nominal=as.formula(paste("~ ", ColumnsToUse[i])),
+                    random=eval(parse(text=ID_name)),
+                    data=Data,
+                    Hess=TRUE,
+                    nAGQ=NAGQ)
+    
+    model.fit.summ=summary(model.fit)$coefficients
+    Coef.ind=which(grepl(ColumnsToUse[i], row.names(model.fit.summ)))
+    # coefficient
+    Coef=model.fit.summ[Coef.ind, 1]
+    # standard error
+    SE.Coef=model.fit.summ[Coef.ind, 2]
+    # confidence interval (exponentiated)
+    Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
+    Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
+    # CI (upper and lower bounds)
+    Upper_Bound=exp(Raw_Upper_Bound)
+    Lower_Bound=exp(Raw_Lower_Bound)
+    
+    # output
+    temp_out=c()
+    temp_out$Estimate=round2(Coef, 3)
+    temp_out$Std.Error=round2(SE.Coef, 3)
+    temp_out$`P-value`=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
+                              format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
+    temp_out$OR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
+                              " (",
+                              format(round(Lower_Bound, 2), nsmall=2),
+                              " - ",
+                              format(round(Upper_Bound, 2), nsmall=2),
+                              ")")
+    
+    #
+    temp_out=data.frame(temp_out)
+    if(is.factor(Data[, ColumnsToUse[i]])){
+      name_temp=expand.grid(levels(Data[, Outcome_name])[-1], levels(Data[, ColumnsToUse[i]])[-1])
+      row.names(temp_out)=paste0(ColumnsToUse[i], " ", name_temp[, 2], " / ", name_temp[, 1])
+    }else if(is.numeric(Data[, ColumnsToUse[i]])){
+      row.names(temp_out)=paste0(ColumnsToUse[i], " / ", levels(Data[, Outcome_name])[-1])
+    }
+    output=rbind(output, temp_out)
+    #print(paste(i, " ", ColumnsToUse[i], sep=""))
+  }
+  return(output)
+}
+
+#********************************
+# GLMM_Ordinal_Bivariate_Format_2
+GLMM_Ordinal_Bivariate_Format_2=function(Data,
+                                         ColumnsToUse,
+                                         Outcome_name,
+                                         ID_name,
+                                         NAGQ=3){
+  # check out packages
+  lapply(c("ordinal"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Outcome_name]=factor(Data[, Outcome_name], order=T)
+  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  
+  # main algorithm
+  output=c()
+  for(i in 1:length(ColumnsToUse)){
+    #i=2
+    i<<-i
+    model.fit=clmm2(as.formula(paste(Outcome_name, "~ 1")),
+                    nominal=as.formula(paste("~ ", ColumnsToUse[i])),
+                    random=eval(parse(text=ID_name)),
+                    data=Data,
+                    Hess=TRUE,
+                    nAGQ=NAGQ)
+    
+    model.fit.summ=summary(model.fit)$coefficients
+    Coef.ind=which(grepl(ColumnsToUse[i], row.names(model.fit.summ)))
+    # coefficient
+    Coef=model.fit.summ[Coef.ind, 1]
+    # standard error
+    SE.Coef=model.fit.summ[Coef.ind, 2]
+    # confidence interval (exponentiated)
+    Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
+    Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
+    # CI (upper and lower bounds)
+    Upper_Bound=exp(Raw_Upper_Bound)
+    Lower_Bound=exp(Raw_Lower_Bound)
+    
+    # output
+    temp_out=c()
+    
+    # record 
+    if(is.factor(Data[, ColumnsToUse[i]])){
+      X_Levels=levels(Data[, ColumnsToUse[i]])
+      Y_Levels=levels(Data[, Outcome_name])
+      temp_out$Estimate=matrix(round2(Coef, 3), 
+                               ncol=length(X_Levels)-1, 
+                               nrow=length(Y_Levels)-1)
+      temp_out$Std.Error=matrix(round2(SE.Coef, 3), 
+                                ncol=length(X_Levels)-1, 
+                                nrow=length(Y_Levels)-1)
+      temp_out$`P-value`=matrix(
+        ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
+               format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3)), 
+        ncol=length(X_Levels)-1, 
+        nrow=length(Y_Levels)-1)
+      temp_out$OR.and.CI=matrix(
+        paste0(format(round(exp(Coef), 2), nsmall=2), 
+               " (",
+               format(round(Lower_Bound, 2), nsmall=2),
+               " - ",
+               format(round(Upper_Bound, 2), nsmall=2),
+               ")"), 
+        ncol=length(X_Levels)-1, 
+        nrow=length(Y_Levels)-1)
+      # names for row and column
+      Temp_Row_Names=Y_Levels[-1]
+      Temp_Column_Names=paste0(ColumnsToUse[i], " / ", X_Levels[-1])
+    }else if(is.numeric(Data[, ColumnsToUse[i]])){
+      temp_out$Estimate=data.frame(X=round2(Coef, 3))
+      temp_out$Std.Error=data.frame(X=round2(SE.Coef, 3))
+      temp_out$`P-value`=data.frame(
+        X=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
+                 format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
+      )
+      temp_out$OR.and.CI=data.frame(
+        X=paste0(format(round(exp(Coef), 2), nsmall=2), 
+                 " (",
+                 format(round(Lower_Bound, 2), nsmall=2),
+                 " - ",
+                 format(round(Upper_Bound, 2), nsmall=2),
+                 ")")
+      )
+      # names for row and column
+      Temp_Row_Names=levels(Data[, Outcome_name])[-1]
+      Temp_Column_Names=ColumnsToUse[i]
+    }
+    
+    rownames(temp_out$Estimate)=Temp_Row_Names
+    colnames(temp_out$Estimate)=Temp_Column_Names
+    rownames(temp_out$Std.Error)=Temp_Row_Names
+    colnames(temp_out$Std.Error)=Temp_Column_Names
+    rownames(temp_out$`P-value`)=Temp_Row_Names
+    colnames(temp_out$`P-value`)=Temp_Column_Names
+    rownames(temp_out$OR.and.CI)=Temp_Row_Names
+    colnames(temp_out$OR.and.CI)=Temp_Column_Names
+    
+    output$Estimate=rbind(output$Estimate, t(temp_out$Estimate))
+    output$Std.Error=rbind(output$Std.Error, t(temp_out$Std.Error))
+    output$`P-value`=rbind(output$`P-value`,t(temp_out$`P-value`))
+    output$OR.and.CI=rbind(output$OR.and.CI, t(temp_out$OR.and.CI))
+    #print(paste(i, " ", ColumnsToUse[i], sep=""))
+  }
+  return(output)
+}
+
 
 #**************************
 # GLMM_Confounder_Selection
