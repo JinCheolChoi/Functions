@@ -3738,9 +3738,53 @@ Line_Graph_Generator=function(Table_Data,
 
 
 
-
-
-
+#************* 
+# 
+# [ Etc ] ---- 
+# 
+#************* 
+# Mortgage_Calculator 
+#******************** 
+# Example 
+# Mortgage_Calculator(HP=1000000, DP=200000, 
+#                     ANIR=0.04, AP=25, 
+#                     ID="2020-02-01", PF="Monthly") 
+Mortgage_Calculator=function(HP=500000,          # House Price 
+                             DP=100000,          # Down Payment 
+                             ANIR=0.04,          # Annual Nominal Interest Rate 
+                             AP=15,              # Amortization Period (years) 
+                             ID="2020-02-01",    # Initial Date of Amortization 
+                             PF="Monthly"){      # "Monthly"|"Bi-Weekly" 
+  
+  IP=HP-DP # Initial Principal 
+  
+  if(PF=="Monthly"){ 
+    AA=12 # Annual_Amortization 
+  }else if(PF=="Bi-Weekly"){ 
+    AA=26 
+  } 
+  IR=((1+(ANIR/2))^2)^(1/AA)-1 # Interest Rate 
+  PP=(IP*IR)/(1-(1+IR)^(-AP*AA)) # Periodic Payment 
+  
+  # generate Amortization Schedule Worksheet  
+  Periodic_Table=data.table( 
+  ) 
+  if(PF=="Monthly"){Periodic_Table[, Date:=seq(as.Date(ID), by = "1 month", length=(AP*AA)+1)]} 
+  if(PF=="Bi-Weekly"){Periodic_Table[, Date:=seq(as.Date(ID), by = "2 weeks", length=(AP*AA)+1)]} 
+  Periodic_Table[, Payment:=c(0, rep(PP, AP*AA))] 
+  for(i in 1:(AA*AP+1)){ 
+    if(i==1){ 
+      Periodic_Table[i, Interest:=0] 
+      Periodic_Table[i, Principal:=0] 
+      Periodic_Table[i, Balance:=IP] # Remaining Principal 
+    }else{ 
+      Periodic_Table[i, Interest:=IR*Periodic_Table[i-1, Balance]] 
+      Periodic_Table[i, Principal:=round(Payment-Interest, 2)] 
+      Periodic_Table[i, Balance:=round(Periodic_Table[i-1, Balance]-Principal)] 
+    } 
+  } 
+  return(as.data.table(Periodic_Table)) 
+} 
 
 
 
