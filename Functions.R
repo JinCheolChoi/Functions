@@ -1763,23 +1763,23 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
 # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Ordinal_Bivariate_Format_1(Data,
+# GLMM_Ordinal_Bivariate_Proportional_Odds(Data,
 #                                 ColumnsToUse,
 #                                 Outcome_name<-"outcome",
 #                                 ID_name<-"id",
 #                                 NAGQ<-2)
-# GLMM_Ordinal_Bivariate_Format_2(Data,
+# GLMM_Ordinal_Bivariate_Non_Proportional_Odds(Data,
 #                                 ColumnsToUse,
 #                                 Outcome_name<-"outcome",
 #                                 ID_name<-"id",
 #                                 NAGQ<-2)
 #********************************
-# GLMM_Ordinal_Bivariate_Format_1
-GLMM_Ordinal_Bivariate_Format_1=function(Data,
-                                         ColumnsToUse,
-                                         Outcome_name,
-                                         ID_name,
-                                         NAGQ=3){
+# GLMM_Ordinal_Bivariate_Proportional_Odds
+GLMM_Ordinal_Bivariate_Proportional_Odds=function(Data,
+                                                  ColumnsToUse,
+                                                  Outcome_name,
+                                                  ID_name,
+                                                  NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
   
@@ -1796,12 +1796,13 @@ GLMM_Ordinal_Bivariate_Format_1=function(Data,
   for(i in 1:length(ColumnsToUse)){
     #i=1
     i<<-i
-    model.fit=clmm2(as.formula(paste0(Outcome_name, "~ 1")),
-                    nominal=as.formula(paste("~ ", ColumnsToUse[i])),
+    model.fit=clmm2(as.formula(paste(Outcome_name, "~ ", ColumnsToUse[i])),
+                    #nominal=as.formula(paste("~ ", ColumnsToUse[i])),
                     random=eval(parse(text=ID_name)),
                     data=Data,
                     Hess=TRUE,
-                    nAGQ=NAGQ)
+                    nAGQ=NAGQ,
+                    link="logistic")
     
     model.fit.summ=summary(model.fit)$coefficients
     Coef.ind=which(grepl(ColumnsToUse[i], row.names(model.fit.summ)))
@@ -1832,10 +1833,10 @@ GLMM_Ordinal_Bivariate_Format_1=function(Data,
     #
     temp_out=data.frame(temp_out)
     if(is.factor(Data[, ColumnsToUse[i]])){
-      name_temp=expand.grid(levels(Data[, Outcome_name])[-1], levels(Data[, ColumnsToUse[i]])[-1])
-      row.names(temp_out)=paste0(ColumnsToUse[i], " ", name_temp[, 2], " / ", name_temp[, 1])
+      name_temp=expand.grid(levels(Data[, ColumnsToUse[i]])[-1])
+      row.names(temp_out)=paste0(ColumnsToUse[i], " ", unlist(name_temp))
     }else if(is.numeric(Data[, ColumnsToUse[i]])){
-      row.names(temp_out)=paste0(ColumnsToUse[i], " / ", levels(Data[, Outcome_name])[-1])
+      row.names(temp_out)=paste0(ColumnsToUse[i])
     }
     output=rbind(output, temp_out)
     #print(paste(i, " ", ColumnsToUse[i], sep=""))
@@ -1844,12 +1845,12 @@ GLMM_Ordinal_Bivariate_Format_1=function(Data,
 }
 
 #********************************
-# GLMM_Ordinal_Bivariate_Format_2
-GLMM_Ordinal_Bivariate_Format_2=function(Data,
-                                         ColumnsToUse,
-                                         Outcome_name,
-                                         ID_name,
-                                         NAGQ=3){
+# GLMM_Ordinal_Bivariate_Non_Proportional_Odds
+GLMM_Ordinal_Bivariate_Non_Proportional_Odds=function(Data,
+                                                      ColumnsToUse,
+                                                      Outcome_name,
+                                                      ID_name,
+                                                      NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
   
@@ -3598,71 +3599,142 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
 # Combined_CT
 
 
-
-#*************
-#
-# [ Etc ] ----
-#
-#*************
-# Mortgage_Calculator
-#********************
-# Example
-# Mortgage_Calculator(HP=1000000, DP=200000,
-#                     ANIR=0.04, AP=25,
-#                     ID="2020-02-01", PF="Monthly")
-Mortgage_Calculator=function(HP=500000,          # House Price
-                             DP=100000,          # Down Payment
-                             ANIR=0.04,          # Annual Nominal Interest Rate
-                             AP=15,              # Amortization Period (years)
-                             ID="2020-02-01",    # Initial Date of Amortization
-                             PF="Monthly"){      # "Monthly"|"Bi-Weekly"
+#********************************
+# Raw_Contingency_Table_Generator
+#********************************
+# lapply(c("dplyr",
+#          "data.table",
+#          
+#          "lme4",
+#          "epitools"
+# ),
+# checkpackages)
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data$sex[sample(1:nrow(Data), 30)]=NA
+# Data$age[sample(1:nrow(Data), 30)]=NA
+# Data$outcome[sample(1:nrow(Data), 30)]=NA
+# #Data$outcome[sample(1:nrow(Data), 30)]=2
+# 
+# # Work on predictor with more than 2 levels
+# Data=as.data.table(Data)
+# Data[age<20, age_cat:="<20"]
+# Data[20<=age & age<30, age_cat:="20<=age<30"]
+# Data[30<=age & age<40, age_cat:="30<=age<40"]
+# Data[40<=age & age<50, age_cat:="40<=age<50"]
+# Data[50<=age & age<60, age_cat:="50<=age<60"]
+# Data[60<=age, age_cat:="60<=age"]
+# Data[, age_cat:=as.factor(age_cat)]
+# 
+# # Data at baseline
+# BL_Data=Data %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# #
+# Table_Data=Raw_Contingency_Table_Generator(Data=Data,
+#                                            Row_Var="outcome",
+#                                            Col_Var="age",
+#                                            Value="Frequency")
+# Raw_Contingency_Table_Generator(Data=Data,
+#                                 Row_Var="outcome",
+#                                 Col_Var="age",
+#                                 Value="Percentage")
+# Line_Graph_Generator(Table_Data_1[2, 1:(ncol(Table_Data_1)-1)], 
+#                      Y_lab="Outcome",
+#                      X_lab="Age",
+#                      Y_breaks=2)
+Raw_Contingency_Table_Generator=function(Data, 
+                                         Row_Var, 
+                                         Col_Var, 
+                                         Value="Frequency"){
+  # library
+  library(epitools)
   
-  IP=HP-DP # Initial Principal
-  
-  if(PF=="Monthly"){
-    AA=12 # Annual_Amortization
-  }else if(PF=="Bi-Weekly"){
-    AA=26
+  # Data as data table
+  Data=as.data.frame(Data)
+  # 
+  Col_Order=c()
+  if(is.numeric(Data[, Col_Var])==T){
+    Col_Order=sort(unique(Data[, Col_Var]))
+  }else if(is.factor(Data[, Col_Var])){
+    Col_Order=levels(Data[, Col_Var])
   }
-  IR=((1+(ANIR/2))^2)^(1/AA)-1 # Interest Rate
-  PP=(IP*IR)/(1-(1+IR)^(-AP*AA)) # Periodic Payment
+  Data[, Col_Var]=as.character(Data[, Col_Var])
+  Data[, Row_Var]=as.character(Data[, Row_Var])
   
-  # generate Amortization Schedule Worksheet 
-  Periodic_Table=data.table(
-  )
-  if(PF=="Monthly"){Periodic_Table[, Date:=seq(as.Date(ID), by = "1 month", length=(AP*AA)+1)]}
-  if(PF=="Bi-Weekly"){Periodic_Table[, Date:=seq(as.Date(ID), by = "2 weeks", length=(AP*AA)+1)]}
-  Periodic_Table[, Payment:=c(0, rep(PP, AP*AA))]
-  for(i in 1:(AA*AP+1)){
-    if(i==1){
-      Periodic_Table[i, Interest:=0]
-      Periodic_Table[i, Principal:=0]
-      Periodic_Table[i, Balance:=IP] # Remaining Principal
-    }else{
-      Periodic_Table[i, Interest:=IR*Periodic_Table[i-1, Balance]]
-      Periodic_Table[i, Principal:=round(Payment-Interest, 2)]
-      Periodic_Table[i, Balance:=round(Periodic_Table[i-1, Balance]-Principal)]
-    }
+  # Contingency Table
+  Contingency_Table=Data %>% 
+    dplyr::select(Row_Var, Col_Var) %>% 
+    table(useNA="no")
+  
+  # Sum of values column-wise INCLUDING missing data in Row_Var
+  Sum_Col_Wise=Data %>% 
+    dplyr::select(Col_Var) %>% 
+    table(useNA="no") %>% c
+  
+  # Sum of values row-wise EXCLUDING missing data in Col_Var
+  Sum_Row_Wise=apply(Contingency_Table, 1, sum)
+  
+  # merge all results
+  if(Value=="Frequency"){
+    Merged=cbind(Row_Var, rownames(Contingency_Table), 
+                 cbind(
+                   paste0(Contingency_Table) %>% 
+                     matrix(nrow(Contingency_Table), ncol(Contingency_Table)), 
+                   paste0(Sum_Row_Wise)
+                 )
+    ) %>% as.data.frame()
   }
-  return(as.data.table(Periodic_Table))
+  if(Value=="Percentage"){
+    Merged=cbind(Row_Var, rownames(Contingency_Table), 
+                 cbind(
+                   paste0(round(t(t(Contingency_Table)/Sum_Col_Wise)*100, 2)) %>% 
+                     matrix(nrow(Contingency_Table), ncol(Contingency_Table)),
+                   paste0(round(Sum_Row_Wise/sum(Sum_Col_Wise)*100, 2))
+                 )
+    ) %>% as.data.frame()
+  }
+  
+  # post-processing
+  colnames(Merged)[1:2]=c("Predictor", "Value")
+  colnames(Merged)[1:2]=c("Predictor", "Value")
+  colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(names(Sum_Col_Wise))
+  colnames(Merged)[3+ncol(Contingency_Table)]=paste0(sum(Sum_Col_Wise))
+  Out=Merged
+  
+  # return
+  return(Out)
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#*********************
+# Line_Graph_Generator
+#*********************
+Line_Graph_Generator=function(Table_Data, 
+                              Y_lab="Y",
+                              X_lab="X",
+                              Y_breaks=100){
+  # make plot
+  Long_Table_Data=melt(Table_Data, id=c("Predictor", "Value"))
+  colnames(Long_Table_Data)=c("Group", "Nothing", "X", "Y")
+  Long_Table_Data$Y=as.numeric(as.character(Long_Table_Data$Y))
+  # plot - all colored
+  Line_Chart=ggplot(Long_Table_Data, aes(x=X, y=Y, group=Group)) +
+    geom_line(aes(color=Group))+
+    geom_point(aes(color=Group))+
+    ylab(Y_lab)+
+    xlab(X_lab)+
+    scale_y_continuous(breaks=seq(min(Long_Table_Data$Y),
+                                  max(Long_Table_Data$Y),
+                                  Y_breaks))
+  
+  Line_Chart+theme(axis.text=element_text(size=20),
+                   axis.title=element_text(size=20),
+                   legend.text=element_text(size=15))
+}
 
 
 
