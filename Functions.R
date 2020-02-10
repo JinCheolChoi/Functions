@@ -3720,16 +3720,18 @@ Line_Graph_Generator=function(Table_Data,
   # make plot
   Long_Table_Data=melt(Table_Data, id=c("Predictor", "Value"))
   colnames(Long_Table_Data)=c("Group", "Nothing", "X", "Y")
-  Long_Table_Data$Y=as.numeric(as.character(Long_Table_Data$Y))
+  Long_Table_Data=as.data.table(Long_Table_Data)
+  Long_Table_Data[, Y:=as.numeric(Y)]
   # plot - all colored
   Line_Chart=ggplot(Long_Table_Data, aes(x=X, y=Y, group=Group)) +
     geom_line(aes(color=Group))+
     geom_point(aes(color=Group))+
     ylab(Y_lab)+
     xlab(X_lab)+
-    scale_y_continuous(breaks=seq(min(Long_Table_Data$Y),
-                                  max(Long_Table_Data$Y),
-                                  Y_breaks))
+    ylim(0, max(Long_Table_Data[!is.na(Y), Y]))
+  scale_y_continuous(breaks=seq(0,
+                                max(Long_Table_Data[!is.na(Y), Y]),
+                                Y_breaks))
   
   Line_Chart+theme(axis.text=element_text(size=20),
                    axis.title=element_text(size=20),
