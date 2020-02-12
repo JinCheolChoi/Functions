@@ -103,7 +103,95 @@ Format_Columns=function(Data, Outcome_name, ColumnsToUse, vector.OF.classes.num.
   return(Data)
 }
 
+#******************************************
+#
+# [ Interrupted Time Series Analysis ] ----
+#
+#******************************************
+# Segmented_Regression_Model
+#***************************
+# Example
+#********
+# int=85
+# set.seed(42)
+# df=data.table(
+#   count=as.integer(rpois(132, 9) + rnorm(132, 1, 1)),
+#   time=1:132,
+#   at_risk=rep(
+#     c(4305, 4251, 4478, 4535, 4758, 4843, 4893, 4673, 4522, 4454, 4351),
+#     each =12
+#   ),
+#   month=rep(factor(month.name, levels=month.name), length=132)
+# )
+# df[, intv:=ifelse(time >= int, 1, 0)]
+# df[, intv_trend:=c(rep(0, (int - 1)), 1:(length(unique(time)) - (int - 1)))]
+# # Add a grouping variable manually
+# df[, group:=ifelse(intv==1, "Intervention", "Control")]
+# Segmented_Regression_Model(Data=df,
+#                            Res_Var="count",
+#                            Time_Var="time",
+#                            Int_Var="intv")
+# Segmented_Regression_Model_Plot(Data=df,
+#                                 X_Var="time",
+#                                 Y_Var="count",
+#                                 X_Lab="Time",
+#                                 Group_Var="group",
+#                                 Y_Lab="Frequency")
+Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
+  # 
+  #Data=Long_Table
+  Data=as.data.frame(Data)
+  
+  # 
+  #Data=na.omit(Data[, c(Outcome_name, ColumnsToUse)])
+  
+  Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
+  
+  Data[, Time_Var]=as.factor(Data[, Time_Var])
+  Data$Time_Order=as.numeric(Data[, Time_Var])
+  
+  # fit model
+  model_fit=lm(as.formula(paste(Res_Var, " ~ ", Int_Var, "*Time_Order")), data=Data)
+  
+  # output
+  output=c()
+  output$model_fit=model_fit
+  output$summ_table=as.data.frame(summary(model_fit)$coefficients)
+  colnames(output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+  output$summ_table$Estimate=round(output$summ_table$Estimate, 3)
+  output$summ_table$Std.Error=round(output$summ_table$Std.Error, 3)
+  output$summ_table$`T-value`=round(output$summ_table$`T-value`, 3)
+  output$summ_table$`P-value`=ifelse(output$summ_table$`P-value`<0.001, "<0.001", round(output$summ_table$`P-value`, 3)) 
+  
+  return(output)
+}
 
+#********************************
+# Segmented_Regression_Model_Plot
+#********************************
+Segmented_Regression_Model_Plot=function(Data,
+                                         X_Var,
+                                         Y_Var,
+                                         Group_Var,
+                                         X_Lab="Time",
+                                         Y_Lab="Frequency"){
+  
+  # plot
+  Trend_Plot=ggplot(Data, aes(x=eval(parse(text=X_Var)), y=eval(parse(text=Y_Var)))) +
+    geom_line()+
+    geom_point()+
+    geom_smooth(method="lm", se=T, aes(colour=eval(parse(text=Group_Var)))) +
+    theme_bw()+
+    xlab(X_Lab)+
+    ylab(Y_Lab)+
+    labs(colour="", size=16)+
+    theme(axis.title.x=element_text(size=rel(1.8)),
+          axis.title.y=element_text(size=rel(1.8)),
+          axis.text.x=element_text(size=rel(1.8)),
+          legend.text=element_text(size=rel(1.5)))
+    
+  Trend_Plot
+}
 
 #*************
 #
@@ -1659,7 +1747,6 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
                 EB=FALSE,
                 maxit=maxit,
                 tol=tol)
-    
     #
     while_trs=1
     if(is.na(myfit$coefficients[1])){
@@ -3771,8 +3858,8 @@ Mortgage_Calculator=function(HP=500000,          # House Price
   # generate Amortization Schedule Worksheet  
   Periodic_Table=data.table( 
   ) 
-  if(PF=="Monthly"){Periodic_Table[, Date:=seq(as.Date(ID), by = "1 month", length=(AP*AA)+1)]} 
-  if(PF=="Bi-Weekly"){Periodic_Table[, Date:=seq(as.Date(ID), by = "2 weeks", length=(AP*AA)+1)]} 
+  if(PF=="Monthly"){Periodic_Table[, Date:=seq(as.Date(ID), by="1 month", length=(AP*AA)+1)]} 
+  if(PF=="Bi-Weekly"){Periodic_Table[, Date:=seq(as.Date(ID), by="2 weeks", length=(AP*AA)+1)]} 
   Periodic_Table[, Payment:=c(0, rep(PP, AP*AA))] 
   for(i in 1:(AA*AP+1)){ 
     if(i==1){ 
