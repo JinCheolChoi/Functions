@@ -203,28 +203,28 @@ Segmented_Regression_Model_Plot=function(Data,
 # lapply(c("stats", "geepack"), checkpackages)
 # require(dplyr)
 # data("respiratory")
-# Data=respiratory %>%
+# Data_to_use=respiratory %>%
 #   group_by(id) %>%
 #   filter(visit==min(visit))
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline")
 # Outcome_name="outcome"
-# Data$sex=as.character(Data$sex)
-# Data$sex[sample(1:nrow(Data), 50)]="N"
-# Data$sex=as.factor(Data$sex)
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
 # levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# Data=Format_Columns(Data,
-#                     Outcome_name="outcome",
-#                     ColumnsToUse,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
-# GLM_Bivariate(Data,
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Outcome_name="outcome",
+#                            ColumnsToUse,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLM_Bivariate(Data_to_use,
 #               ColumnsToUse,
 #               Outcome_name=Outcome_name,
 #               which.family="binomial")
-# GLM.fit=GLM_Multivariable(Data,
+# GLM.fit=GLM_Multivariable(Data_to_use,
 #                           ColumnsToUse,
 #                           Outcome_name=Outcome_name,
 #                           which.family="binomial")
@@ -238,7 +238,7 @@ Segmented_Regression_Model_Plot=function(Data,
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
 # Main_Pred_Var="sex"
 # Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
-# GLM_Confounder=GLM_Confounder_Model(Data,
+# GLM_Confounder=GLM_Confounder_Model(Data<-Data_to_use,
 #                                     Main_Pred_Var=Main_Pred_Var,
 #                                     Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
 #                                     Outcome_name="outcome",
@@ -331,9 +331,9 @@ GLM_Multivariable=function(Data, ColumnsToUse, Outcome_name, which.family){
   return(output)
 }
 
-#**************************
+#*************************
 # GLM_Confounder_Selection
-#**************************
+#*************************
 GLM_Confounder_Selection=function(Full_Model, 
                                   Main_Pred_Var, 
                                   Potential_Con_Vars, 
@@ -453,9 +453,9 @@ GLM_Confounder_Selection=function(Full_Model,
   return(Out)
 }
 
-#**********************
+#*********************
 # GLM_Confounder_Model
-#**********************
+#*********************
 GLM_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
@@ -2811,43 +2811,43 @@ GLMM_Confounder_Selection=function(Full_Model,
 #**********************
 # GLMM_Confounder_Model
 #**********************
-# lapply(c("geepack"), checkpackages)
-# data("respiratory")
-# Data=respiratory
-# 
-# Data$sex=as.character(Data$sex)
-# Data[sample(nrow(Data), 30), "sex"]="N"
-# Data[sample(nrow(Data), 30), "sex"]="P"
-# Data$sex=as.factor(Data$sex)
-# 
-# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(ColumnsToUse=="treat")]="P"
-# levels.of.fact[which(ColumnsToUse=="sex")]="F"
-# 
-# Data=Format_Columns(Data,
-#                     Outcome_name="outcome",
-#                     ColumnsToUse,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
-# 
-# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# Main_Pred_Var="sex"
-# Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
-# 
-# GLMM_Confounder=GLMM_Confounder_Model(Data,
-#                                       Main_Pred_Var=Main_Pred_Var,
-#                                       Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
-#                                       Outcome_name="outcome",
-#                                       ID_name="id",
-#                                       which.family="binomial", # gaussian, binomial, poisson
-#                                       NAGQ=1,
-#                                       Min.Change.Percentage=30,
-#                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
-# GLMM_Confounder$Full_Multivariable_Model$summ_table
-# GLMM_Confounder$Confounder_Steps$Confounders
-# GLMM_Confounder$Confounder_Model$summ_table
+lapply(c("geepack"), checkpackages)
+data("respiratory")
+Data_to_use=respiratory
+
+Data_to_use$sex=as.character(Data_to_use$sex)
+Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
+Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
+Data_to_use$sex=as.factor(Data_to_use$sex)
+
+ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, ColumnsToUse], class))=="integer", "num", "fact")
+levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+levels.of.fact[which(ColumnsToUse=="treat")]="P"
+levels.of.fact[which(ColumnsToUse=="sex")]="F"
+
+Data_to_use=Format_Columns(Data_to_use,
+                           Outcome_name="outcome",
+                           ColumnsToUse,
+                           vector.OF.classes.num.fact,
+                           levels.of.fact)
+
+# Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+Main_Pred_Var="sex"
+Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
+
+GLMM_Confounder=GLMM_Confounder_Model(Data=Data_to_use,
+                                      Main_Pred_Var=Main_Pred_Var,
+                                      Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+                                      Outcome_name="outcome",
+                                      ID_name="id",
+                                      which.family="binomial", # gaussian, binomial, poisson
+                                      NAGQ=1,
+                                      Min.Change.Percentage=30,
+                                      Estimate="raw_estimate") # raw_estimate, converted_estimate
+GLMM_Confounder$Full_Multivariable_Model$summ_table
+GLMM_Confounder$Confounder_Steps$Confounders
+GLMM_Confounder$Confounder_Model$summ_table
 GLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
