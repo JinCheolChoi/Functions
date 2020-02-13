@@ -208,6 +208,9 @@ Segmented_Regression_Model_Plot=function(Data,
 #   filter(visit==min(visit))
 # ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline")
 # Outcome_name="outcome"
+# Data$sex=as.character(Data$sex)
+# Data$sex[sample(1:nrow(Data), 50)]="N"
+# Data$sex=as.factor(Data$sex)
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(ColumnsToUse=="treat")]="P"
@@ -221,6 +224,30 @@ Segmented_Regression_Model_Plot=function(Data,
 #               ColumnsToUse,
 #               Outcome_name=Outcome_name,
 #               which.family="binomial")
+# GLM.fit=GLM_Multivariable(Data,
+#                           ColumnsToUse,
+#                           Outcome_name=Outcome_name,
+#                           which.family="binomial")
+# Confounder_Steps=GLM_Confounder_Selection(Full_Model=GLM.fit$model_fit,
+#                                           Main_Pred_Var="sex",
+#                                           Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"],
+#                                           which.family="binomial", # distribution of the response variable
+#                                           Min.Change.Percentage=5,
+#                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
+# Confounder_Steps$Confounders
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# Main_Pred_Var="sex"
+# Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
+# GLM_Confounder=GLM_Confounder_Model(Data,
+#                                     Main_Pred_Var=Main_Pred_Var,
+#                                     Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+#                                     Outcome_name="outcome",
+#                                     which.family="binomial", # gaussian, binomial, poisson
+#                                     Min.Change.Percentage=5,
+#                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
+# GLM_Confounder$Full_Multivariable_Model$summ_table
+# GLM_Confounder$Confounder_Steps$Confounders
+# GLM_Confounder$Confounder_Model$summ_table
 GLM_Bivariate=function(Data, ColumnsToUse, Outcome_name, which.family){
   # check out packages
   lapply(c("MASS"), checkpackages)
@@ -258,6 +285,212 @@ GLM_Bivariate=function(Data, ColumnsToUse, Outcome_name, which.family){
     #print(paste0(i, " ", ColumnsToUse[i]))
   }
   return(output)
+}
+
+#******************
+# GLM_Multivariable
+#******************
+GLM_Multivariable=function(Data, ColumnsToUse, Outcome_name, which.family){
+  # check out packages
+  lapply(c("MASS"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  Data=na.omit(Data[, c(Outcome_name, ColumnsToUse)])
+  
+  # main algorithm
+  output=c()
+  #i=1
+  # run model
+  fullmod=as.formula(paste(Outcome_name, " ~ ", paste(ColumnsToUse, collapse="+")))
+  model.fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
+  output$model_fit=model.fit
+  
+  # vif
+  if(length(ColumnsToUse)>=2){output$vif=car::vif(model.fit)}else{output$vif=""}
+  
+  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  OR.CI=exp(cbind(OR=coef(model.fit), confint(model.fit, level=0.95)))
+  colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
+  est=cbind(summary(model.fit)$coefficients, OR.CI)
+  
+  # output
+  output$summ_table=rbind(output$summ_table, 
+                          data.frame(
+                            Estimate=round2(est[-1, "Estimate"], 3), 
+                            Std.Error=round2(est[-1, "Std. Error"], 3), 
+                            `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001", 
+                                             format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
+                            OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2), 
+                                             " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ", 
+                                             format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"), 
+                            row.names=names(coef(model.fit))[-1]
+                          )
+  )
+  
+  return(output)
+}
+
+#**************************
+# GLM_Confounder_Selection
+#**************************
+GLM_Confounder_Selection=function(Full_Model, 
+                                  Main_Pred_Var, 
+                                  Potential_Con_Vars, 
+                                  which.family="binomial",
+                                  Min.Change.Percentage=10,
+                                  Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+  
+  # Full_Model=GLM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Potential_Con_Vars=Potential_Con_Vars
+  Include_Index=c(1:length(Potential_Con_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Fixed_Effects_Current_Full_Model=Current_Full_Model$coefficients
+    #Fixed_Effects_Current_Full_Model=fixef(Current_Full_Model)
+    Main_Effects_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    
+    # [ IMPORTANT ] - When indep_var is a factor with more than two levels, we pick max coef of its levels.
+    Main_Cov_Level=names(which.max(abs(Main_Effects_Current_Full_Model)))
+    Main_Effect_Current_Full_Model=Main_Effects_Current_Full_Model[Main_Cov_Level]
+    Main_Effect_Current_Reduced_Model=c()
+    
+    # run GLM excluding one variable at once
+    for(i in 1:length(Potential_Con_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse="-"))))
+      Fixed_Effects_Current_Reduced_Model=Current_Reduced_Model$coefficients
+      #Fixed_Effects_Current_Reduced_Model=fixef(Current_Reduced_Model)
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
+      
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
+    }
+    
+    if(Estimate=="raw_estimate"){
+      #**** refer to the raw coefficient estimate ****
+      Temp_Table=data.table(
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+        Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+        Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(Estimate=="converted_estimate"){
+      # summary table
+      if(which.family=="gaussian"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+          Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }else if(which.family=="binomial"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Est_Odds=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+          Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }else if(which.family=="poisson"){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+          Est_RR=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+          Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+          Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+        )
+      }
+    }
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+      loop.key=1
+    }else{
+      # decide the variable to remove
+      Var_to_Remove=Temp_Table[Rank==min(Rank, na.rm=T), Removed_Var]
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove[1])]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse="-"))))
+      # increase step
+      step=step+1
+      
+      # if there's no more variable left
+      if(length(Include_Index)==0){
+        Temp_Table=data.table(
+          Removed_Var=c("Full", Potential_Con_Vars[Include_Index]),
+          Estimate=c(fixef(Current_Full_Model)[-1]),
+          Delta="",
+          Rank=""
+        )
+        Out$summ_table[[step]]=Temp_Table
+        loop.key=1
+      }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  
+  return(Out)
+}
+
+#**********************
+# GLM_Confounder_Model
+#**********************
+GLM_Confounder_Model=function(Data,
+                              Main_Pred_Var,
+                              Potential_Con_Vars,
+                              Outcome_name,
+                              which.family,
+                              Min.Change.Percentage=5,
+                              Estimate="raw_estimate"){
+  Output=c()
+  # Full multivariable model
+  ColumnsToUse=c(Main_Pred_Var, Potential_Con_Vars)
+  Output$Full_Multivariable_Model=GLM_Multivariable(Data,
+                                                    ColumnsToUse=ColumnsToUse,
+                                                    Outcome_name=Outcome_name,
+                                                    which.family=which.family)
+  
+  # Confounder selection
+  Confounder_Steps=GLM_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
+                                            Main_Pred_Var=Main_Pred_Var,
+                                            Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+                                            which.family=which.family, # distribution of the response variable
+                                            Min.Change.Percentage=Min.Change.Percentage,
+                                            Estimate=Estimate) # raw_estimate, converted_estimate
+  
+  # save all stepwise procedure
+  Output$Confounder_Steps=Confounder_Steps
+  
+  # index of confounders
+  Confounder_Ind=which(ColumnsToUse%in%Output$Confounder_Steps$Confounders)
+  
+  # Multivariable model with confounders
+  Output$Confounder_Model=GLM_Multivariable(Data,
+                                            ColumnsToUse=ColumnsToUse[Confounder_Ind],
+                                            Outcome_name=Outcome_name,
+                                            which.family=which.family)
+  return(Output)
 }
 
 #******************************
@@ -2106,6 +2339,272 @@ GLMM_Ordinal_Bivariate_Format_2=function(Data,
   return(output)
 }
 
+#***************************
+# GLMM_Ordinal_Multivariable
+#***************************
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# ColumnsToUse=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# 
+# Data$sex=as.character(Data$sex) # make sex categorical
+# Data$sex[sample(1:length(Data$sex), 100)]="N"
+# Data$sex=factor(Data$sex)
+# 
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
+# Data=Format_Columns(Data,
+#                     Outcome_name="outcome",
+#                     ColumnsToUse,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# Data$outcome=as.factor(Data$outcome)
+# Data$id=as.factor(Data$id)
+# # proportional odds assumption test
+# Output=Proportional_Odds_Assumption_Test(Data<-Data,
+#                                          ColumnsToUse<-ColumnsToUse,
+#                                          Outcome_name<-"outcome")
+# Output$sig_vars # these variables are better to be assigned as nominal variables
+# Type_Odds=rep("Prop", length=length(ColumnsToUse))
+# Type_Odds[ColumnsToUse%in%Output$sig_vars]="Non_Prop"
+# #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Ordinal_Multivariable_Format_1(Data,
+#                                     Pred_Vars<-ColumnsToUse,
+#                                     Type_Odds<-Type_Odds,
+#                                     Res_Var<-"outcome",
+#                                     ID_name<-"id",
+#                                     NAGQ=3)
+# GLMM_Ordinal_Multivariable_Format_2(Data,
+#                                     Pred_Vars<-ColumnsToUse,
+#                                     Type_Odds<-Type_Odds,
+#                                     Res_Var<-"outcome",
+#                                     ID_name<-"id",
+#                                     NAGQ=3)
+#************************************
+# GLMM_Ordinal_Multivariable_Format_1
+GLMM_Ordinal_Multivariable_Format_1=function(Data,
+                                             Pred_Vars,
+                                             Type_Odds,
+                                             Res_Var,
+                                             ID_name,
+                                             NAGQ=3){
+  # check out packages
+  lapply(c("ordinal"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Res_Var]=factor(Data[, Res_Var], order=T)
+  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  
+  # main algorithm
+  output=c()
+  Loc_Vars<<-Pred_Vars[Type_Odds=="Prop"]
+  Nom_Vars<<-Pred_Vars[Type_Odds=="Non_Prop"]
+  
+  model.fit=clmm2(as.formula(paste(Res_Var, "~ ", paste(Loc_Vars, collapse="+"))),
+                  nominal=as.formula(paste("~ ", paste(Nom_Vars, collapse="+"))),
+                  random=eval(parse(text=ID_name)),
+                  data=Data,
+                  Hess=TRUE,
+                  nAGQ=NAGQ,
+                  link="logistic")
+  
+  model.fit.summ=summary(model.fit)$coefficients[-c(1:(length(levels(Data[, Res_Var]))-1)), ]
+  
+  # coefficient
+  Coef=model.fit.summ[, 1]
+  SE.Coef=model.fit.summ[, 2]
+  # confidence interval (exponentiated)
+  Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
+  Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
+  # CI (upper and lower bounds)
+  Upper_Bound=exp(Raw_Upper_Bound)
+  Lower_Bound=exp(Raw_Lower_Bound)
+  
+  # output
+  temp_out=c()
+  temp_out$Estimate=round2(Coef, 3)
+  temp_out$Std.Error=round2(SE.Coef, 3)
+  temp_out$`P-value`=ifelse(model.fit.summ[, 4]<0.001, "<0.001", 
+                            format(round2(model.fit.summ[, 4], 3), nsmall=3))
+  temp_out$OR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
+                            " (",
+                            format(round(Lower_Bound, 2), nsmall=2),
+                            " - ",
+                            format(round(Upper_Bound, 2), nsmall=2),
+                            ")")
+  
+  #
+  
+  temp_out=data.frame(temp_out)
+  for(i in 1:length(Pred_Vars)){
+    if(Type_Odds[i]=="Prop"){
+      if(is.factor(Data[, Pred_Vars[i]])){
+        name_temp=expand.grid(levels(Data[, Pred_Vars[i]])[-1])
+        rownames(temp_out)[grep(ColumnsToUse[i], rownames(temp_out))]=paste0(Pred_Vars[i], " ", unlist(name_temp))
+        
+      }else if(is.numeric(Data[, ColumnsToUse[i]])){
+        rownames(temp_out)[grep(ColumnsToUse[i], rownames(temp_out))]=paste0(ColumnsToUse[i])
+      }
+    }else if(Type_Odds[i]=="Non_Prop"){
+      # blank
+    }
+  }
+  
+  output=temp_out
+  return(output)
+  #print(paste(i, " ", ColumnsToUse[i], sep=""))
+}
+
+#************************************
+# GLMM_Ordinal_Multivariable_Format_2
+GLMM_Ordinal_Multivariable_Format_2=function(Data,
+                                             Pred_Vars,
+                                             Type_Odds,
+                                             Res_Var,
+                                             ID_name,
+                                             NAGQ=3){
+  # check out packages
+  lapply(c("ordinal"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Res_Var]=factor(Data[, Res_Var], order=T)
+  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  
+  # main algorithm
+  output=c()
+  Loc_Vars<<-Pred_Vars[Type_Odds=="Prop"]
+  Nom_Vars<<-Pred_Vars[Type_Odds=="Non_Prop"]
+  
+  model.fit=clmm2(as.formula(paste(Res_Var, "~ ", paste(Loc_Vars, collapse="+"))),
+                  nominal=as.formula(paste("~ ", paste(Nom_Vars, collapse="+"))),
+                  random=eval(parse(text=ID_name)),
+                  data=Data,
+                  Hess=TRUE,
+                  nAGQ=NAGQ,
+                  link="logistic")
+  
+  model.fit.summ=summary(model.fit)$coefficients[-c(1:(length(levels(Data[, Res_Var]))-1)), ]
+  
+  # coefficient
+  Coef=model.fit.summ[, 1]
+  SE.Coef=model.fit.summ[, 2]
+  # confidence interval (exponentiated)
+  Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
+  Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
+  # CI (upper and lower bounds)
+  Upper_Bound=exp(Raw_Upper_Bound)
+  Lower_Bound=exp(Raw_Lower_Bound)
+  
+  #
+  output$Prop_Odds=c()
+  output$Non_Prop_Odds=c()
+  for(i in 1:length(Pred_Vars)){
+    Target_Ind=grep(Pred_Vars[i], names(Coef))
+    
+    if(Type_Odds[i]=="Prop"){
+      # output
+      temp_out=c()
+      
+      temp_out$Estimate=round2(Coef[Target_Ind], 3)
+      temp_out$Std.Error=round2(SE.Coef[Target_Ind], 3)
+      temp_out$`P-value`=ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
+                                format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3))
+      temp_out$OR.and.CI=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
+                                " (",
+                                format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
+                                " - ",
+                                format(round(Upper_Bound[Target_Ind], 2), nsmall=2),
+                                ")")
+      temp_out=data.frame(temp_out)
+      
+      if(is.factor(Data[, Pred_Vars[i]])){
+        name_temp=expand.grid(levels(Data[, Pred_Vars[i]])[-1])
+        row.names(temp_out)=paste0(Pred_Vars[i], " ", unlist(name_temp))
+      }else if(is.numeric(Data[, Pred_Vars[i]])){
+        row.names(temp_out)=paste0(Pred_Vars[i])
+      }
+      # output
+      output$Prop_Odds=rbind(output$Prop_Odds, temp_out)
+    }else if(Type_Odds[i]=="Non_Prop"){
+      # output
+      temp_out=c()
+      # record 
+      if(is.factor(Data[, Pred_Vars[i]])){
+        X_Levels=levels(Data[, Pred_Vars[i]])
+        Y_Levels=levels(Data[, Outcome_name])
+        temp_out$Estimate=matrix(round2(Coef[Target_Ind], 3), 
+                                 ncol=length(X_Levels)-1, 
+                                 nrow=length(Y_Levels)-1)
+        temp_out$Std.Error=matrix(round2(SE.Coef[Target_Ind], 3), 
+                                  ncol=length(X_Levels)-1, 
+                                  nrow=length(Y_Levels)-1)
+        temp_out$`P-value`=matrix(
+          ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
+                 format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3)), 
+          ncol=length(X_Levels)-1, 
+          nrow=length(Y_Levels)-1)
+        temp_out$OR.and.CI=matrix(
+          paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
+                 " (",
+                 format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
+                 " - ",
+                 format(round(Upper_Bound[Target_Ind], 2), nsmall=2),
+                 ")"), 
+          ncol=length(X_Levels)-1, 
+          nrow=length(Y_Levels)-1)
+        # names for row and column
+        Temp_Row_Names=Y_Levels[-1]
+        Temp_Column_Names=paste0(Pred_Vars[i], " / ", X_Levels[-1])
+      }else if(is.numeric(Data[, Pred_Vars[i]])){
+        temp_out$Estimate=data.frame(X=round2(Coef[Target_Ind], 3))
+        temp_out$Std.Error=data.frame(X=round2(SE.Coef[Target_Ind], 3))
+        temp_out$`P-value`=data.frame(
+          X=ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
+                   format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3))
+        )
+        temp_out$OR.and.CI=data.frame(
+          X=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
+                   " (",
+                   format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
+                   " - ",
+                   format(round(Upper_Bound[Target_Ind], 2), nsmall=2),
+                   ")")
+        )
+        # names for row and column
+        Temp_Row_Names=levels(Data[, Outcome_name])[-1]
+        Temp_Column_Names=Pred_Vars[i]
+      }
+      
+      rownames(temp_out$Estimate)=Temp_Row_Names
+      colnames(temp_out$Estimate)=Temp_Column_Names
+      rownames(temp_out$Std.Error)=Temp_Row_Names
+      colnames(temp_out$Std.Error)=Temp_Column_Names
+      rownames(temp_out$`P-value`)=Temp_Row_Names
+      colnames(temp_out$`P-value`)=Temp_Column_Names
+      rownames(temp_out$OR.and.CI)=Temp_Row_Names
+      colnames(temp_out$OR.and.CI)=Temp_Column_Names
+      
+      # output
+      output$Non_Prop_Odds$Estimate=rbind(output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
+      output$Non_Prop_Odds$Std.Error=rbind(output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
+      output$Non_Prop_Odds$`P-value`=rbind(output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
+      output$Non_Prop_Odds$OR.and.CI=rbind(output$Non_Prop_Odds$OR.and.CI, t(temp_out$OR.and.CI))
+    }
+  }
+  
+  #print(paste(i, " ", ColumnsToUse[i], sep=""))
+  return(output)
+}
+
 #**********************************
 # Proportional_Odds_Assumption_Test
 #**********************************
@@ -2308,8 +2807,6 @@ GLMM_Confounder_Selection=function(Full_Model,
   
   return(Out)
 }
-
-
 
 #**********************
 # GLMM_Confounder_Model
@@ -3302,44 +3799,6 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 }
 
 
-#******************************************************
-#
-# [ Markov chain Monte Carlo (MCMC) for sampling ] ----
-#
-#******************************************************
-# Multivariate random-walk Metropolis sampling
-#*********************************************
-# Run multivariate random-walk Metro-polis sampling
-# (I think this is just a regular Metropolis-Hastings sampling for sampling multiple variables)
-#********
-# Example
-#********
-# # Define arguments
-# # x is a vector
-# ring2D=function(x){exp(-5*abs(x[1]^2+x[2]^2-1))}  
-# vcov2D=.01*diag(2)
-# target=ring2D
-# N=400
-# x=c(0, 0)
-# VCOV=vcov2D
-# # Call the sampling function with the arguments
-# ringsample2D=rwmetro(ring2D, 4000, c(0, 0), vcov2D)
-# # Use the sample
-# plot(ringsample2D[, 1], ringsample2D[, 2], xlim=c(-1.5, 1.5), ylim=c(-1.5, 1.5), main='Metropolis-Hastings Sample', xlab='x', ylab='y', pch='.')
-rwmetro=function(target, N, x, VCOV, burnin=0)
-{
-  require(MASS)   #requires package MASS for normal sampling
-  samples=x
-  for (i in 2:(burnin+N))
-  {
-    prop=mvrnorm(n=1, x, VCOV)
-    if (runif(1) < min(1, target(prop)/target(x)))
-      x=prop
-    samples=rbind(samples, x)
-  }
-  samples[(burnin+1):(N+burnin), ]
-}
-
 #********************************
 #
 # [ Descriptive Statistics ] ----
@@ -3799,7 +4258,7 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
 #********************************
 # lapply(c("dplyr",
 #          "data.table",
-#          
+# 
 #          "lme4",
 #          "epitools"
 # ),
@@ -3838,7 +4297,7 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var){
 #                                 Row_Var="outcome",
 #                                 Col_Var="age",
 #                                 Value="Percentage")
-# Line_Graph_Generator(Table_Data_1[2, 1:(ncol(Table_Data_1)-1)], 
+# Line_Graph_Generator(Table_Data[2, 1:(ncol(Table_Data)-1)],
 #                      Y_lab="Outcome",
 #                      X_lab="Age",
 #                      Y_breaks=2)
@@ -3934,6 +4393,44 @@ Line_Graph_Generator=function(Table_Data,
 }
 
 
+#******************************************************
+#
+# [ Markov chain Monte Carlo (MCMC) for sampling ] ----
+#
+#******************************************************
+# Multivariate random-walk Metropolis sampling
+#*********************************************
+# Run multivariate random-walk Metro-polis sampling
+# (I think this is just a regular Metropolis-Hastings sampling for sampling multiple variables)
+#********
+# Example
+#********
+# # Define arguments
+# # x is a vector
+# ring2D=function(x){exp(-5*abs(x[1]^2+x[2]^2-1))}  
+# vcov2D=.01*diag(2)
+# target=ring2D
+# N=400
+# x=c(0, 0)
+# VCOV=vcov2D
+# # Call the sampling function with the arguments
+# ringsample2D=rwmetro(ring2D, 4000, c(0, 0), vcov2D)
+# # Use the sample
+# plot(ringsample2D[, 1], ringsample2D[, 2], xlim=c(-1.5, 1.5), ylim=c(-1.5, 1.5), main='Metropolis-Hastings Sample', xlab='x', ylab='y', pch='.')
+rwmetro=function(target, N, x, VCOV, burnin=0)
+{
+  require(MASS)   #requires package MASS for normal sampling
+  samples=x
+  for (i in 2:(burnin+N))
+  {
+    prop=mvrnorm(n=1, x, VCOV)
+    if (runif(1) < min(1, target(prop)/target(x)))
+      x=prop
+    samples=rbind(samples, x)
+  }
+  samples[(burnin+1):(N+burnin), ]
+}
+
 
 #************* 
 # 
@@ -3942,10 +4439,11 @@ Line_Graph_Generator=function(Table_Data,
 #************* 
 # Mortgage_Calculator 
 #******************** 
-# Example 
-# Mortgage_Calculator(HP=1000000, DP=200000, 
-#                     ANIR=0.04, AP=25, 
-#                     ID="2020-02-01", PF="Monthly") 
+# Example
+#********
+# Mortgage_Calculator(HP=1000000, DP=200000,
+#                     ANIR=0.04, AP=25,
+#                     ID="2020-02-01", PF="Monthly")
 Mortgage_Calculator=function(HP=500000,          # House Price 
                              DP=100000,          # Down Payment 
                              ANIR=0.04,          # Annual Nominal Interest Rate 
@@ -3981,7 +4479,9 @@ Mortgage_Calculator=function(HP=500000,          # House Price
     } 
   } 
   return(as.data.table(Periodic_Table)) 
-} 
+}
+
+
 
 
 
