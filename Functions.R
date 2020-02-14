@@ -1,8 +1,8 @@
-#*******************************
+#***************************************
 #
-# [ Operational functions ] ----
+# [ --- Operational functions --- ] ----
 #
-#*******************************
+#***************************************
 # package check
 #**************
 # Example
@@ -15,13 +15,13 @@ checkpackages=function(package){
   if (!package %in% installed.packages()){
     install.packages(package)
   }
-  library(package, character.only =T)
+  library(package, character.only=T)
 }
 
 #********
 # rounds2
 #********
-round2=function(x, n) {
+round2=function(x, n){
   posneg=sign(x)
   z=abs(x)*10^n
   z=z + 0.5
@@ -103,11 +103,11 @@ Format_Columns=function(Data, Outcome_name, ColumnsToUse, vector.OF.classes.num.
   return(Data)
 }
 
-#******************************************
+#**************************************************
 #
-# [ Interrupted Time Series Analysis ] ----
+# [ --- Interrupted Time Series Analysis --- ] ----
 #
-#******************************************
+#**************************************************
 # Segmented_Regression_Model
 #***************************
 # Example
@@ -193,11 +193,11 @@ Segmented_Regression_Model_Plot=function(Data,
   Trend_Plot
 }
 
-#*************
+#*********************
 #
-# [ GLM ] ----
+# [ --- GLM --- ] ----
 #
-#******************************
+#*********************
 # GLM_Bivariate
 #**************
 # lapply(c("stats", "geepack"), checkpackages)
@@ -714,11 +714,11 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 }
 
 
-#*************
+#*********************
 #
-# [ GEE ] ----
+# [ --- GEE --- ] ----
 #
-#******************
+#*********************
 # GEE_Bivariate_Jin
 #******************
 # Example
@@ -1247,15 +1247,15 @@ GEE_Confounder_Model=function(Input_Data,
 
 
 
-#**************
+#**********************
 #
-# [ GLMM ] ----
+# [ --- GLMM --- ] ----
 #
-#*******************
+#**********************
 # GLMM_Bivariate
-#*******************
+#***************
 # Example
-#******************
+#************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
@@ -2786,11 +2786,11 @@ GLMM_Overdispersion_Test=function(model){
 }
 
 
-#**************
+#**********************
 #
-# [ CLMM ] ----
+# [ --- CLMM --- ] ----
 #
-#***********************
+#**********************
 # CLMM_Ordinal_Bivariate
 #***********************
 # lapply(c("geepack"), checkpackages)
@@ -3407,11 +3407,11 @@ Proportional_Odds_Assumption_Test=function(Data,
   return(output)
 }
 
-#**************
+#**********************
 #
-# [ GAMM ] ----
+# [ --- GAMM --- ] ----
 #
-#********************
+#**********************
 #
 # GAMM_Bivariate_Plot
 #
@@ -3530,15 +3530,15 @@ GAMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var=NA, which.family
   #plot_model(gaml$gam, type="pred")
 }
 
-#*************
+#*********************
 #
-# [ GAM ] ----
+# [ --- GAM --- ] ----
 #
-#*******************
+#*********************
 # GAM_Bivariate_Plot
 #*******************
 # Note that for count data (poisson distribution), the currently offset term is not included
-# *******************************************************************************************
+#*******************************************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
@@ -3635,11 +3635,11 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
   return(Out)
 }
 
-#*****************************************************
+#*************************************************************
 #
-# [ Multiple Imputation Analytic Result Combine ] ----
+# [ --- Multiple Imputation Analytic Result Combine --- ] ----
 #
-#*************************
+#*************************************************************
 # Combine_Multiple_Results
 #*************************
 # Combine the results of analysis from multiple imputed data sets.
@@ -3743,11 +3743,11 @@ Combine_Multiple_Results=function(Input_Data_Names){
 }
 
 
-#***************************
+#***********************************
 #
-# [ Contribution Plot ] ----
+# [ --- Contribution Plot --- ] ----
 #
-#***************************
+#***********************************
 # Contribution plot
 #******************
 # Draw a contribution plot that displays the extent of contribution of predictor variables on the linear association with response variables, 
@@ -3829,11 +3829,11 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 }
 
 
-#********************************
+#****************************************
 #
-# [ Descriptive Statistics ] ----
+# [ --- Descriptive Statistics --- ] ----
 #
-#********************************
+#****************************************
 #
 # Contingency_Table_Generator
 #
@@ -4423,11 +4423,11 @@ Line_Graph_Generator=function(Table_Data,
 }
 
 
-#******************************************************
+#**************************************************************
 #
-# [ Markov chain Monte Carlo (MCMC) for sampling ] ----
+# [ --- Markov chain Monte Carlo (MCMC) for sampling --- ] ----
 #
-#******************************************************
+#**************************************************************
 # Multivariate random-walk Metropolis sampling
 #*********************************************
 # Run multivariate random-walk Metro-polis sampling
@@ -4447,14 +4447,12 @@ Line_Graph_Generator=function(Table_Data,
 # ringsample2D=rwmetro(ring2D, 4000, c(0, 0), vcov2D)
 # # Use the sample
 # plot(ringsample2D[, 1], ringsample2D[, 2], xlim=c(-1.5, 1.5), ylim=c(-1.5, 1.5), main='Metropolis-Hastings Sample', xlab='x', ylab='y', pch='.')
-rwmetro=function(target, N, x, VCOV, burnin=0)
-{
+rwmetro=function(target, N, x, VCOV, burnin=0){
   require(MASS)   #requires package MASS for normal sampling
   samples=x
-  for (i in 2:(burnin+N))
-  {
+  for(i in 2:(burnin+N)){
     prop=mvrnorm(n=1, x, VCOV)
-    if (runif(1) < min(1, target(prop)/target(x)))
+    if(runif(1) < min(1, target(prop)/target(x)))
       x=prop
     samples=rbind(samples, x)
   }
@@ -4462,11 +4460,11 @@ rwmetro=function(target, N, x, VCOV, burnin=0)
 }
 
 
-#************* 
+#*********************
 # 
-# [ Etc ] ---- 
+# [ --- Etc --- ] ---- 
 # 
-#************* 
+#*********************
 # Mortgage_Calculator 
 #******************** 
 # Example
