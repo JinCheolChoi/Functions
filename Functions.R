@@ -2163,12 +2163,12 @@ GLMM_Ordinal_Bivariate_Format_1=function(Data,
     temp_out$Std.Error=round2(SE.Coef, 3)
     temp_out$`P-value`=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
                               format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
-    temp_out$OR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
-                              " (",
-                              format(round(Lower_Bound, 2), nsmall=2),
-                              " - ",
-                              format(round(Upper_Bound, 2), nsmall=2),
-                              ")")
+    temp_out$COR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
+                               " (",
+                               format(round(Lower_Bound, 2), nsmall=2),
+                               " - ",
+                               format(round(Upper_Bound, 2), nsmall=2),
+                               ")")
     
     #
     temp_out=data.frame(temp_out)
@@ -2253,12 +2253,12 @@ GLMM_Ordinal_Bivariate_Format_2=function(Data,
       temp_out$Std.Error=round2(SE.Coef, 3)
       temp_out$`P-value`=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
                                 format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
-      temp_out$OR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
-                                " (",
-                                format(round(Lower_Bound, 2), nsmall=2),
-                                " - ",
-                                format(round(Upper_Bound, 2), nsmall=2),
-                                ")")
+      temp_out$COR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
+                                 " (",
+                                 format(round(Lower_Bound, 2), nsmall=2),
+                                 " - ",
+                                 format(round(Upper_Bound, 2), nsmall=2),
+                                 ")")
       temp_out=data.frame(temp_out)
       
       if(is.factor(Data[, ColumnsToUse[i]])){
@@ -2287,7 +2287,7 @@ GLMM_Ordinal_Bivariate_Format_2=function(Data,
                  format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3)), 
           ncol=length(X_Levels)-1, 
           nrow=length(Y_Levels)-1)
-        temp_out$OR.and.CI=matrix(
+        temp_out$COR.and.CI=matrix(
           paste0(format(round(exp(Coef), 2), nsmall=2), 
                  " (",
                  format(round(Lower_Bound, 2), nsmall=2),
@@ -2306,7 +2306,7 @@ GLMM_Ordinal_Bivariate_Format_2=function(Data,
           X=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
                    format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
         )
-        temp_out$OR.and.CI=data.frame(
+        temp_out$COR.and.CI=data.frame(
           X=paste0(format(round(exp(Coef), 2), nsmall=2), 
                    " (",
                    format(round(Lower_Bound, 2), nsmall=2),
@@ -2325,14 +2325,14 @@ GLMM_Ordinal_Bivariate_Format_2=function(Data,
       colnames(temp_out$Std.Error)=Temp_Column_Names
       rownames(temp_out$`P-value`)=Temp_Row_Names
       colnames(temp_out$`P-value`)=Temp_Column_Names
-      rownames(temp_out$OR.and.CI)=Temp_Row_Names
-      colnames(temp_out$OR.and.CI)=Temp_Column_Names
+      rownames(temp_out$COR.and.CI)=Temp_Row_Names
+      colnames(temp_out$COR.and.CI)=Temp_Column_Names
       
       # output
       output$Non_Prop_Odds$Estimate=rbind(output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
       output$Non_Prop_Odds$Std.Error=rbind(output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
       output$Non_Prop_Odds$`P-value`=rbind(output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
-      output$Non_Prop_Odds$OR.and.CI=rbind(output$Non_Prop_Odds$OR.and.CI, t(temp_out$OR.and.CI))
+      output$Non_Prop_Odds$COR.and.CI=rbind(output$Non_Prop_Odds$COR.and.CI, t(temp_out$COR.and.CI))
     }
     #print(paste(i, " ", ColumnsToUse[i], sep=""))
   }
@@ -2432,12 +2432,12 @@ GLMM_Ordinal_Multivariable_Format_1=function(Data,
   temp_out$Std.Error=round2(SE.Coef, 3)
   temp_out$`P-value`=ifelse(model.fit.summ[, 4]<0.001, "<0.001", 
                             format(round2(model.fit.summ[, 4], 3), nsmall=3))
-  temp_out$OR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
-                            " (",
-                            format(round(Lower_Bound, 2), nsmall=2),
-                            " - ",
-                            format(round(Upper_Bound, 2), nsmall=2),
-                            ")")
+  temp_out$COR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
+                             " (",
+                             format(round(Lower_Bound, 2), nsmall=2),
+                             " - ",
+                             format(round(Upper_Bound, 2), nsmall=2),
+                             ")")
   
   #
   
@@ -2518,12 +2518,12 @@ GLMM_Ordinal_Multivariable_Format_2=function(Data,
       temp_out$Std.Error=round2(SE.Coef[Target_Ind], 3)
       temp_out$`P-value`=ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
                                 format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3))
-      temp_out$OR.and.CI=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
-                                " (",
-                                format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
-                                " - ",
-                                format(round(Upper_Bound[Target_Ind], 2), nsmall=2),
-                                ")")
+      temp_out$COR.and.CI=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
+                                 " (",
+                                 format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
+                                 " - ",
+                                 format(round(Upper_Bound[Target_Ind], 2), nsmall=2),
+                                 ")")
       temp_out=data.frame(temp_out)
       
       if(is.factor(Data[, Pred_Vars[i]])){
@@ -2552,7 +2552,7 @@ GLMM_Ordinal_Multivariable_Format_2=function(Data,
                  format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3)), 
           ncol=length(X_Levels)-1, 
           nrow=length(Y_Levels)-1)
-        temp_out$OR.and.CI=matrix(
+        temp_out$COR.and.CI=matrix(
           paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
                  " (",
                  format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
@@ -2571,7 +2571,7 @@ GLMM_Ordinal_Multivariable_Format_2=function(Data,
           X=ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
                    format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3))
         )
-        temp_out$OR.and.CI=data.frame(
+        temp_out$COR.and.CI=data.frame(
           X=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
                    " (",
                    format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
@@ -2590,14 +2590,14 @@ GLMM_Ordinal_Multivariable_Format_2=function(Data,
       colnames(temp_out$Std.Error)=Temp_Column_Names
       rownames(temp_out$`P-value`)=Temp_Row_Names
       colnames(temp_out$`P-value`)=Temp_Column_Names
-      rownames(temp_out$OR.and.CI)=Temp_Row_Names
-      colnames(temp_out$OR.and.CI)=Temp_Column_Names
+      rownames(temp_out$COR.and.CI)=Temp_Row_Names
+      colnames(temp_out$COR.and.CI)=Temp_Column_Names
       
       # output
       output$Non_Prop_Odds$Estimate=rbind(output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
       output$Non_Prop_Odds$Std.Error=rbind(output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
       output$Non_Prop_Odds$`P-value`=rbind(output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
-      output$Non_Prop_Odds$OR.and.CI=rbind(output$Non_Prop_Odds$OR.and.CI, t(temp_out$OR.and.CI))
+      output$Non_Prop_Odds$COR.and.CI=rbind(output$Non_Prop_Odds$COR.and.CI, t(temp_out$COR.and.CI))
     }
   }
   
@@ -2811,43 +2811,43 @@ GLMM_Confounder_Selection=function(Full_Model,
 #**********************
 # GLMM_Confounder_Model
 #**********************
-lapply(c("geepack"), checkpackages)
-data("respiratory")
-Data_to_use=respiratory
-
-Data_to_use$sex=as.character(Data_to_use$sex)
-Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
-Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
-Data_to_use$sex=as.factor(Data_to_use$sex)
-
-ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, ColumnsToUse], class))=="integer", "num", "fact")
-levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-levels.of.fact[which(ColumnsToUse=="treat")]="P"
-levels.of.fact[which(ColumnsToUse=="sex")]="F"
-
-Data_to_use=Format_Columns(Data_to_use,
-                           Outcome_name="outcome",
-                           ColumnsToUse,
-                           vector.OF.classes.num.fact,
-                           levels.of.fact)
-
-# Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-Main_Pred_Var="sex"
-Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
-
-GLMM_Confounder=GLMM_Confounder_Model(Data=Data_to_use,
-                                      Main_Pred_Var=Main_Pred_Var,
-                                      Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
-                                      Outcome_name="outcome",
-                                      ID_name="id",
-                                      which.family="binomial", # gaussian, binomial, poisson
-                                      NAGQ=1,
-                                      Min.Change.Percentage=30,
-                                      Estimate="raw_estimate") # raw_estimate, converted_estimate
-GLMM_Confounder$Full_Multivariable_Model$summ_table
-GLMM_Confounder$Confounder_Steps$Confounders
-GLMM_Confounder$Confounder_Model$summ_table
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# 
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# 
+# ColumnsToUse=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, ColumnsToUse], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(ColumnsToUse=="treat")]="P"
+# levels.of.fact[which(ColumnsToUse=="sex")]="F"
+# 
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Outcome_name="outcome",
+#                            ColumnsToUse,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# 
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# Main_Pred_Var="sex"
+# Potential_Con_Vars=ColumnsToUse[ColumnsToUse!="sex"]
+# 
+# GLMM_Confounder=GLMM_Confounder_Model(Data=Data_to_use,
+#                                       Main_Pred_Var=Main_Pred_Var,
+#                                       Potential_Con_Vars=ColumnsToUse[ColumnsToUse!=Main_Pred_Var],
+#                                       Outcome_name="outcome",
+#                                       ID_name="id",
+#                                       which.family="binomial", # gaussian, binomial, poisson
+#                                       NAGQ=1,
+#                                       Min.Change.Percentage=30,
+#                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
+# GLMM_Confounder$Full_Multivariable_Model$summ_table
+# GLMM_Confounder$Confounder_Steps$Confounders
+# GLMM_Confounder$Confounder_Model$summ_table
 GLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
