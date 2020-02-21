@@ -739,9 +739,9 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # GEE_Bivariate(Data,
 #                   Pred_Vars=Pred_Vars,
 #                   Res_Var="outcome",
-#                   ID_name="id",
+#                   Group_Var="id",
 #                   which.family="binomial")
-GEE_Bivariate=function(Data, Pred_Vars, Res_Var, ID_name, which.family="binomial"){
+GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomial"){
   # check out packages
   lapply(c("geepack", "MESS", "doBy"), checkpackages)
   
@@ -760,7 +760,7 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, ID_name, which.family="binomial
     
     # run model
     GEE.m=geeglm(as.formula(paste(Res_Var, "~", Pred_Vars[i])), 
-                 id=Data[target.indx, ID_name], data=Data[target.indx, c(Res_Var, Pred_Vars)], family=which.family, corstr="exchangeable")
+                 id=Data[target.indx, Group_Var], data=Data[target.indx, c(Res_Var, Pred_Vars)], family=which.family, corstr="exchangeable")
     
     # IndivID_vecual Wald test and confID_vecence interval for each parameter
     est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1, ]
@@ -835,9 +835,9 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, ID_name, which.family="binomial
 # GEE_Multivariable(Data,
 #                       Pred_Vars=Pred_Vars,
 #                       Res_Var="outcome",
-#                       ID_name="id",
+#                       Group_Var="id",
 #                       which.family="binomial")
-GEE_Multivariable=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # names of people should be numeric
+GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
@@ -845,13 +845,13 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # n
   Data=as.data.frame(Data)
   
   # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, ID_name, Res_Var)])
+  Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
   GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
-               data=Data[, c(Pred_Vars, ID_name, Res_Var)], 
-               id=Data[, ID_name], 
+               data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
+               id=Data[, Group_Var], 
                family=which.family, 
                corstr="exchangeable")
   
@@ -928,12 +928,12 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # n
 # GEE_Multivariable_with_vif(Remove_missing(Data_original, # remove missing data
 #                                               c(Pred_Vars<-Pred_Vars,
 #                                                 Res_Var<-"outcome",
-#                                                 ID_name<-"id")),
+#                                                 Group_Var<-"id")),
 #                                Pred_Vars<-Pred_Vars,
 #                                Res_Var<-Res_Var,
-#                                ID_name<-ID_name,
+#                                Group_Var<-Group_Var,
 #                                which.family<-"binomial")
-GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # names of people should be numeric
+GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
@@ -943,8 +943,8 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, ID_name, which.fam
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
   GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
-               data=Data[, c(Pred_Vars, ID_name, Res_Var)], 
-               id=Data[, ID_name], 
+               data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
+               id=Data[, Group_Var], 
                family=which.family, 
                corstr="exchangeable")
   
@@ -1022,10 +1022,10 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, ID_name, which.fam
 # GEE.fit=GEE_Multivariable_with_vif(Remove_missing(Data, # remove missing data
 #                                                       c(Pred_Vars<-Pred_Vars,
 #                                                         Res_Var<-"outcome",
-#                                                         ID_name<-"id")),
+#                                                         Group_Var<-"id")),
 #                                        Pred_Vars<-Pred_Vars,
 #                                        Res_Var<-Res_Var,
-#                                        ID_name<-ID_name,
+#                                        Group_Var<-Group_Var,
 #                                        which.family<-"binomial")
 # Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
 #                                           Main_Pred_Var="sex",
@@ -1037,10 +1037,10 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, ID_name, which.fam
 # GEE.confound.fit=GEE_Multivariable_with_vif(Remove_missing(Data, # remove missing data
 #                                                                c(Pred_Vars<-Pred_Vars,
 #                                                                  Res_Var<-"outcome",
-#                                                                  ID_name<-"id")),
+#                                                                  Group_Var<-"id")),
 #                                                 Pred_Vars<-Pred_Vars[Confounder_Ind],
 #                                                 Res_Var<-Res_Var,
-#                                                 ID_name<-ID_name,
+#                                                 Group_Var<-Group_Var,
 #                                                 which.family<-"binomial")
 # GEE.fit$summ_table
 # GEE.confound.fit$summ_table
@@ -1193,7 +1193,7 @@ GEE_Confounder_Selection=function(Full_Model,
 #                                     Main_Pred_Var<-Main_Pred_Var,
 #                                     Potential_Con_Vars<-Potential_Con_Vars,
 #                                     Res_Var<-"outcome",
-#                                     ID_name<-"id",
+#                                     Group_Var<-"id",
 #                                     which.family<-"gaussian", # gaussian, binomial, poisson
 #                                     Min.Change.Percentage=15,
 #                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
@@ -1204,7 +1204,7 @@ GEE_Confounder_Model=function(Input_Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
                               Res_Var,
-                              ID_name,
+                              Group_Var,
                               which.family,
                               Min.Change.Percentage=5,
                               Estimate="raw_estimate"){
@@ -1217,10 +1217,10 @@ GEE_Confounder_Model=function(Input_Data,
   Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data=Remove_missing(Input_Data, # remove missing data
                                                                                  c(Pred_Vars,
                                                                                    Res_Var,
-                                                                                   ID_name)),
+                                                                                   Group_Var)),
                                                              Pred_Vars<<-Pred_Vars,
                                                              Res_Var<<-Res_Var,
-                                                             ID_name<<-ID_name,
+                                                             Group_Var<<-Group_Var,
                                                              which.family<<-which.family)
   
   # Confounder selection
@@ -1237,10 +1237,10 @@ GEE_Confounder_Model=function(Input_Data,
   Output$Confounder_Model=GEE_Multivariable_with_vif(Data=Remove_missing(Input_Data, # remove missing data
                                                                          c(Pred_Vars[Confounder_Ind],
                                                                            Res_Var,
-                                                                           ID_name)),
+                                                                           Group_Var)),
                                                      Pred_Vars<<-Pred_Vars[Confounder_Ind],
                                                      Res_Var<<-Res_Var,
-                                                     ID_name<<-ID_name,
+                                                     Group_Var<<-Group_Var,
                                                      which.family<<-which.family)
   return(Output)
 }
@@ -1273,7 +1273,7 @@ GEE_Confounder_Model=function(Input_Data,
 # GLMM_Bivariate(Data,
 #                    Pred_Vars,
 #                    Res_Var="outcome",
-#                    ID_name="id",
+#                    Group_Var="id",
 #                    which.family<-"binomial", # gaussian, binomial, poisson
 #                    NAGQ<-1,
 #                    Compute.Power=T, # power can be computed for a non-gaussian distribution
@@ -1281,7 +1281,7 @@ GEE_Confounder_Model=function(Input_Data,
 GLMM_Bivariate=function(Data,
                         Pred_Vars,
                         Res_Var,
-                        ID_name,
+                        Group_Var,
                         which.family,
                         NAGQ=100,
                         Compute.Power=FALSE,
@@ -1297,14 +1297,14 @@ GLMM_Bivariate=function(Data,
   for(i in 1:length(Pred_Vars)){
     #i=1
     # run model
-    #fullmod=as.formula(paste(Res_Var, "~", Pred_Vars[i], "+(1|", ID_name, ")", sep=""))
+    #fullmod=as.formula(paste(Res_Var, "~", Pred_Vars[i], "+(1|", Group_Var, ")", sep=""))
     if(which.family=="gaussian"){
-      myfit=lmer(as.formula(paste(Res_Var, "~", Pred_Vars[i], "+(1|", ID_name, ")", sep="")), 
+      myfit=lmer(as.formula(paste(Res_Var, "~", Pred_Vars[i], "+(1|", Group_Var, ")", sep="")), 
                  na.action=na.exclude, 
                  data=Data, 
                  control=lmerControl(optimizer=c("bobyqa"))) # the other optimizer : "Nelder_Mead"
     }else{
-      myfit=glmer(as.formula(paste(Res_Var, "~", Pred_Vars[i], "+(1|", ID_name, ")", sep="")), 
+      myfit=glmer(as.formula(paste(Res_Var, "~", Pred_Vars[i], "+(1|", Group_Var, ")", sep="")), 
                   family=which.family, 
                   na.action=na.exclude, 
                   data=Data, 
@@ -1382,18 +1382,19 @@ GLMM_Bivariate=function(Data,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Multivariable(Data,
-#                        Pred_Vars,
-#                        Res_Var="outcome",
-#                        ID_name="id",
-#                        which.family<-"binomial", # gaussian, binomial, poisson
-#                        NAGQ<-1,
-#                        Compute.Power=F, # power can be computed for a non-gaussian distribution
-#                        nsim=5)
+# GLMM_Mult_model=GLMM_Multivariable(Data,
+#                                    Pred_Vars,
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
 GLMM_Multivariable=function(Data,
                             Pred_Vars,
                             Res_Var,
-                            ID_name, which.family,
+                            Group_Var, 
+                            which.family,
                             NAGQ=100,
                             Compute.Power=FALSE,
                             nsim=1000){
@@ -1404,14 +1405,14 @@ GLMM_Multivariable=function(Data,
   Data=as.data.frame(Data)
   
   # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", ID_name, ")", sep=""))
+  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
   if(which.family=="gaussian"){
-    myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", ID_name, ")", sep="")), 
+    myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
                na.action=na.exclude, 
                data=Data, 
                control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)))
   }else{
-    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", ID_name, ")", sep="")), 
+    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
                 family=which.family, 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
@@ -1512,17 +1513,17 @@ GLMM_Multivariable=function(Data,
 # GLMM_Multinomial_Bivariate_Format_1(Data,
 #                                     Pred_Vars,
 #                                     Res_Var="outcome",
-#                                     ID_name="id")
+#                                     Group_Var="id")
 # GLMM_Multinomial_Bivariate_Format_2(Data,
 #                                     Pred_Vars,
 #                                     Res_Var="outcome",
-#                                     ID_name="id")
+#                                     Group_Var="id")
 #************************************
 # GLMM_Multinomial_Bivariate_Format_1
 GLMM_Multinomial_Bivariate_Format_1=function(Data,
                                              Pred_Vars,
                                              Res_Var,
-                                             ID_name,
+                                             Group_Var,
                                              k=2,
                                              maxit=500,
                                              tol=1e-04){
@@ -1536,7 +1537,7 @@ GLMM_Multinomial_Bivariate_Format_1=function(Data,
   Data[, Res_Var]=as.factor(Data[, Res_Var])
   Y_Levels=levels(Data[, Res_Var])
   Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, ID_name]
+  ID=Data[, Group_Var]
   
   # main algorithm
   output=c()
@@ -1638,7 +1639,7 @@ GLMM_Multinomial_Bivariate_Format_1=function(Data,
 GLMM_Multinomial_Bivariate_Format_2=function(Data,
                                              Pred_Vars,
                                              Res_Var,
-                                             ID_name,
+                                             Group_Var,
                                              k=2,
                                              maxit=500,
                                              tol=1e-04){
@@ -1652,7 +1653,7 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
   Data[, Res_Var]=as.factor(Data[, Res_Var])
   Y_Levels=levels(Data[, Res_Var])
   Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, ID_name]
+  ID=Data[, Group_Var]
   
   # main algorithm
   output=c()
@@ -1811,11 +1812,11 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
 # GLMM_Multinomial_Multivariate_Format_1(Data,
 #                                        Pred_Vars,
 #                                        Res_Var="outcome",
-#                                        ID_name="id")
+#                                        Group_Var="id")
 # GLMM_Multinomial_Multivariate_Format_2(Data,
 #                                        Pred_Vars,
 #                                        Res_Var="outcome",
-#                                        ID_name="id",
+#                                        Group_Var="id",
 #                                        maxit=10,
 #                                        par.update=T)
 #***************************************
@@ -1823,7 +1824,7 @@ GLMM_Multinomial_Bivariate_Format_2=function(Data,
 GLMM_Multinomial_Multivariate_Format_1=function(Data,
                                                 Pred_Vars,
                                                 Res_Var,
-                                                ID_name,
+                                                Group_Var,
                                                 k=2,
                                                 maxit=500,
                                                 tol=1e-04){
@@ -1837,7 +1838,7 @@ GLMM_Multinomial_Multivariate_Format_1=function(Data,
   Data[, Res_Var]=as.factor(Data[, Res_Var])
   Y_Levels=levels(Data[, Res_Var])
   Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, ID_name]
+  ID=Data[, Group_Var]
   
   # assign predictors to values
   for(i in 1:length(Pred_Vars)){
@@ -1942,7 +1943,7 @@ GLMM_Multinomial_Multivariate_Format_1=function(Data,
 GLMM_Multinomial_Multivariate_Format_2=function(Data,
                                                 Pred_Vars,
                                                 Res_Var,
-                                                ID_name,
+                                                Group_Var,
                                                 k=2,
                                                 maxit=500,
                                                 tol=1e-04,
@@ -1957,7 +1958,7 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
   Data[, Res_Var]=as.factor(Data[, Res_Var])
   Y_Levels=levels(Data[, Res_Var])
   Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, ID_name]
+  ID=Data[, Group_Var]
   
   # assign predictors to values
   for(i in 1:length(Pred_Vars)){
@@ -2003,6 +2004,8 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
       }
     }
   }
+  
+                     
   print(paste0("[ ", count, "th run ] - Algorithm converged (k=", k, ", maxit=", maxit, ", tol=", tol, ")"))
   
   # coefficient
@@ -2087,7 +2090,7 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
 # GLMM.fit=GLMM_Multivariable(Data,
 #                                 Pred_Vars,
 #                                 Res_Var="outcome",
-#                                 ID_name="id",
+#                                 Group_Var="id",
 #                                 which.family="binomial", # gaussian, binomial, poisson
 #                                 NAGQ<-1,
 #                                 Compute.Power=F,
@@ -2248,7 +2251,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       Main_Pred_Var=Main_Pred_Var,
 #                                       Potential_Con_Vars=Pred_Vars[Pred_Vars!=Main_Pred_Var],
 #                                       Res_Var="outcome",
-#                                       ID_name="id",
+#                                       Group_Var="id",
 #                                       which.family="binomial", # gaussian, binomial, poisson
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=30,
@@ -2260,7 +2263,7 @@ GLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
                                Res_Var,
-                               ID_name,
+                               Group_Var,
                                which.family,
                                NAGQ=100,
                                Min.Change.Percentage=5,
@@ -2271,7 +2274,7 @@ GLMM_Confounder_Model=function(Data,
   Output$Full_Multivariable_Model=GLMM_Multivariable(Data,
                                                      Pred_Vars=Pred_Vars,
                                                      Res_Var=Res_Var,
-                                                     ID_name=ID_name,
+                                                     Group_Var=Group_Var,
                                                      which.family=which.family,
                                                      NAGQ=NAGQ)
   
@@ -2293,7 +2296,7 @@ GLMM_Confounder_Model=function(Data,
   Output$Confounder_Model=GLMM_Multivariable(Data,
                                              Pred_Vars=Pred_Vars[Confounder_Ind],
                                              Res_Var=Res_Var,
-                                             ID_name=ID_name,
+                                             Group_Var=Group_Var,
                                              which.family=which.family,
                                              NAGQ=NAGQ)
   return(Output)
@@ -2755,6 +2758,50 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
   return(output)
 }
 
+#**********
+#
+# GLMM_Plot
+#
+#**********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data=Format_Columns(Data,
+#                     Res_Var="outcome",
+#                     Pred_Vars,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Mult_model=GLMM_Multivariable(Data,
+#                                    Pred_Vars,
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
+# GLMM_Plot(Model_Fit=GLMM_Mult_model$model_fit,
+#           X_Var="age",
+#           Group_Var=Group_Var,
+#           Type="fe")
+GLMM_Plot=function(Model_Fit,
+                   X_Var,
+                   Group_Var,
+                   Type="fe"){
+  
+  # check out packages
+  lapply(c("ggeffects"), checkpackages)
+  
+  plot(ggpredict(Model_Fit,
+                 terms=c(X_Var, paste0(Group_Var, "[sample=9]")), type=Type),
+       add.data=T)
+}
+
 #*************************
 #
 # GLMM_Overdispersion_Test
@@ -2826,13 +2873,13 @@ GLMM_Overdispersion_Test=function(model){
 #                                 Pred_Vars<-Pred_Vars,
 #                                 Type_Odds<-Type_Odds,
 #                                 Res_Var<-"outcome",
-#                                 ID_name<-"id",
+#                                 Group_Var<-"id",
 #                                 NAGQ=3)
 # CLMM_Ordinal_Bivariate_Format_2(Data,
 #                                 Pred_Vars<-Pred_Vars,
 #                                 Type_Odds<-Type_Odds,
 #                                 Res_Var<-"outcome",
-#                                 ID_name<-"id",
+#                                 Group_Var<-"id",
 #                                 NAGQ=3)
 #********************************
 # CLMM_Ordinal_Bivariate_Format_1
@@ -2840,7 +2887,7 @@ CLMM_Ordinal_Bivariate_Format_1=function(Data,
                                          Pred_Vars,
                                          Type_Odds,
                                          Res_Var,
-                                         ID_name,
+                                         Group_Var,
                                          NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
@@ -2850,7 +2897,7 @@ CLMM_Ordinal_Bivariate_Format_1=function(Data,
   
   # values
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
-  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  Data[, Group_Var]=factor(Data[, Group_Var], order=F)
   
   # main algorithm
   output=c()
@@ -2861,7 +2908,7 @@ CLMM_Ordinal_Bivariate_Format_1=function(Data,
     if(Type_Odds[i]=="Prop"){
       model.fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
                       #nominal=as.formula(paste("~", Nom_Vars[i])),
-                      random=eval(parse(text=ID_name)),
+                      random=eval(parse(text=Group_Var)),
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
@@ -2869,7 +2916,7 @@ CLMM_Ordinal_Bivariate_Format_1=function(Data,
     }else if(Type_Odds[i]=="Non_Prop"){
       model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
                       nominal=as.formula(paste("~", Pred_Vars[i])),
-                      random=eval(parse(text=ID_name)),
+                      random=eval(parse(text=Group_Var)),
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
@@ -2928,7 +2975,7 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
                                          Pred_Vars,
                                          Type_Odds,
                                          Res_Var,
-                                         ID_name,
+                                         Group_Var,
                                          NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
@@ -2938,7 +2985,7 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
   
   # values
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
-  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  Data[, Group_Var]=factor(Data[, Group_Var], order=F)
   
   # main algorithm
   output=c()
@@ -2949,7 +2996,7 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
     if(Type_Odds[i]=="Prop"){
       model.fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
                       #nominal=as.formula(paste("~", Nom_Vars[i])),
-                      random=eval(parse(text=ID_name)),
+                      random=eval(parse(text=Group_Var)),
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
@@ -2957,7 +3004,7 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
     }else if(Type_Odds[i]=="Non_Prop"){
       model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
                       nominal=as.formula(paste("~", Pred_Vars[i])),
-                      random=eval(parse(text=ID_name)),
+                      random=eval(parse(text=Group_Var)),
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
@@ -3107,13 +3154,13 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
 #                                     Pred_Vars<-Pred_Vars,
 #                                     Type_Odds<-Type_Odds,
 #                                     Res_Var<-"outcome",
-#                                     ID_name<-"id",
+#                                     Group_Var<-"id",
 #                                     NAGQ=3)
 # CLMM_Ordinal_Multivariable_Format_2(Data,
 #                                     Pred_Vars<-Pred_Vars,
 #                                     Type_Odds<-Type_Odds,
 #                                     Res_Var<-"outcome",
-#                                     ID_name<-"id",
+#                                     Group_Var<-"id",
 #                                     NAGQ=3)
 #************************************
 # CLMM_Ordinal_Multivariable_Format_1
@@ -3121,7 +3168,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
                                              Pred_Vars,
                                              Type_Odds,
                                              Res_Var,
-                                             ID_name,
+                                             Group_Var,
                                              NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
@@ -3131,7 +3178,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
   
   # values
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
-  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  Data[, Group_Var]=factor(Data[, Group_Var], order=F)
   
   # main algorithm
   output=c()
@@ -3141,7 +3188,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
   if(length(Loc_Vars)==0){ # if all are not proportional odds
     model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=ID_name)),
+                    random=eval(parse(text=Group_Var)),
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
@@ -3149,7 +3196,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
   }else if(length(Nom_Vars)==0){ # if all are proportional odds
     model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     #nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=ID_name)),
+                    random=eval(parse(text=Group_Var)),
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
@@ -3157,7 +3204,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
   }else if(length(Loc_Vars)!=0 & length(Nom_Vars)!=0){ # mixed
     model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=ID_name)),
+                    random=eval(parse(text=Group_Var)),
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
@@ -3219,7 +3266,7 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
                                              Pred_Vars,
                                              Type_Odds,
                                              Res_Var,
-                                             ID_name,
+                                             Group_Var,
                                              NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
@@ -3229,7 +3276,7 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
   
   # values
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
-  Data[, ID_name]=factor(Data[, ID_name], order=F)
+  Data[, Group_Var]=factor(Data[, Group_Var], order=F)
   
   # main algorithm
   output=c()
@@ -3239,7 +3286,7 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
   if(length(Loc_Vars)==0){ # if all are not proportional odds
     model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=ID_name)),
+                    random=eval(parse(text=Group_Var)),
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
@@ -3247,7 +3294,7 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
   }else if(length(Nom_Vars)==0){ # if all are proportional odds
     model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     #nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=ID_name)),
+                    random=eval(parse(text=Group_Var)),
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
@@ -3255,7 +3302,7 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
   }else if(length(Loc_Vars)!=0 & length(Nom_Vars)!=0){ # mixed
     model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=ID_name)),
+                    random=eval(parse(text=Group_Var)),
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
@@ -3415,7 +3462,7 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
 #                                              Pred_Vars<-Pred_Vars,
 #                                              Type_Odds<-Type_Odds,
 #                                              Res_Var<-"outcome",
-#                                              ID_name<-"id",
+#                                              Group_Var<-"id",
 #                                              NAGQ<-3)
 # 
 # Confounder_Steps=CLMM_Confounder_Selection(Full_Model=CLMM.fit$model_fit,
@@ -3611,7 +3658,7 @@ CLMM_Confounder_Selection=function(Full_Model,
 #                                       Main_Pred_Var<-Main_Pred_Var,
 #                                       Potential_Con_Vars<-Pred_Vars[Pred_Vars!=Main_Pred_Var],
 #                                       Res_Var<-"outcome",
-#                                       ID_name<-"id",
+#                                       Group_Var<-"id",
 #                                       NAGQ<-3,
 #                                       Min.Change.Percentage<-5,
 #                                       Estimate<-"raw_estimate") # raw_estimate, converted_estimate
@@ -3625,7 +3672,7 @@ CLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
                                Res_Var,
-                               ID_name,
+                               Group_Var,
                                NAGQ=3,
                                Min.Change.Percentage=5,
                                Estimate="raw_estimate"){
@@ -3646,7 +3693,7 @@ CLMM_Confounder_Model=function(Data,
                                                                       Pred_Vars<-Pred_Vars,
                                                                       Type_Odds<-Type_Odds,
                                                                       Res_Var<-Res_Var,
-                                                                      ID_name<-ID_name,
+                                                                      Group_Var<-Group_Var,
                                                                       NAGQ<-NAGQ)
   # Confounder selection
   Confounder_Steps=CLMM_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
@@ -3669,7 +3716,7 @@ CLMM_Confounder_Model=function(Data,
                                                               Pred_Vars<-Pred_Vars[Confounder_Ind],
                                                               Type_Odds<-Type_Odds[Confounder_Ind],
                                                               Res_Var<-Res_Var,
-                                                              ID_name<-ID_name,
+                                                              Group_Var<-Group_Var,
                                                               NAGQ<-NAGQ)
   return(Output)
 }
@@ -3995,7 +4042,7 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # Data=respiratory
 # Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # Res_Var="outcome"
-# ID_name="id"
+# Group_Var="id"
 # which.family="binomial"
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
@@ -4028,10 +4075,10 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                   interacs=FALSE # TRUE if time effects of polytime vary across the cross-section
 # )
 # # GEE using the 1st imputed data set
-# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars, Res_Var, ID_name, which.family)$summ_table %>%
+# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars, Res_Var, Group_Var, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # GEE using the 2nd imputed data set
-# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars, Res_Var, ID_name, which.family)$summ_table %>%
+# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars, Res_Var, Group_Var, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
