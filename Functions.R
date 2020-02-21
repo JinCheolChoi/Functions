@@ -494,7 +494,7 @@ GLM_Confounder_Model=function(Data,
 }
 
 #******************************
-# GLM_NB_Bivariate_Personal_Jin
+# GLM_NB_Bivariate_Personal
 #******************************
 # Run simple GLM models for each explanatory variable with negative binomial distribution 
 # to account for zero-inflated data (i.e. the excessive number of 0s).
@@ -522,9 +522,9 @@ GLM_Confounder_Model=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# GLM_NB_Bivariate_Personal_Jin(Data, Pred_Vars, Res_Var,
+# GLM_NB_Bivariate_Personal(Data, Pred_Vars, Res_Var,
 #                               Offset_name)
-GLM_NB_Bivariate_Personal_Jin=function(Data, Pred_Vars, Res_Var, Offset_name){
+GLM_NB_Bivariate_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
   # check out packages
   lapply(c("MASS"), checkpackages)
   
@@ -562,7 +562,7 @@ GLM_NB_Bivariate_Personal_Jin=function(Data, Pred_Vars, Res_Var, Offset_name){
 }
 
 #**************************
-# GLM_NB_Multi_Personal_Jin
+# GLM_NB_Multi_Personal
 #**************************
 # Run a multiple GLM model with negative binomial distribution to account for zero-inflated data
 # (i.e. the excessive number of 0s).
@@ -590,9 +590,9 @@ GLM_NB_Bivariate_Personal_Jin=function(Data, Pred_Vars, Res_Var, Offset_name){
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# GLM_NB_Multi_Personal_Jin(Data, Pred_Vars, Res_Var,
+# GLM_NB_Multi_Personal(Data, Pred_Vars, Res_Var,
 #                           Offset_name)
-GLM_NB_Multi_Personal_Jin=function(Data, Pred_Vars, Res_Var, Offset_name){
+GLM_NB_Multi_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
   # check out packages
   lapply(c("MASS"), checkpackages)
   
@@ -719,7 +719,7 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # [ --- GEE --- ] ----
 #
 #*********************
-# GEE_Bivariate_Jin
+# GEE_Bivariate
 #******************
 # Example
 #******************
@@ -736,12 +736,12 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# GEE_Bivariate_Jin(Data,
+# GEE_Bivariate(Data,
 #                   Pred_Vars=Pred_Vars,
 #                   Res_Var="outcome",
 #                   ID_name="id",
 #                   which.family="binomial")
-GEE_Bivariate_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family="binomial"){
+GEE_Bivariate=function(Data, Pred_Vars, Res_Var, ID_name, which.family="binomial"){
   # check out packages
   lapply(c("geepack", "MESS", "doBy"), checkpackages)
   
@@ -813,7 +813,7 @@ GEE_Bivariate_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family="bino
 }
 
 #***********************
-# GEE_Multivariable_Jin
+# GEE_Multivariable
 #***********************
 # Example
 #*****************
@@ -831,13 +831,13 @@ GEE_Bivariate_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family="bino
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# # run GEE_Multivariable_Jin
-# GEE_Multivariable_Jin(Data,
+# # run GEE_Multivariable
+# GEE_Multivariable(Data,
 #                       Pred_Vars=Pred_Vars,
 #                       Res_Var="outcome",
 #                       ID_name="id",
 #                       which.family="binomial")
-GEE_Multivariable_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # names of people should be numeric
+GEE_Multivariable=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
@@ -900,7 +900,7 @@ GEE_Multivariable_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family){
 }
 
 #*******************************
-# GEE_Multivariable_with_vif_Jin
+# GEE_Multivariable_with_vif
 #*******************************
 # Example
 #**************************************************************************
@@ -924,8 +924,8 @@ GEE_Multivariable_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family){
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# # run GEE_Multivariable_with_vif_Jin
-# GEE_Multivariable_with_vif_Jin(Remove_missing(Data_original, # remove missing data
+# # run GEE_Multivariable_with_vif
+# GEE_Multivariable_with_vif(Remove_missing(Data_original, # remove missing data
 #                                               c(Pred_Vars<-Pred_Vars,
 #                                                 Res_Var<-"outcome",
 #                                                 ID_name<-"id")),
@@ -933,7 +933,7 @@ GEE_Multivariable_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family){
 #                                Res_Var<-Res_Var,
 #                                ID_name<-ID_name,
 #                                which.family<-"binomial")
-GEE_Multivariable_with_vif_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # names of people should be numeric
+GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, ID_name, which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
@@ -1019,7 +1019,7 @@ GEE_Multivariable_with_vif_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which
 #                     levels.of.fact)
 # 
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GEE.fit=GEE_Multivariable_with_vif_Jin(Remove_missing(Data, # remove missing data
+# GEE.fit=GEE_Multivariable_with_vif(Remove_missing(Data, # remove missing data
 #                                                       c(Pred_Vars<-Pred_Vars,
 #                                                         Res_Var<-"outcome",
 #                                                         ID_name<-"id")),
@@ -1034,7 +1034,7 @@ GEE_Multivariable_with_vif_Jin=function(Data, Pred_Vars, Res_Var, ID_name, which
 #                                           Min.Change.Percentage=30,
 #                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
 # Confounder_Ind=which(Pred_Vars%in%Confounder_Steps$Confounders)
-# GEE.confound.fit=GEE_Multivariable_with_vif_Jin(Remove_missing(Data, # remove missing data
+# GEE.confound.fit=GEE_Multivariable_with_vif(Remove_missing(Data, # remove missing data
 #                                                                c(Pred_Vars<-Pred_Vars,
 #                                                                  Res_Var<-"outcome",
 #                                                                  ID_name<-"id")),
@@ -1214,14 +1214,14 @@ GEE_Confounder_Model=function(Input_Data,
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
   
-  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif_Jin(Data=Remove_missing(Input_Data, # remove missing data
-                                                                                     c(Pred_Vars,
-                                                                                       Res_Var,
-                                                                                       ID_name)),
-                                                                 Pred_Vars<<-Pred_Vars,
-                                                                 Res_Var<<-Res_Var,
-                                                                 ID_name<<-ID_name,
-                                                                 which.family<<-which.family)
+  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data=Remove_missing(Input_Data, # remove missing data
+                                                                                 c(Pred_Vars,
+                                                                                   Res_Var,
+                                                                                   ID_name)),
+                                                             Pred_Vars<<-Pred_Vars,
+                                                             Res_Var<<-Res_Var,
+                                                             ID_name<<-ID_name,
+                                                             which.family<<-which.family)
   
   # Confounder selection
   Confounder_Steps=GEE_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
@@ -1234,14 +1234,14 @@ GEE_Confounder_Model=function(Input_Data,
   Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
   
   # Multivariable model with confounders
-  Output$Confounder_Model=GEE_Multivariable_with_vif_Jin(Data=Remove_missing(Input_Data, # remove missing data
-                                                                             c(Pred_Vars[Confounder_Ind],
-                                                                               Res_Var,
-                                                                               ID_name)),
-                                                         Pred_Vars<<-Pred_Vars[Confounder_Ind],
-                                                         Res_Var<<-Res_Var,
-                                                         ID_name<<-ID_name,
-                                                         which.family<<-which.family)
+  Output$Confounder_Model=GEE_Multivariable_with_vif(Data=Remove_missing(Input_Data, # remove missing data
+                                                                         c(Pred_Vars[Confounder_Ind],
+                                                                           Res_Var,
+                                                                           ID_name)),
+                                                     Pred_Vars<<-Pred_Vars[Confounder_Ind],
+                                                     Res_Var<<-Res_Var,
+                                                     ID_name<<-ID_name,
+                                                     which.family<<-which.family)
   return(Output)
 }
 
@@ -1363,9 +1363,9 @@ GLMM_Bivariate=function(Data,
 }
 
 
-#***********************
+#*******************
 # GLMM_Multivariable
-#***********************
+#*******************
 # Example
 #******************
 # lapply(c("geepack"), checkpackages)
@@ -4028,10 +4028,10 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                   interacs=FALSE # TRUE if time effects of polytime vary across the cross-section
 # )
 # # GEE using the 1st imputed data set
-# GEE.result.1=GEE_Multivariable_Jin(amelia.imp$imputations$imp1, Pred_Vars, Res_Var, ID_name, which.family)$summ_table %>%
+# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars, Res_Var, ID_name, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # GEE using the 2nd imputed data set
-# GEE.result.2=GEE_Multivariable_Jin(amelia.imp$imputations$imp2, Pred_Vars, Res_Var, ID_name, which.family)$summ_table %>%
+# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars, Res_Var, ID_name, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
