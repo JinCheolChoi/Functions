@@ -24,7 +24,7 @@ checkpackages=function(package){
 round2=function(x, n){
   posneg=sign(x)
   z=abs(x)*10^n
-  z=z + 0.5
+  z=z+0.5
   z=trunc(z)
   z=z/10^n
   z*posneg
@@ -103,11 +103,11 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
   return(Data)
 }
 
-#**************************************************
+#*************************************************
 #
-# [ --- Interrupted Time Series Analysis --- ] ----
+# [ --- ITS ( Interrupted Time Series ) --- ] ----
 #
-#**************************************************
+#*************************************************
 # Segmented_Regression_Model
 #***************************
 # Example
@@ -153,17 +153,17 @@ Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
   # fit model
   model_fit=lm(as.formula(paste(Res_Var, "~", Int_Var, "*Time_Order")), data=Data)
   
-  # output
-  output=c()
-  output$model_fit=model_fit
-  output$summ_table=as.data.frame(summary(model_fit)$coefficients)
-  colnames(output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
-  output$summ_table$Estimate=round(output$summ_table$Estimate, 3)
-  output$summ_table$Std.Error=round(output$summ_table$Std.Error, 3)
-  output$summ_table$`T-value`=round(output$summ_table$`T-value`, 3)
-  output$summ_table$`P-value`=ifelse(output$summ_table$`P-value`<0.001, "<0.001", round(output$summ_table$`P-value`, 3)) 
+  # Output
+  Output=c()
+  Output$model_fit=model_fit
+  Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
+  colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+  Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+  Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
+  Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
+  Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3)) 
   
-  return(output)
+  return(Output)
 }
 
 #********************************
@@ -257,7 +257,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
   Data=na.omit(Data[, c(Res_Var, Pred_Vars)])
   
   # main algorithm
-  output=c()
+  Output=c()
   for(i in 1:length(Pred_Vars)){
     #i=1
     # run model
@@ -269,8 +269,8 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
     colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model.fit)$coefficients, OR.CI)
     
-    # output
-    output=rbind(output, 
+    # Output
+    Output=rbind(Output, 
                  data.frame(
                    Estimate=round2(est[-1, "Estimate"], 3), 
                    Std.Error=round2(est[-1, "Std. Error"], 3), 
@@ -284,7 +284,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
     )
     #print(paste0(i, " ", Pred_Vars[i]))
   }
-  return(output)
+  return(Output)
 }
 
 #******************
@@ -299,23 +299,23 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   Data=na.omit(Data[, c(Res_Var, Pred_Vars)])
   
   # main algorithm
-  output=c()
+  Output=c()
   #i=1
   # run model
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
   model.fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
-  output$model_fit=model.fit
+  Output$model_fit=model.fit
   
   # vif
-  if(length(Pred_Vars)>=2){output$vif=car::vif(model.fit)}else{output$vif=""}
+  if(length(Pred_Vars)>=2){Output$vif=car::vif(model.fit)}else{Output$vif=""}
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   OR.CI=exp(cbind(OR=coef(model.fit), confint(model.fit, level=0.95)))
   colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(model.fit)$coefficients, OR.CI)
   
-  # output
-  output$summ_table=rbind(output$summ_table, 
+  # Output
+  Output$summ_table=rbind(Output$summ_table, 
                           data.frame(
                             Estimate=round2(est[-1, "Estimate"], 3), 
                             Std.Error=round2(est[-1, "Std. Error"], 3), 
@@ -328,7 +328,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                           )
   )
   
-  return(output)
+  return(Output)
 }
 
 #*************************
@@ -532,7 +532,7 @@ GLM_NB_Bivariate_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
   Data=as.data.frame(Data)
   
   # main algorithm
-  output=c()
+  Output=c()
   for(i in 1:length(Pred_Vars)){
     # run model
     fullmod=as.formula( paste( Res_Var, "~", Pred_Vars[i], "+offset(log(", Offset_name, "))"))
@@ -543,8 +543,8 @@ GLM_NB_Bivariate_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
     colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model.fit)$coefficients, RR.CI)
     
-    # output
-    output=rbind(output, 
+    # Output
+    Output=rbind(Output, 
                  data.frame(
                    Estimate=round2(est[-1, "Estimate"], 3), 
                    Std.Error=round2(est[-1, "Std. Error"], 3), 
@@ -558,7 +558,7 @@ GLM_NB_Bivariate_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
     )
     #print(paste0(i, " ", Pred_Vars[i]))
   }
-  return(output)
+  return(Output)
 }
 
 #**************************
@@ -608,8 +608,8 @@ GLM_NB_Multi_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
   colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(model.fit)$coefficients, RR.CI)
   
-  # output
-  output=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
+  # Output
+  Output=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
                     Std.Error=round2(est[-1, "Std. Error"], 3), 
                     `P-value`=ifelse(round2(est[-1, "Pr(>|z|)"], 3)<0.001, "<0.001", 
                                      format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
@@ -618,7 +618,7 @@ GLM_NB_Multi_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
                                      format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"), 
                     row.names=names(coef(model.fit))[-1]
   )
-  return(output)
+  return(Output)
 }
 
 #*******************
@@ -637,8 +637,8 @@ GLM_NB_Multi_Personal=function(Data, Pred_Vars, Res_Var, Offset_name){
 #                    title="Title",
 #                    x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
 GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
-  # output
-  output=c()
+  # Output
+  Output=c()
   
   # change data type & remove missing data 
   Data=as.data.frame(Data)
@@ -647,7 +647,7 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
   # fit GLMM
   fullmod=as.formula(paste(Res_Var, "~", Pred_Var, sep=""))
   Model=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
-  output$glm=Model
+  Output$glm=Model
   
   # prediction
   newdat=expand.grid(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=50))
@@ -670,7 +670,7 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
     # plot
     # The following code produces the same plot as plot_model(Model, type="pred")
     library(ggplot2)
-    output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                          
+    Output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                          
                                         y=eval(parse(text=Res_Var))
     )) + 
       geom_ribbon(data=newdat, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10) +
@@ -694,7 +694,7 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
     # plot
     # The following code produces the same plot as plot_model(Model, type="pred")
     library(ggplot2)
-    output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                          
+    Output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                          
                                         y=eval(parse(text=Res_Var))
     )) + 
       geom_ribbon(data=newdat, aes(x=eval(parse(text=Pred_Var)), ymax=CI_Upper, ymin=CI_Lower), fill="blue", alpha=2/10) +
@@ -710,7 +710,7 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
   }
   
   
-  return(output)
+  return(Output)
 }
 
 
@@ -752,7 +752,7 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
   Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
   
   # main algorithm
-  output=c()
+  Output=c()
   for(i in 1:length(Pred_Vars)){
     
     # not consider data with missing value
@@ -765,9 +765,9 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
     # IndivID_vecual Wald test and confID_vecence interval for each parameter
     est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1, ]
     
-    # output
+    # Output
     if(which.family=="gaussian"){
-      output=rbind(output, 
+      Output=rbind(Output, 
                    data.frame(
                      Estimate=round2(est$estimate, 3), 
                      Std.Error=round2(est$std.error, 3), 
@@ -780,7 +780,7 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
                    )
       )
     }else if(which.family=="binomial"){
-      output=rbind(output, 
+      Output=rbind(Output, 
                    data.frame(
                      Estimate=round2(est$estimate, 3), 
                      Std.Error=round2(est$std.error, 3), 
@@ -793,7 +793,7 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
                    )
       )
     }else if(which.family=="poisson"){
-      output=rbind(output, 
+      Output=rbind(Output, 
                    data.frame(
                      Estimate=round2(est$estimate, 3), 
                      Std.Error=round2(est$std.error, 3), 
@@ -809,103 +809,15 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
     
     #print(paste0(i, " ", Pred_Vars[i]))
   }
-  return(output)
+  return(Output)
 }
 
-#***********************
+#******************
 # GEE_Multivariable
-#***********************
-# Example
-#*****************
-# lapply(c("geepack"), checkpackages)
-# data("respiratory")
-# Data=respiratory
-# # generate missing data
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(Pred_Vars=="treat")]="P"
-# levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data=Format_Columns(Data,
-#                     Res_Var="outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
-# # run GEE_Multivariable
-# GEE_Multivariable(Data,
-#                       Pred_Vars=Pred_Vars,
-#                       Res_Var="outcome",
-#                       Group_Var="id",
-#                       which.family="binomial")
-GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
-  # check out packages
-  lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
-  
-  # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
-               data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
-               id=Data[, Group_Var], 
-               family=which.family, 
-               corstr="exchangeable")
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1, ]
-  
-  # output
-  output=c()
-  output$model_fit=GEE.m
-  #output$vif=HH::vif(GEE.m)
-  
-  if(which.family=="gaussian"){
-    output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
-                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
-                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
-                                 row.names=names(coef(GEE.m))[-1]
-    )
-  }else if(which.family=="binomial"){
-    output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(GEE.m))[-1]
-    )
-    
-  }else if(which.family=="poisson"){
-    output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(GEE.m))[-1]
-    )
-  }
-  return(output)
-  
-}
-
-#*******************************
-# GEE_Multivariable_with_vif
-#*******************************
+#******************
 # Example
 #**************************************************************************
-# Note : 1. Input data must not have missing data at variables of interest!
-#        2. Argument must be declared with '<-' in a function for HH::vif!
+# Note : 1. Argument must be declared with '<-' in a function for HH::vif!
 #**************************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
@@ -919,26 +831,31 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data=Format_Columns(Data,
-#                     Res_Var="outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
-# # run GEE_Multivariable_with_vif
-# GEE_Multivariable_with_vif(Remove_missing(Data_original, # remove missing data
-#                                               c(Pred_Vars<-Pred_Vars,
-#                                                 Res_Var<-"outcome",
-#                                                 Group_Var<-"id")),
-#                                Pred_Vars<-Pred_Vars,
-#                                Res_Var<-Res_Var,
-#                                Group_Var<-Group_Var,
-#                                which.family<-"binomial")
-GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
+# Res_Var="outcome"
+# Group_Var="id"
+# #
+# Data_original=Format_Columns(Data_original,
+#                              Res_Var="outcome",
+#                              Pred_Vars,
+#                              vector.OF.classes.num.fact,
+#                              levels.of.fact)
+# # run GEE_Multivariable
+# GEE_Multivariable(Data<-Data_original,
+#                            Pred_Vars<-Pred_Vars,
+#                            Res_Var<-Res_Var,
+#                            Group_Var<-Group_Var,
+#                            which.family<-"binomial")
+GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
   # as data frame
+  Data=Remove_missing(Data_original, # remove missing data
+                      c(Pred_Vars,
+                        Res_Var,
+                        Group_Var))
   Data<<-as.data.frame(Data)
+  
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -951,15 +868,15 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1, ]
   
-  # output
-  output=c()
-  output$model_fit=GEE.m
+  # Output
+  Output=c()
+  Output$model_fit=GEE.m
   
-  if(length(Pred_Vars)>=2){output$vif=HH::vif(GEE.m)}
-  if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){output$vif=HH::vif(GEE.m)} # if the only variable is not numeric (that's, if it is categorical), compute vif
+  if(length(Pred_Vars)>=2){Output$vif=HH::vif(GEE.m)}
+  if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=HH::vif(GEE.m)} # if the only variable is not numeric (that's, if it is categorical), compute vif
   
   if(which.family=="gaussian"){
-    output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -969,7 +886,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  row.names=names(coef(GEE.m))[-1]
     )
   }else if(which.family=="binomial"){
-    output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -979,7 +896,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  row.names=names(coef(GEE.m))[-1]
     )
   }else if(which.family=="poisson"){
-    output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -989,8 +906,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  row.names=names(coef(GEE.m))[-1]
     )
   }
-  return(output)
-  
+  return(Output)
 }
 
 #*************************
@@ -1019,7 +935,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 #                     levels.of.fact)
 # 
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GEE.fit=GEE_Multivariable_with_vif(Remove_missing(Data, # remove missing data
+# GEE.fit=GEE_Multivariable(Remove_missing(Data, # remove missing data
 #                                                       c(Pred_Vars<-Pred_Vars,
 #                                                         Res_Var<-"outcome",
 #                                                         Group_Var<-"id")),
@@ -1034,7 +950,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 #                                           Min.Change.Percentage=30,
 #                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
 # Confounder_Ind=which(Pred_Vars%in%Confounder_Steps$Confounders)
-# GEE.confound.fit=GEE_Multivariable_with_vif(Remove_missing(Data, # remove missing data
+# GEE.confound.fit=GEE_Multivariable(Remove_missing(Data, # remove missing data
 #                                                                c(Pred_Vars<-Pred_Vars,
 #                                                                  Res_Var<-"outcome",
 #                                                                  Group_Var<-"id")),
@@ -1214,14 +1130,14 @@ GEE_Confounder_Model=function(Input_Data,
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
   
-  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data=Remove_missing(Input_Data, # remove missing data
-                                                                                 c(Pred_Vars,
-                                                                                   Res_Var,
-                                                                                   Group_Var)),
-                                                             Pred_Vars<<-Pred_Vars,
-                                                             Res_Var<<-Res_Var,
-                                                             Group_Var<<-Group_Var,
-                                                             which.family<<-which.family)
+  Output$Full_Multivariable_Model=GEE_Multivariable(Data=Remove_missing(Input_Data, # remove missing data
+                                                                        c(Pred_Vars,
+                                                                          Res_Var,
+                                                                          Group_Var)),
+                                                    Pred_Vars<<-Pred_Vars,
+                                                    Res_Var<<-Res_Var,
+                                                    Group_Var<<-Group_Var,
+                                                    which.family<<-which.family)
   
   # Confounder selection
   Confounder_Steps=GEE_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
@@ -1234,14 +1150,14 @@ GEE_Confounder_Model=function(Input_Data,
   Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
   
   # Multivariable model with confounders
-  Output$Confounder_Model=GEE_Multivariable_with_vif(Data=Remove_missing(Input_Data, # remove missing data
-                                                                         c(Pred_Vars[Confounder_Ind],
-                                                                           Res_Var,
-                                                                           Group_Var)),
-                                                     Pred_Vars<<-Pred_Vars[Confounder_Ind],
-                                                     Res_Var<<-Res_Var,
-                                                     Group_Var<<-Group_Var,
-                                                     which.family<<-which.family)
+  Output$Confounder_Model=GEE_Multivariable(Data=Remove_missing(Input_Data, # remove missing data
+                                                                c(Pred_Vars[Confounder_Ind],
+                                                                  Res_Var,
+                                                                  Group_Var)),
+                                            Pred_Vars<<-Pred_Vars[Confounder_Ind],
+                                            Res_Var<<-Res_Var,
+                                            Group_Var<<-Group_Var,
+                                            which.family<<-which.family)
   return(Output)
 }
 
@@ -1293,7 +1209,7 @@ GLMM_Bivariate=function(Data,
   Data=as.data.frame(Data)
   
   # main algorithm
-  output=c()
+  Output=c()
   for(i in 1:length(Pred_Vars)){
     #i=1
     # run model
@@ -1322,7 +1238,7 @@ GLMM_Bivariate=function(Data,
     CI.ind=which(grepl(Pred_Vars[i], row.names(CI)))
     # power
     if(Compute.Power==T){Var.Power=powerSim(myfit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)}
-    # output
+    # Output
     temp_out=c()
     temp_out$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
     temp_out$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
@@ -1355,11 +1271,11 @@ GLMM_Bivariate=function(Data,
       )
     }
     
-    output=rbind(output, data.frame(temp_out))
+    Output=rbind(Output, data.frame(temp_out))
     #print(paste(i, " ", Pred_Vars[i], sep=""))
   }
-  output=as.data.frame(output)
-  return(output)
+  Output=as.data.frame(Output)
+  return(Output)
 }
 
 
@@ -1443,37 +1359,37 @@ GLMM_Multivariable=function(Data,
   CI.raw.ind=sort(unique(CI.raw.ind))
   CI.ind=sort(unique(CI.ind))
   #*******
-  # output
+  # Output
   #*******
-  output=c()
+  Output=c()
   # random effect plot (exponentiated)
-  output$re_plot=plot_model(myfit, type="re")
+  Output$re_plot=plot_model(myfit, type="re")
   # info of model fit
-  output$model_fit=myfit
+  Output$model_fit=myfit
   # vif
-  if(length(Pred_Vars)>=2){output$vif=car::vif(myfit)}else{output$vif=""}
+  if(length(Pred_Vars)>=2){Output$vif=car::vif(myfit)}else{Output$vif=""}
   
   # summary table
-  output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
-  output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
-  output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+  Output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
+  Output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
+  Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
                                      format(round2(Coef[, ncol(Coef)][Coef.ind], 3), nsmall=3))
   if(which.family=="gaussian"){
-    output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
+    Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(which.family=="binomial"){
-    output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+    Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(which.family=="poisson"){
-    output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+    Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
   # power
   if(Compute.Power==T){
-    output$summ_table$power=sapply(Var.Power, function(x) paste0(
+    Output$summ_table$power=sapply(Var.Power, function(x) paste0(
       paste0(round(summary(x)["mean"]*100, 2), "%"),
       " (",
       round(summary(x)["lower"]*100, 2),
@@ -1482,583 +1398,10 @@ GLMM_Multivariable=function(Data,
       ")"
     ))
   }
-  output$summ_table=as.data.frame(output$summ_table)
-  return(output)
+  Output$summ_table=as.data.frame(Output$summ_table)
+  return(Output)
 }
 
-#***************************
-# GLMM_Multinomial_Bivariate
-#***************************
-# lapply(c("geepack"), checkpackages)
-# data("respiratory")
-# Data=respiratory
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(Pred_Vars=="treat")]="P"
-# 
-# Data$sex=as.character(Data$sex) # make sex categorical
-# Data$sex[sample(1:length(Data$sex), 100)]="N"
-# Data$sex=factor(Data$sex)
-# 
-# 
-# levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
-# Data=Format_Columns(Data,
-#                     Res_Var="outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
-# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Multinomial_Bivariate_Format_1(Data,
-#                                     Pred_Vars,
-#                                     Res_Var="outcome",
-#                                     Group_Var="id")
-# GLMM_Multinomial_Bivariate_Format_2(Data,
-#                                     Pred_Vars,
-#                                     Res_Var="outcome",
-#                                     Group_Var="id")
-#************************************
-# GLMM_Multinomial_Bivariate_Format_1
-GLMM_Multinomial_Bivariate_Format_1=function(Data,
-                                             Pred_Vars,
-                                             Res_Var,
-                                             Group_Var,
-                                             k=2,
-                                             maxit=500,
-                                             tol=1e-04){
-  # check out packages
-  lapply(c("mixcat"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # values
-  Data[, Res_Var]=as.factor(Data[, Res_Var])
-  Y_Levels=levels(Data[, Res_Var])
-  Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, Group_Var]
-  
-  # main algorithm
-  output=c()
-  for(i in 1:length(Pred_Vars)){
-    #i=1
-    X=Data[, Pred_Vars[i]]
-    
-    # run algorithm until convergence
-    while_trs=0
-    count=0
-    temp_k=k
-    temp_maxit=maxit
-    temp_tol=tol
-    while(while_trs==0){
-      count=count+1
-      
-      # run model
-      myfit=npmlt(Y~X,
-                  formula.npo=~X,
-                  random=~1,
-                  id=ID,
-                  k=temp_k,
-                  link="blogit", # specify that the model is a baseline logit random effects model
-                  EB=T,
-                  maxit=temp_maxit,
-                  tol=temp_tol)
-      
-      #
-      while_trs=1
-      if(is.na(myfit$coefficients[1])){
-        # temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
-        # if(temp_k==1){temp_k=2}else if(temp_k>=length(Pred_Vars)-1){temp_k=2}
-        print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
-        while_trs=0 # re-run algorithm
-        Sys.sleep(0.5)
-      }else{
-        if(myfit$flagcvm>0 | myfit$flaginfo>0){
-          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Reduce 'tol' from ", temp_tol, " to ", temp_tol/100))
-          temp_tol=temp_tol/100
-          while_trs=0 # re-run algorithm
-        }
-        if(myfit$iter==myfit$maxit){
-          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Increase 'maxit' from ", temp_maxit, " to ", temp_maxit+10000))
-          temp_maxit=temp_maxit+10000
-          while_trs=0 # re-run algorithm
-        }
-      }
-    }
-    print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Algorithm converged (k=", temp_k, ", maxit=", temp_maxit, ", tol=", temp_tol, ")"))
-    
-    # coefficient
-    Coef=myfit$coefficients
-    Coef.ind=which(grepl("X", row.names(Coef)))
-    # standard error
-    SE.Coef=myfit$SE.coefficients
-    # confidence interval (exponentiated)
-    Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
-    Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
-    # p-values
-    Z_value=Coef/SE.Coef # Wald test statistic
-    P_values=(1-pnorm(abs(Z_value), 0, 1))*2
-    # CI (upper and lower bounds)
-    Upper_Bound=exp(Raw_Upper_Bound)
-    Lower_Bound=exp(Raw_Lower_Bound)
-    
-    # output
-    temp_out=c()
-    temp_out$Estimate=round2(Coef[Coef.ind], 3)
-    temp_out$Std.Error=round2(SE.Coef[Coef.ind], 3)
-    temp_out$`P-value`=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                              format(round2(P_values[Coef.ind], 3), nsmall=3))
-    temp_out$OR.and.CI=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                              " (",
-                              format(round(Lower_Bound, 2), nsmall=2),
-                              " - ",
-                              format(round(Upper_Bound, 2), nsmall=2),
-                              ")")
-    
-    #
-    temp_out=data.frame(temp_out)
-    
-    if(is.factor(X)){
-      X_Levels=levels(X)
-      Temp_Name=expand.grid(Y_Levels[-1], X_Levels[-1])
-      rownames(temp_out)=paste0(Pred_Vars[i], " ",Temp_Name[, 2], " / ", Temp_Name[, 1])
-    }else if(is.numeric(X)){
-      Temp_Name=expand.grid(Y_Levels[-1], Pred_Vars[i])
-      rownames(temp_out)=paste0(Temp_Name[, 2], " / ", Temp_Name[, 1])
-    }
-    
-    output=rbind(output, temp_out)
-    #print(paste(i, " ", Pred_Vars[i], sep=""))
-  }
-  return(output)
-}
-
-#************************************
-# GLMM_Multinomial_Bivariate_Format_2
-GLMM_Multinomial_Bivariate_Format_2=function(Data,
-                                             Pred_Vars,
-                                             Res_Var,
-                                             Group_Var,
-                                             k=2,
-                                             maxit=500,
-                                             tol=1e-04){
-  # check out packages
-  lapply(c("mixcat"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # values
-  Data[, Res_Var]=as.factor(Data[, Res_Var])
-  Y_Levels=levels(Data[, Res_Var])
-  Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, Group_Var]
-  
-  # main algorithm
-  output=c()
-  for(i in 1:length(Pred_Vars)){
-    #i=17
-    X=Data[, Pred_Vars[i]]
-    
-    # run algorithm until convergence
-    while_trs=0
-    count=0
-    temp_k=k
-    temp_maxit=maxit
-    temp_tol=tol
-    while(while_trs==0){
-      count=count+1
-      
-      # run model
-      myfit=npmlt(Y~X,
-                  formula.npo=~X,
-                  random=~1,
-                  id=ID,
-                  k=temp_k,
-                  link="blogit", # specify that the model is a baseline logit random effects model
-                  EB=FALSE,
-                  maxit=temp_maxit,
-                  tol=temp_tol)
-      
-      #
-      while_trs=1
-      if(is.na(myfit$coefficients[1])){
-        temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
-        if(temp_k==1){temp_k=2}else if(temp_k>=length(Pred_Vars)-1){temp_k=2}
-        print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
-        while_trs=0 # re-run algorithm
-        Sys.sleep(0.5)
-      }else{
-        if(myfit$flagcvm>0 | myfit$flaginfo>0){
-          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Reduce 'tol' from ", temp_tol, " to ", temp_tol/100))
-          temp_tol=temp_tol/100
-          while_trs=0 # re-run algorithm
-        }
-        if(myfit$iter==myfit$maxit){
-          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Increase 'maxit' from ", temp_maxit, " to ", temp_maxit+10000))
-          temp_maxit=temp_maxit+10000
-          while_trs=0 # re-run algorithm
-        }
-      }
-    }
-    print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Algorithm converged (k=", temp_k, ", maxit=", temp_maxit, ", tol=", temp_tol, ")"))
-    
-    # coefficient
-    Coef=myfit$coefficients
-    Coef.ind=which(grepl("X", row.names(Coef)))
-    # standard error
-    SE.Coef=myfit$SE.coefficients
-    # confidence interval (exponentiated)
-    Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
-    Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
-    # p-values
-    Z_value=Coef/SE.Coef # Wald test statistic
-    P_values=(1-pnorm(abs(Z_value), 0, 1))*2
-    # CI (upper and lower bounds)
-    Upper_Bound=exp(Raw_Upper_Bound)
-    Lower_Bound=exp(Raw_Lower_Bound)
-    
-    # output
-    temp_out=c()
-    
-    # record 
-    if(is.factor(X)){
-      temp_out$Estimate=matrix(round2(Coef[Coef.ind], 3), 
-                               ncol=length(levels(X))-1, 
-                               nrow=length(levels(Y))-1)
-      temp_out$Std.Error=matrix(round2(SE.Coef[Coef.ind], 3), 
-                                ncol=length(levels(X))-1, 
-                                nrow=length(levels(Y))-1)
-      temp_out$`P-value`=matrix(
-        ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-               format(round2(P_values[Coef.ind], 3), nsmall=3)), 
-        ncol=length(levels(X))-1, 
-        nrow=length(levels(Y))-1)
-      temp_out$OR.and.CI=matrix(
-        paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-               " (",
-               format(round(Lower_Bound, 2), nsmall=2),
-               " - ",
-               format(round(Upper_Bound, 2), nsmall=2),
-               ")"), 
-        ncol=length(levels(X))-1, 
-        nrow=length(levels(Y))-1)
-      # names for row and column
-      X_Levels=levels(X)
-      Temp_Row_Names=Y_Levels[-1]
-      Temp_Column_Names=paste0(Pred_Vars[i], " / ", X_Levels[-1])
-    }else if(is.numeric(X)){
-      temp_out$Estimate=data.frame(X=round2(Coef[Coef.ind], 3))
-      temp_out$Std.Error=data.frame(X=round2(SE.Coef[Coef.ind], 3))
-      temp_out$`P-value`=data.frame(
-        X=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                 format(round2(P_values[Coef.ind], 3), nsmall=3))
-      )
-      temp_out$OR.and.CI=data.frame(
-        X=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                 " (",
-                 format(round(Lower_Bound, 2), nsmall=2),
-                 " - ",
-                 format(round(Upper_Bound, 2), nsmall=2),
-                 ")")
-      )
-      # names for row and column
-      Temp_Row_Names=Y_Levels[-1]
-      Temp_Column_Names=Pred_Vars[i]
-    }
-    
-    rownames(temp_out$Estimate)=Temp_Row_Names
-    colnames(temp_out$Estimate)=Temp_Column_Names
-    rownames(temp_out$Std.Error)=Temp_Row_Names
-    colnames(temp_out$Std.Error)=Temp_Column_Names
-    rownames(temp_out$`P-value`)=Temp_Row_Names
-    colnames(temp_out$`P-value`)=Temp_Column_Names
-    rownames(temp_out$OR.and.CI)=Temp_Row_Names
-    colnames(temp_out$OR.and.CI)=Temp_Column_Names
-    
-    output$Estimate=rbind(output$Estimate, t(temp_out$Estimate))
-    output$Std.Error=rbind(output$Std.Error, t(temp_out$Std.Error))
-    output$`P-value`=rbind(output$`P-value`,t(temp_out$`P-value`))
-    output$OR.and.CI=rbind(output$OR.and.CI, t(temp_out$OR.and.CI))
-    #print(paste(i, " ", Pred_Vars[i], sep=""))
-  }
-  return(output)
-}
-
-#******************************
-# GLMM_Multinomial_Multivariate
-#******************************
-# lapply(c("geepack"), checkpackages)
-# data("respiratory")
-# Data=respiratory
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(Pred_Vars=="treat")]="P"
-# 
-# Data$sex=as.character(Data$sex) # make sex categorical
-# Data$sex[sample(1:length(Data$sex), 100)]="N"
-# Data$sex=factor(Data$sex)
-# 
-# levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
-# Data=Format_Columns(Data,
-#                     Res_Var="outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
-# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Multinomial_Multivariate_Format_1(Data,
-#                                        Pred_Vars,
-#                                        Res_Var="outcome",
-#                                        Group_Var="id")
-# GLMM_Multinomial_Multivariate_Format_2(Data,
-#                                        Pred_Vars,
-#                                        Res_Var="outcome",
-#                                        Group_Var="id",
-#                                        maxit=10,
-#                                        par.update=T)
-#***************************************
-# GLMM_Multinomial_Multivariate_Format_1
-GLMM_Multinomial_Multivariate_Format_1=function(Data,
-                                                Pred_Vars,
-                                                Res_Var,
-                                                Group_Var,
-                                                k=2,
-                                                maxit=500,
-                                                tol=1e-04){
-  # check out packages
-  lapply(c("mixcat"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # values
-  Data[, Res_Var]=as.factor(Data[, Res_Var])
-  Y_Levels=levels(Data[, Res_Var])
-  Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, Group_Var]
-  
-  # assign predictors to values
-  for(i in 1:length(Pred_Vars)){
-    assign(paste0("X_", i), Data[, Pred_Vars[i]])
-  }
-  
-  # run algorithm until convergence
-  while_trs=0
-  count=0
-  while(while_trs==0){
-    count=count+1
-    
-    # run model
-    myfit=npmlt(formula(paste0("Y~", paste0("X_", c(1:length(Pred_Vars)), collapse="+"))),
-                formula.npo=formula(paste0("~", paste0("X_", c(1:length(Pred_Vars)), collapse="+"))),
-                random=~1,
-                id=ID,
-                k=k,
-                link="blogit", # specify that the model is a baseline logit random effects model
-                EB=FALSE,
-                maxit=maxit,
-                tol=tol)
-    
-    #
-    while_trs=1
-    if(is.na(myfit$coefficients[1])){
-      k=k+ifelse(sample(c(0,1), 1)==0, 1, -1)
-      if(k==1){k=2}else if(k>=length(Pred_Vars)-1){k=2}
-      print(paste0("[ ", count, "th run ] - Fail to converge. Try k=", k))
-      while_trs=0 # re-run algorithm
-      Sys.sleep(0.5)
-    }else{
-      if(myfit$flagcvm>0 | myfit$flaginfo>0){
-        print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
-        tol=tol/100
-        while_trs=0 # re-run algorithm
-      }
-      if(myfit$iter==myfit$maxit){
-        print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
-        maxit=maxit+10000
-        while_trs=0 # re-run algorithm
-      }
-    }
-  }
-  print(paste0("[ ", count, "th run ] - Algorithm converged (k=", k, ", maxit=", maxit, ", tol=", tol, ")"))
-  
-  
-  # coefficient
-  Coef=myfit$coefficients
-  Coef.ind=which(grepl("X_", row.names(Coef)))
-  # standard error
-  SE.Coef=myfit$SE.coefficients
-  # confidence interval (exponentiated)
-  Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
-  Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
-  # p-values
-  Z_value=Coef/SE.Coef # Wald test statistic
-  P_values=(1-pnorm(abs(Z_value), 0, 1))*2
-  # CI (upper and lower bounds)
-  Upper_Bound=exp(Raw_Upper_Bound)
-  Lower_Bound=exp(Raw_Lower_Bound)
-  
-  # output
-  output=c()
-  output$Estimate=round2(Coef[Coef.ind], 3)
-  output$Std.Error=round2(SE.Coef[Coef.ind], 3)
-  output$`P-value`=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                          format(round2(P_values[Coef.ind], 3), nsmall=3))
-  output$OR.and.CI=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                          " (",
-                          format(round(Lower_Bound, 2), nsmall=2),
-                          " - ",
-                          format(round(Upper_Bound, 2), nsmall=2),
-                          ")")
-  output=data.frame(output)
-  
-  # name output rows
-  row_names=c()
-  for(i in 1:length(Pred_Vars)){
-    X=get(paste0("X_", i))
-    if(is.factor(X)){
-      X_Levels=levels(X)
-      Temp_Name=expand.grid(Y_Levels[-1], X_Levels[-1])
-      row_names=c(row_names, paste0(Pred_Vars[i], " ", Temp_Name[, 2], " / ", Temp_Name[, 1]))
-    }else if(is.numeric(X)){
-      Temp_Name=expand.grid(Y_Levels[-1], Pred_Vars[i])
-      row_names=c(row_names, paste0(Temp_Name[, 2], " / ", Temp_Name[, 1]))
-    }
-  }
-  rownames(output)=row_names
-  
-  #
-  output_to_return=c()
-  output_to_return$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
-  output_to_return$summ_table=output
-  # return output
-  return(output_to_return)
-}
-
-#***************************************
-# GLMM_Multinomial_Multivariate_Format_2
-GLMM_Multinomial_Multivariate_Format_2=function(Data,
-                                                Pred_Vars,
-                                                Res_Var,
-                                                Group_Var,
-                                                k=2,
-                                                maxit=500,
-                                                tol=1e-04,
-                                                par.update=FALSE){
-  # check out packages
-  lapply(c("mixcat"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # values
-  Data[, Res_Var]=as.factor(Data[, Res_Var])
-  Y_Levels=levels(Data[, Res_Var])
-  Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
-  ID=Data[, Group_Var]
-  
-  # assign predictors to values
-  for(i in 1:length(Pred_Vars)){
-    assign(paste0("X_", i), Data[, Pred_Vars[i]])
-  }
-  
-  # run algorithm until convergence
-  while_trs=0
-  count=0
-  while(while_trs==0){
-    count=count+1
-    
-    # run model
-    myfit=npmlt(formula(paste0("Y~", paste0("X_", c(1:length(Pred_Vars)), collapse="+"))),
-                formula.npo=formula(paste0("~", paste0("X_", c(1:length(Pred_Vars)), collapse="+"))),
-                random=~1,
-                id=ID,
-                k=k,
-                link="blogit", # specify that the model is a baseline logit random effects model
-                EB=FALSE,
-                maxit=maxit,
-                tol=tol)
-    #
-    while_trs=1
-    if(is.na(myfit$coefficients[1])){
-      k=k+ifelse(sample(c(0,1), 1)==0, 1, -1)
-      if(k==1){k=2}else if(k>=length(Pred_Vars)-1){k=2}
-      print(paste0("[ ", count, "th run ] - Fail to converge. Try k=", k))
-      while_trs=0 # re-run algorithm
-      Sys.sleep(0.5)
-    }else{
-      if(par.update==T){
-        if(myfit$flagcvm>0 | myfit$flaginfo>0){
-          print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
-          tol=tol/100
-          while_trs=0 # re-run algorithm
-        }
-        if(myfit$iter==myfit$maxit){
-          print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
-          maxit=maxit+10000
-          while_trs=0 # re-run algorithm
-        }
-      }
-    }
-  }
-  
-                     
-  print(paste0("[ ", count, "th run ] - Algorithm converged (k=", k, ", maxit=", maxit, ", tol=", tol, ")"))
-  
-  # coefficient
-  Coef=myfit$coefficients
-  Coef.ind=which(grepl("X_", row.names(Coef)))
-  # standard error
-  SE.Coef=myfit$SE.coefficients
-  # confidence interval (exponentiated)
-  Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
-  Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
-  # p-values
-  Z_value=Coef/SE.Coef # Wald test statistic
-  P_values=(1-pnorm(abs(Z_value), 0, 1))*2
-  # CI (upper and lower bounds)
-  Upper_Bound=exp(Raw_Upper_Bound)
-  Lower_Bound=exp(Raw_Lower_Bound)
-  
-  # output
-  output=c()
-  output$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
-  output$Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
-  output$Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
-  output$`P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                                   format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
-  output$OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                                   " (",
-                                   format(round(Lower_Bound, 2), nsmall=2),
-                                   " - ",
-                                   format(round(Upper_Bound, 2), nsmall=2),
-                                   ")"), nrow=length(levels(Y))-1))
-  
-  # name output rows
-  row_names=c()
-  for(i in 1:length(Pred_Vars)){
-    X=get(paste0("X_", i))
-    if(is.factor(X)){
-      X_Levels=levels(X)
-      row_names=c(row_names, paste0(Pred_Vars[i], " / ", X_Levels[-1]))
-    }else if(is.numeric(X)){
-      row_names=c(row_names, Pred_Vars[i])
-    }
-  }
-  colnames(output$Estimate)=levels(Y)[-length(levels(Y))]
-  colnames(output$Std.Error)=levels(Y)[-length(levels(Y))]
-  colnames(output$`P-value`)=levels(Y)[-length(levels(Y))]
-  colnames(output$OR.and.CI)=levels(Y)[-length(levels(Y))]
-  rownames(output$Estimate)=row_names
-  rownames(output$Std.Error)=row_names
-  rownames(output$`P-value`)=row_names
-  rownames(output$OR.and.CI)=row_names
-  
-  return(output)
-}
 
 #**************************
 # GLMM_Confounder_Selection
@@ -2088,13 +1431,13 @@ GLMM_Multinomial_Multivariate_Format_2=function(Data,
 # 
 # # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
 # GLMM.fit=GLMM_Multivariable(Data,
-#                                 Pred_Vars,
-#                                 Res_Var="outcome",
-#                                 Group_Var="id",
-#                                 which.family="binomial", # gaussian, binomial, poisson
-#                                 NAGQ<-1,
-#                                 Compute.Power=F,
-#                                 nsim=30)
+#                             Pred_Vars,
+#                             Res_Var="outcome",
+#                             Group_Var="id",
+#                             which.family="binomial", # gaussian, binomial, poisson
+#                             NAGQ<-1,
+#                             Compute.Power=F,
+#                             nsim=30)
 # Confounder_Steps=GLMM_Confounder_Selection(Full_Model=GLMM.fit$model_fit,
 #                                            Main_Pred_Var="sex",
 #                                            Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"],
@@ -2599,8 +1942,8 @@ GLMM_LASSO=function(data, pred_vars, res_var, rand_var, which.family="binomial(l
 GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, NAGQ=100, xlab="", ylab="", title="", x_breaks=0){
   lapply(c("sjPlot", "simr"), checkpackages)
   
-  # output
-  output=c()
+  # Output
+  Output=c()
   
   # change data type & remove missing data
   Data=as.data.frame(Data)
@@ -2610,11 +1953,11 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
   fullmod=as.formula(paste(Res_Var, "~", Pred_Var, "+(1|", Group_Var, ")", sep=""))
   
   Model=glmer(fullmod, family=which.family, na.action=na.exclude, data=Data, nAGQ=NAGQ)
-  output$glmer=Model
-  #output$power=powerSim(Model)
+  Output$glmer=Model
+  #Output$power=powerSim(Model)
   
   # save random effect plot
-  output$re_plot=plot_model(Model, type="re")
+  Output$re_plot=plot_model(Model, type="re")
   
   # generate newdat for prediction
   newdat=expand.grid(Pred_Var=seq(min(Data[, Pred_Var]), max(Data[, Pred_Var]), length=50), 
@@ -2655,7 +1998,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
     newdat.margin[, Group_Var]=as.factor(newdat.margin[, Group_Var])
     
     # plot with only pure fixed effect
-    output$plot=ggplot(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), 
+    Output$plot=ggplot(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), 
                                                y=eval(parse(text=Res_Var)), 
                                                group=eval(parse(text=Group_Var))
     )) + 
@@ -2671,7 +2014,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
       )
     
     # plot with random effect
-    output$plot_w_re=ggplot(newdat, aes(x=eval(parse(text=Pred_Var)), 
+    Output$plot_w_re=ggplot(newdat, aes(x=eval(parse(text=Pred_Var)), 
                                         y=eval(parse(text=Res_Var)), 
                                         #col=eval(parse(text=Group_Var)), 
                                         group=eval(parse(text=Group_Var))
@@ -2715,7 +2058,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
     newdat.margin[, Group_Var]=as.factor(newdat.margin[, Group_Var])
     
     # plot with only pure fixed effect
-    output$plot=ggplot(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), 
+    Output$plot=ggplot(data=newdat.margin, aes(x=eval(parse(text=Pred_Var)), 
                                                y=eval(parse(text=Res_Var)), 
                                                group=eval(parse(text=Group_Var))
     )) + 
@@ -2732,7 +2075,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
         title=title
       )
     # plot with random effect
-    output$plot_w_re=ggplot(newdat, aes(x=eval(parse(text=Pred_Var)), 
+    Output$plot_w_re=ggplot(newdat, aes(x=eval(parse(text=Pred_Var)), 
                                         y=eval(parse(text=Res_Var)), 
                                         #col=eval(parse(text=Group_Var)), 
                                         group=eval(parse(text=Group_Var))
@@ -2755,7 +2098,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
       )
   }else{print("Currently available families include : 'binomial' and 'poisson' ")}
   
-  return(output)
+  return(Output)
 }
 
 #**********
@@ -2832,12 +2175,347 @@ GLMM_Overdispersion_Test=function(model){
   c(chisq=Pearson.chisq, ratio=prat, rdf=rdf, p=pval)
 }
 
+#*************************************************
+#
+# [ --- GLMM ( Multinomial ) --- ] ----
+#
+#***************************
+# GLMM_Multinomial_Bivariate
+#***************************
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# 
+# Data$sex=as.character(Data$sex) # make sex categorical
+# Data$sex[sample(1:length(Data$sex), 100)]="N"
+# Data$sex=factor(Data$sex)
+# 
+# 
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
+# Data=Format_Columns(Data,
+#                     Res_Var="outcome",
+#                     Pred_Vars,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Multinomial_Bivariate(Data,
+#                            Pred_Vars,
+#                            Res_Var="outcome",
+#                            Group_Var="id")
+#************************************
+# GLMM_Multinomial_Bivariate
+GLMM_Multinomial_Bivariate=function(Data,
+                                    Pred_Vars,
+                                    Res_Var,
+                                    Group_Var,
+                                    k=2,
+                                    maxit=500,
+                                    tol=1e-04){
+  # check out packages
+  lapply(c("mixcat"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Res_Var]=as.factor(Data[, Res_Var])
+  Y_Levels=levels(Data[, Res_Var])
+  Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
+  ID=Data[, Group_Var]
+  
+  # main algorithm
+  Output=c()
+  for(i in 1:length(Pred_Vars)){
+    #i=17
+    X=Data[, Pred_Vars[i]]
+    
+    # run algorithm until convergence
+    while_trs=0
+    count=0
+    temp_k=k
+    temp_maxit=maxit
+    temp_tol=tol
+    while(while_trs==0){
+      count=count+1
+      
+      # run model
+      myfit=npmlt(Y~X,
+                  formula.npo=~X,
+                  random=~1,
+                  id=ID,
+                  k=temp_k,
+                  link="blogit", # specify that the model is a baseline logit random effects model
+                  EB=FALSE,
+                  maxit=temp_maxit,
+                  tol=temp_tol)
+      
+      #
+      while_trs=1
+      if(is.na(myfit$coefficients[1])){
+        temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+        if(temp_k==1){temp_k=2}else if(temp_k>=length(Pred_Vars)-1){temp_k=2}
+        print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
+        while_trs=0 # re-run algorithm
+        Sys.sleep(0.5)
+      }else{
+        if(myfit$flagcvm>0 | myfit$flaginfo>0){
+          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Reduce 'tol' from ", temp_tol, " to ", temp_tol/100))
+          temp_tol=temp_tol/100
+          while_trs=0 # re-run algorithm
+        }
+        if(myfit$iter==myfit$maxit){
+          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Increase 'maxit' from ", temp_maxit, " to ", temp_maxit+10000))
+          temp_maxit=temp_maxit+10000
+          while_trs=0 # re-run algorithm
+        }
+      }
+    }
+    print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Algorithm converged (k=", temp_k, ", maxit=", temp_maxit, ", tol=", temp_tol, ")"))
+    
+    # coefficient
+    Coef=myfit$coefficients
+    Coef.ind=which(grepl("X", row.names(Coef)))
+    # standard error
+    SE.Coef=myfit$SE.coefficients
+    # confidence interval (exponentiated)
+    Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
+    Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
+    # p-values
+    Z_value=Coef/SE.Coef # Wald test statistic
+    P_values=(1-pnorm(abs(Z_value), 0, 1))*2
+    # CI (upper and lower bounds)
+    Upper_Bound=exp(Raw_Upper_Bound)
+    Lower_Bound=exp(Raw_Lower_Bound)
+    
+    # Output
+    temp_out=c()
+    
+    # record 
+    if(is.factor(X)){
+      temp_out$Estimate=matrix(round2(Coef[Coef.ind], 3), 
+                               ncol=length(levels(X))-1, 
+                               nrow=length(levels(Y))-1)
+      temp_out$Std.Error=matrix(round2(SE.Coef[Coef.ind], 3), 
+                                ncol=length(levels(X))-1, 
+                                nrow=length(levels(Y))-1)
+      temp_out$`P-value`=matrix(
+        ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+               format(round2(P_values[Coef.ind], 3), nsmall=3)), 
+        ncol=length(levels(X))-1, 
+        nrow=length(levels(Y))-1)
+      temp_out$OR.and.CI=matrix(
+        paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+               " (",
+               format(round(Lower_Bound, 2), nsmall=2),
+               " - ",
+               format(round(Upper_Bound, 2), nsmall=2),
+               ")"), 
+        ncol=length(levels(X))-1, 
+        nrow=length(levels(Y))-1)
+      # names for row and column
+      X_Levels=levels(X)
+      Temp_Row_Names=Y_Levels[-1]
+      Temp_Column_Names=paste0(Pred_Vars[i], " / ", X_Levels[-1])
+    }else if(is.numeric(X)){
+      temp_out$Estimate=data.frame(X=round2(Coef[Coef.ind], 3))
+      temp_out$Std.Error=data.frame(X=round2(SE.Coef[Coef.ind], 3))
+      temp_out$`P-value`=data.frame(
+        X=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                 format(round2(P_values[Coef.ind], 3), nsmall=3))
+      )
+      temp_out$OR.and.CI=data.frame(
+        X=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                 " (",
+                 format(round(Lower_Bound, 2), nsmall=2),
+                 " - ",
+                 format(round(Upper_Bound, 2), nsmall=2),
+                 ")")
+      )
+      # names for row and column
+      Temp_Row_Names=Y_Levels[-1]
+      Temp_Column_Names=Pred_Vars[i]
+    }
+    
+    rownames(temp_out$Estimate)=Temp_Row_Names
+    colnames(temp_out$Estimate)=Temp_Column_Names
+    rownames(temp_out$Std.Error)=Temp_Row_Names
+    colnames(temp_out$Std.Error)=Temp_Column_Names
+    rownames(temp_out$`P-value`)=Temp_Row_Names
+    colnames(temp_out$`P-value`)=Temp_Column_Names
+    rownames(temp_out$OR.and.CI)=Temp_Row_Names
+    colnames(temp_out$OR.and.CI)=Temp_Column_Names
+    
+    Output$Estimate=rbind(Output$Estimate, t(temp_out$Estimate))
+    Output$Std.Error=rbind(Output$Std.Error, t(temp_out$Std.Error))
+    Output$`P-value`=rbind(Output$`P-value`,t(temp_out$`P-value`))
+    Output$OR.and.CI=rbind(Output$OR.and.CI, t(temp_out$OR.and.CI))
+    #print(paste(i, " ", Pred_Vars[i], sep=""))
+  }
+  return(Output)
+}
 
-#**********************
+#******************************
+# GLMM_Multinomial_Multivariate
+#******************************
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data=respiratory
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# 
+# Data$sex=as.character(Data$sex) # make sex categorical
+# Data$sex[sample(1:length(Data$sex), 100)]="N"
+# Data$sex=factor(Data$sex)
+# 
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data$outcome[sample(1:length(Data$outcome), 150)]=2 # make the outcome multinomial (categorical)
+# Data=Format_Columns(Data,
+#                     Res_Var="outcome",
+#                     Pred_Vars,
+#                     vector.OF.classes.num.fact,
+#                     levels.of.fact)
+# # Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Multinomial_Multivariate(Data,
+#                               Pred_Vars,
+#                               Res_Var="outcome",
+#                               Group_Var="id",
+#                               maxit=10,
+#                               par.update=T)
+#***************************************
+# GLMM_Multinomial_Multivariate
+GLMM_Multinomial_Multivariate=function(Data,
+                                       Pred_Vars,
+                                       Res_Var,
+                                       Group_Var,
+                                       k=2,
+                                       maxit=500,
+                                       tol=1e-04,
+                                       par.update=FALSE){
+  # check out packages
+  lapply(c("mixcat"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  
+  # values
+  Data[, Res_Var]=as.factor(Data[, Res_Var])
+  Y_Levels=levels(Data[, Res_Var])
+  Y=factor(Data[, Res_Var], levels=c(Y_Levels[-1], Y_Levels[1])) # more the first level to the last that is going to be the baseline level
+  ID=Data[, Group_Var]
+  
+  # assign predictors to values
+  for(i in 1:length(Pred_Vars)){
+    assign(paste0("X_", i), Data[, Pred_Vars[i]])
+  }
+  
+  # run algorithm until convergence
+  while_trs=0
+  count=0
+  while(while_trs==0){
+    count=count+1
+    
+    # run model
+    myfit=npmlt(formula(paste0("Y~", paste0("X_", c(1:length(Pred_Vars)), collapse="+"))),
+                formula.npo=formula(paste0("~", paste0("X_", c(1:length(Pred_Vars)), collapse="+"))),
+                random=~1,
+                id=ID,
+                k=k,
+                link="blogit", # specify that the model is a baseline logit random effects model
+                EB=FALSE,
+                maxit=maxit,
+                tol=tol)
+    #
+    while_trs=1
+    if(is.na(myfit$coefficients[1])){
+      k=k+ifelse(sample(c(0,1), 1)==0, 1, -1)
+      if(k==1){k=2}else if(k>=length(Pred_Vars)-1){k=2}
+      print(paste0("[ ", count, "th run ] - Fail to converge. Try k=", k))
+      while_trs=0 # re-run algorithm
+      Sys.sleep(0.5)
+    }else{
+      if(par.update==T){
+        if(myfit$flagcvm>0 | myfit$flaginfo>0){
+          print(paste0("[ ", count, "th run ] - Reduce 'tol' from ", tol, " to ", tol/100))
+          tol=tol/100
+          while_trs=0 # re-run algorithm
+        }
+        if(myfit$iter==myfit$maxit){
+          print(paste0("[ ", count, "th run ] - Increase 'maxit' from ", maxit, " to ", maxit+10000))
+          maxit=maxit+10000
+          while_trs=0 # re-run algorithm
+        }
+      }
+    }
+  }
+  print(paste0("[ ", count, "th run ] - Algorithm converged (k=", k, ", maxit=", maxit, ", tol=", tol, ")"))
+  
+  # coefficient
+  Coef=myfit$coefficients
+  Coef.ind=which(grepl("X_", row.names(Coef)))
+  # standard error
+  SE.Coef=myfit$SE.coefficients
+  # confidence interval (exponentiated)
+  Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
+  Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
+  # p-values
+  Z_value=Coef/SE.Coef # Wald test statistic
+  P_values=(1-pnorm(abs(Z_value), 0, 1))*2
+  # CI (upper and lower bounds)
+  Upper_Bound=exp(Raw_Upper_Bound)
+  Lower_Bound=exp(Raw_Lower_Bound)
+  
+  # Output
+  Output=c()
+  Output$model_fit=myfit
+  
+  Output$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
+  Output$Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  Output$Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  Output$`P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                                   format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
+  Output$OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                                   " (",
+                                   format(round(Lower_Bound, 2), nsmall=2),
+                                   " - ",
+                                   format(round(Upper_Bound, 2), nsmall=2),
+                                   ")"), nrow=length(levels(Y))-1))
+  
+  # name Output rows
+  row_names=c()
+  for(i in 1:length(Pred_Vars)){
+    X=get(paste0("X_", i))
+    if(is.factor(X)){
+      X_Levels=levels(X)
+      row_names=c(row_names, paste0(Pred_Vars[i], " / ", X_Levels[-1]))
+    }else if(is.numeric(X)){
+      row_names=c(row_names, Pred_Vars[i])
+    }
+  }
+  colnames(Output$Estimate)=levels(Y)[-length(levels(Y))]
+  colnames(Output$Std.Error)=levels(Y)[-length(levels(Y))]
+  colnames(Output$`P-value`)=levels(Y)[-length(levels(Y))]
+  colnames(Output$OR.and.CI)=levels(Y)[-length(levels(Y))]
+  rownames(Output$Estimate)=row_names
+  rownames(Output$Std.Error)=row_names
+  rownames(Output$`P-value`)=row_names
+  rownames(Output$OR.and.CI)=row_names
+  
+  return(Output)
+}
+
+
+#*******************************************
 #
-# [ --- CLMM --- ] ----
+# [ --- CLMM ( Ordinal ) --- ] ----
 #
-#**********************
+#*******************************************
 # CLMM_Ordinal_Bivariate
 #***********************
 # lapply(c("geepack"), checkpackages)
@@ -2869,26 +2547,20 @@ GLMM_Overdispersion_Test=function(model){
 # Type_Odds=rep("Prop", length=length(Pred_Vars))
 # Type_Odds[Pred_Vars%in%Output$sig_vars]="Non_Prop"
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# CLMM_Ordinal_Bivariate_Format_1(Data,
-#                                 Pred_Vars<-Pred_Vars,
-#                                 Type_Odds<-Type_Odds,
-#                                 Res_Var<-"outcome",
-#                                 Group_Var<-"id",
-#                                 NAGQ=3)
-# CLMM_Ordinal_Bivariate_Format_2(Data,
+# CLMM_Ordinal_Bivariate(Data,
 #                                 Pred_Vars<-Pred_Vars,
 #                                 Type_Odds<-Type_Odds,
 #                                 Res_Var<-"outcome",
 #                                 Group_Var<-"id",
 #                                 NAGQ=3)
 #********************************
-# CLMM_Ordinal_Bivariate_Format_1
-CLMM_Ordinal_Bivariate_Format_1=function(Data,
-                                         Pred_Vars,
-                                         Type_Odds,
-                                         Res_Var,
-                                         Group_Var,
-                                         NAGQ=3){
+# CLMM_Ordinal_Bivariate
+CLMM_Ordinal_Bivariate=function(Data,
+                                Pred_Vars,
+                                Type_Odds,
+                                Res_Var,
+                                Group_Var,
+                                NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
   
@@ -2900,95 +2572,7 @@ CLMM_Ordinal_Bivariate_Format_1=function(Data,
   Data[, Group_Var]=factor(Data[, Group_Var], order=F)
   
   # main algorithm
-  output=c()
-  
-  for(i in 1:length(Pred_Vars)){
-    #i=4
-    i<<-i
-    if(Type_Odds[i]=="Prop"){
-      model.fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
-                      #nominal=as.formula(paste("~", Nom_Vars[i])),
-                      random=eval(parse(text=Group_Var)),
-                      data=Data,
-                      Hess=TRUE,
-                      nAGQ=NAGQ,
-                      link="logistic")
-    }else if(Type_Odds[i]=="Non_Prop"){
-      model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
-                      nominal=as.formula(paste("~", Pred_Vars[i])),
-                      random=eval(parse(text=Group_Var)),
-                      data=Data,
-                      Hess=TRUE,
-                      nAGQ=NAGQ,
-                      link="logistic")
-    }
-    
-    model.fit.summ=summary(model.fit)$coefficients
-    Coef.ind=which(grepl(Pred_Vars[i], row.names(model.fit.summ)))
-    # coefficient
-    Coef=model.fit.summ[Coef.ind, 1]
-    # standard error
-    SE.Coef=model.fit.summ[Coef.ind, 2]
-    # confidence interval (exponentiated)
-    Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
-    Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
-    # CI (upper and lower bounds)
-    Upper_Bound=exp(Raw_Upper_Bound)
-    Lower_Bound=exp(Raw_Lower_Bound)
-    
-    # output
-    temp_out=c()
-    temp_out$Estimate=round2(Coef, 3)
-    temp_out$Std.Error=round2(SE.Coef, 3)
-    temp_out$`P-value`=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
-                              format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
-    temp_out$COR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
-                               " (",
-                               format(round(Lower_Bound, 2), nsmall=2),
-                               " - ",
-                               format(round(Upper_Bound, 2), nsmall=2),
-                               ")")
-    
-    #
-    temp_out=data.frame(temp_out)
-    if(Type_Odds[i]=="Prop"){
-      if(is.factor(Data[, Pred_Vars[i]])){
-        name_temp=expand.grid(levels(Data[, Pred_Vars[i]])[-1])
-        row.names(temp_out)=paste0(Pred_Vars[i], " ", unlist(name_temp))
-      }else if(is.numeric(Data[, Pred_Vars[i]])){
-        row.names(temp_out)=paste0(Pred_Vars[i])
-      }
-    }else if(Type_Odds[i]=="Non_Prop"){
-      # blank
-    }
-    
-    output=rbind(output, temp_out)
-    
-    #print(paste(i, " ", Pred_Vars[i], sep=""))
-  }
-  return(output)
-}
-
-#********************************
-# CLMM_Ordinal_Bivariate_Format_2
-CLMM_Ordinal_Bivariate_Format_2=function(Data,
-                                         Pred_Vars,
-                                         Type_Odds,
-                                         Res_Var,
-                                         Group_Var,
-                                         NAGQ=3){
-  # check out packages
-  lapply(c("ordinal"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # values
-  Data[, Res_Var]=factor(Data[, Res_Var], order=T)
-  Data[, Group_Var]=factor(Data[, Group_Var], order=F)
-  
-  # main algorithm
-  output=c()
+  Output=c()
   
   for(i in 1:length(Pred_Vars)){
     #i=7
@@ -3026,7 +2610,7 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
     
     #
     if(Type_Odds[i]=="Prop"){
-      # output
+      # Output
       temp_out=c()
       temp_out$Estimate=round2(Coef, 3)
       temp_out$Std.Error=round2(SE.Coef, 3)
@@ -3046,10 +2630,10 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
       }else if(is.numeric(Data[, Pred_Vars[i]])){
         row.names(temp_out)=paste0(Pred_Vars[i])
       }
-      # output
-      output$Prop_Odds=rbind(output$Prop_Odds, temp_out)
+      # Output
+      Output$Prop_Odds=rbind(Output$Prop_Odds, temp_out)
     }else if(Type_Odds[i]=="Non_Prop"){
-      # output
+      # Output
       temp_out=c()
       # record 
       if(is.factor(Data[, Pred_Vars[i]])){
@@ -3107,15 +2691,15 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
       rownames(temp_out$COR.and.CI)=Temp_Row_Names
       colnames(temp_out$COR.and.CI)=Temp_Column_Names
       
-      # output
-      output$Non_Prop_Odds$Estimate=rbind(output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
-      output$Non_Prop_Odds$Std.Error=rbind(output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
-      output$Non_Prop_Odds$`P-value`=rbind(output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
-      output$Non_Prop_Odds$COR.and.CI=rbind(output$Non_Prop_Odds$COR.and.CI, t(temp_out$COR.and.CI))
+      # Output
+      Output$Non_Prop_Odds$Estimate=rbind(Output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
+      Output$Non_Prop_Odds$Std.Error=rbind(Output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
+      Output$Non_Prop_Odds$`P-value`=rbind(Output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
+      Output$Non_Prop_Odds$COR.and.CI=rbind(Output$Non_Prop_Odds$COR.and.CI, t(temp_out$COR.and.CI))
     }
     #print(paste(i, " ", Pred_Vars[i], sep=""))
   }
-  return(output)
+  return(Output)
 }
 
 #***************************
@@ -3150,26 +2734,20 @@ CLMM_Ordinal_Bivariate_Format_2=function(Data,
 # Type_Odds=rep("Prop", length=length(Pred_Vars))
 # Type_Odds[Pred_Vars%in%Output$sig_vars]="Non_Prop"
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# CLMM_Ordinal_Multivariable_Format_1(Data,
-#                                     Pred_Vars<-Pred_Vars,
-#                                     Type_Odds<-Type_Odds,
-#                                     Res_Var<-"outcome",
-#                                     Group_Var<-"id",
-#                                     NAGQ=3)
-# CLMM_Ordinal_Multivariable_Format_2(Data,
+# CLMM_Ordinal_Multivariable(Data,
 #                                     Pred_Vars<-Pred_Vars,
 #                                     Type_Odds<-Type_Odds,
 #                                     Res_Var<-"outcome",
 #                                     Group_Var<-"id",
 #                                     NAGQ=3)
 #************************************
-# CLMM_Ordinal_Multivariable_Format_1
-CLMM_Ordinal_Multivariable_Format_1=function(Data,
-                                             Pred_Vars,
-                                             Type_Odds,
-                                             Res_Var,
-                                             Group_Var,
-                                             NAGQ=3){
+# CLMM_Ordinal_Multivariable
+CLMM_Ordinal_Multivariable=function(Data,
+                                    Pred_Vars,
+                                    Type_Odds,
+                                    Res_Var,
+                                    Group_Var,
+                                    NAGQ=3){
   # check out packages
   lapply(c("ordinal"), checkpackages)
   
@@ -3181,7 +2759,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
   Data[, Group_Var]=factor(Data[, Group_Var], order=F)
   
   # main algorithm
-  output=c()
+  Output=c()
   Loc_Vars<<-Pred_Vars[Type_Odds=="Prop"]
   Nom_Vars<<-Pred_Vars[Type_Odds=="Non_Prop"]
   
@@ -3212,105 +2790,7 @@ CLMM_Ordinal_Multivariable_Format_1=function(Data,
   }
   
   # save model fit
-  output$model_fit=model.fit
-  model.fit.summ=summary(model.fit)$coefficients[-c(1:(length(levels(Data[, Res_Var]))-1)), ]
-  
-  # coefficient
-  Coef=model.fit.summ[, 1]
-  SE.Coef=model.fit.summ[, 2]
-  # confidence interval (exponentiated)
-  Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
-  Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
-  # CI (upper and lower bounds)
-  Upper_Bound=exp(Raw_Upper_Bound)
-  Lower_Bound=exp(Raw_Lower_Bound)
-  
-  # output
-  temp_out=c()
-  temp_out$Estimate=round2(Coef, 3)
-  temp_out$Std.Error=round2(SE.Coef, 3)
-  temp_out$`P-value`=ifelse(model.fit.summ[, 4]<0.001, "<0.001", 
-                            format(round2(model.fit.summ[, 4], 3), nsmall=3))
-  temp_out$COR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
-                             " (",
-                             format(round(Lower_Bound, 2), nsmall=2),
-                             " - ",
-                             format(round(Upper_Bound, 2), nsmall=2),
-                             ")")
-  
-  #
-  
-  temp_out=data.frame(temp_out)
-  for(i in 1:length(Pred_Vars)){
-    if(Type_Odds[i]=="Prop"){
-      if(is.factor(Data[, Pred_Vars[i]])){
-        name_temp=expand.grid(levels(Data[, Pred_Vars[i]])[-1])
-        rownames(temp_out)[grep(Pred_Vars[i], rownames(temp_out))]=paste0(Pred_Vars[i], " ", unlist(name_temp))
-        
-      }else if(is.numeric(Data[, Pred_Vars[i]])){
-        rownames(temp_out)[grep(Pred_Vars[i], rownames(temp_out))]=paste0(Pred_Vars[i])
-      }
-    }else if(Type_Odds[i]=="Non_Prop"){
-      # blank
-    }
-  }
-  
-  output=temp_out
-  return(output)
-  #print(paste(i, " ", Pred_Vars[i], sep=""))
-}
-
-#************************************
-# CLMM_Ordinal_Multivariable_Format_2
-CLMM_Ordinal_Multivariable_Format_2=function(Data,
-                                             Pred_Vars,
-                                             Type_Odds,
-                                             Res_Var,
-                                             Group_Var,
-                                             NAGQ=3){
-  # check out packages
-  lapply(c("ordinal"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  
-  # values
-  Data[, Res_Var]=factor(Data[, Res_Var], order=T)
-  Data[, Group_Var]=factor(Data[, Group_Var], order=F)
-  
-  # main algorithm
-  output=c()
-  Loc_Vars<<-Pred_Vars[Type_Odds=="Prop"]
-  Nom_Vars<<-Pred_Vars[Type_Odds=="Non_Prop"]
-  
-  if(length(Loc_Vars)==0){ # if all are not proportional odds
-    model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
-                    nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=Group_Var)),
-                    data=Data,
-                    Hess=TRUE,
-                    nAGQ=NAGQ,
-                    link="logistic")
-  }else if(length(Nom_Vars)==0){ # if all are proportional odds
-    model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
-                    #nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=Group_Var)),
-                    data=Data,
-                    Hess=TRUE,
-                    nAGQ=NAGQ,
-                    link="logistic")
-  }else if(length(Loc_Vars)!=0 & length(Nom_Vars)!=0){ # mixed
-    model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
-                    nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
-                    random=eval(parse(text=Group_Var)),
-                    data=Data,
-                    Hess=TRUE,
-                    nAGQ=NAGQ,
-                    link="logistic")
-  }
-  
-  # save model fit
-  output$model_fit=model.fit
+  Output$model_fit=model.fit
   model.fit.summ=summary(model.fit)$coefficients[-c(1:(length(levels(Data[, Res_Var]))-1)), ]
   
   # coefficient
@@ -3324,13 +2804,13 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
   Lower_Bound=exp(Raw_Lower_Bound)
   
   #
-  output$Prop_Odds=c()
-  output$Non_Prop_Odds=c()
+  Output$Prop_Odds=c()
+  Output$Non_Prop_Odds=c()
   for(i in 1:length(Pred_Vars)){
     Target_Ind=grep(Pred_Vars[i], names(Coef))
     
     if(Type_Odds[i]=="Prop"){
-      # output
+      # Output
       temp_out=c()
       
       temp_out$Estimate=round2(Coef[Target_Ind], 3)
@@ -3351,10 +2831,10 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
       }else if(is.numeric(Data[, Pred_Vars[i]])){
         row.names(temp_out)=paste0(Pred_Vars[i])
       }
-      # output
-      output$Prop_Odds=rbind(output$Prop_Odds, temp_out)
+      # Output
+      Output$Prop_Odds=rbind(Output$Prop_Odds, temp_out)
     }else if(Type_Odds[i]=="Non_Prop"){
-      # output
+      # Output
       temp_out=c()
       # record 
       if(is.factor(Data[, Pred_Vars[i]])){
@@ -3412,16 +2892,16 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
       rownames(temp_out$COR.and.CI)=Temp_Row_Names
       colnames(temp_out$COR.and.CI)=Temp_Column_Names
       
-      # output
-      output$Non_Prop_Odds$Estimate=rbind(output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
-      output$Non_Prop_Odds$Std.Error=rbind(output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
-      output$Non_Prop_Odds$`P-value`=rbind(output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
-      output$Non_Prop_Odds$COR.and.CI=rbind(output$Non_Prop_Odds$COR.and.CI, t(temp_out$COR.and.CI))
+      # Output
+      Output$Non_Prop_Odds$Estimate=rbind(Output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
+      Output$Non_Prop_Odds$Std.Error=rbind(Output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
+      Output$Non_Prop_Odds$`P-value`=rbind(Output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
+      Output$Non_Prop_Odds$COR.and.CI=rbind(Output$Non_Prop_Odds$COR.and.CI, t(temp_out$COR.and.CI))
     }
   }
   
   #print(paste(i, " ", Pred_Vars[i], sep=""))
-  return(output)
+  return(Output)
 }
 
 #**************************
@@ -3458,13 +2938,12 @@ CLMM_Ordinal_Multivariable_Format_2=function(Data,
 # Type_Odds=rep("Prop", length=length(Pred_Vars))
 # Type_Odds[Pred_Vars%in%Output$sig_vars]="Non_Prop"
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# CLMM.fit=CLMM_Ordinal_Multivariable_Format_2(Data,
-#                                              Pred_Vars<-Pred_Vars,
-#                                              Type_Odds<-Type_Odds,
-#                                              Res_Var<-"outcome",
-#                                              Group_Var<-"id",
-#                                              NAGQ<-3)
-# 
+# CLMM.fit=CLMM_Ordinal_Multivariable(Data,
+#                                     Pred_Vars<-Pred_Vars,
+#                                     Type_Odds<-Type_Odds,
+#                                     Res_Var<-"outcome",
+#                                     Group_Var<-"id",
+#                                     NAGQ<-3)
 # Confounder_Steps=CLMM_Confounder_Selection(Full_Model=CLMM.fit$model_fit,
 #                                            Main_Pred_Var="sex",
 #                                            Main_Pred_Var_Type_Odds<-Type_Odds[Pred_Vars=="sex"],
@@ -3689,12 +3168,12 @@ CLMM_Confounder_Model=function(Data,
   Output$Proportional_Assumption=Proportional_Assumption
   
   # Full multivariable model
-  Output$Full_Multivariable_Model=CLMM_Ordinal_Multivariable_Format_2(Data<-Data,
-                                                                      Pred_Vars<-Pred_Vars,
-                                                                      Type_Odds<-Type_Odds,
-                                                                      Res_Var<-Res_Var,
-                                                                      Group_Var<-Group_Var,
-                                                                      NAGQ<-NAGQ)
+  Output$Full_Multivariable_Model=CLMM_Ordinal_Multivariable(Data<-Data,
+                                                             Pred_Vars<-Pred_Vars,
+                                                             Type_Odds<-Type_Odds,
+                                                             Res_Var<-Res_Var,
+                                                             Group_Var<-Group_Var,
+                                                             NAGQ<-NAGQ)
   # Confounder selection
   Confounder_Steps=CLMM_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
                                              Main_Pred_Var=Main_Pred_Var,
@@ -3712,12 +3191,12 @@ CLMM_Confounder_Model=function(Data,
   Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
   
   # Multivariable model with confounders
-  Output$Confounder_Model=CLMM_Ordinal_Multivariable_Format_2(Data<-Data,
-                                                              Pred_Vars<-Pred_Vars[Confounder_Ind],
-                                                              Type_Odds<-Type_Odds[Confounder_Ind],
-                                                              Res_Var<-Res_Var,
-                                                              Group_Var<-Group_Var,
-                                                              NAGQ<-NAGQ)
+  Output$Confounder_Model=CLMM_Ordinal_Multivariable(Data<-Data,
+                                                     Pred_Vars<-Pred_Vars[Confounder_Ind],
+                                                     Type_Odds<-Type_Odds[Confounder_Ind],
+                                                     Res_Var<-Res_Var,
+                                                     Group_Var<-Group_Var,
+                                                     NAGQ<-NAGQ)
   return(Output)
 }
 
@@ -3772,7 +3251,7 @@ Proportional_Odds_Assumption_Test=function(Data,
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
   
   # main algorithm
-  output=c()
+  Output=c()
   lr_test=list()
   p_value=c()
   for(i in 1:length(Pred_Vars)){
@@ -3785,11 +3264,11 @@ Proportional_Odds_Assumption_Test=function(Data,
     p_value[i]=lr_test[[i]]$`Pr(>Chi)`[-1]
   }
   p_value[is.na(p_value)]=1
-  output$lr_test=lr_test
-  output$p_value=p_value
-  output$sig_vars=Pred_Vars[p_value<0.05]
+  Output$lr_test=lr_test
+  Output$p_value=p_value
+  Output$sig_vars=Pred_Vars[p_value<0.05]
   
-  return(output)
+  return(Output)
 }
 
 #**********************
@@ -4020,11 +3499,11 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
   return(Out)
 }
 
-#*************************************************************
+#****************************
 #
-# [ --- Multiple Imputation Analytic Result Combine --- ] ----
+# [ --- Imputation --- ] ----
 #
-#*************************************************************
+#****************************
 # Combine_Multiple_Results
 #*************************
 # Combine the results of analysis from multiple imputed data sets.
@@ -4108,7 +3587,7 @@ Combine_Multiple_Results=function(Input_Data_Names){
   # compute P.value
   P.value=2*(1-pnorm(abs((est.coef.mean)/sqrt(est.var.mean+par.var*(1+1/m)))))
   # compute parameters
-  output=data.table(
+  Output=data.table(
     rn=get(paste0(Input_Data_Names[m.ind]))[, rn],
     Estimate=round(est.coef.mean, 3),
     Std.Error=round(sqrt(est.var.mean+par.var*(1+1/m)), 3), # standard error of the multiple imputation point estimate
@@ -4116,14 +3595,14 @@ Combine_Multiple_Results=function(Input_Data_Names){
                    format(round2(P.value, 3), nsmall=3)) # assuming that the sampling distribution of statistic is normal distribution
   )
   # compute OR and 95% CI
-  output[,
+  Output[,
          OR.and.CI:=paste0(round(exp(Estimate), 2),
-                           " (", round(exp(output[, Estimate]-qnorm(0.975)*output[, Std.Error]), 2),
+                           " (", round(exp(Output[, Estimate]-qnorm(0.975)*Output[, Std.Error]), 2),
                            " - ",
-                           round(exp(output[, Estimate]+qnorm(0.975)*output[, Std.Error]), 2), ")")
+                           round(exp(Output[, Estimate]+qnorm(0.975)*Output[, Std.Error]), 2), ")")
          ]
   
-  return(output)
+  return(Output)
 }
 
 
@@ -4157,25 +3636,25 @@ Contribution_plot=function(X, Y, alpha=1, level=0.95, nrep=100){
   #
   # import aSPC
   lapply(c("aSPC"), checkpackages)
-  # output
-  output=c()
+  # Output
+  Output=c()
   # run aSPC
   aSPC.result=aSPC(X, Y, pow=2*alpha, B=nrep)
   # optimal alpha
-  output$opt.alpha=alpha[which.min(aSPC.result[names(aSPC.result)!="aSPC"])]
+  Output$opt.alpha=alpha[which.min(aSPC.result[names(aSPC.result)!="aSPC"])]
   # aSPC result
-  output$aSPC=aSPC.result[names(aSPC.result)=="aSPC"]
+  Output$aSPC=aSPC.result[names(aSPC.result)=="aSPC"]
   # Estimated contributions
-  output$Est.Contribution=data.frame(Contribution=EstContribution(X, Y, alpha=output$opt.alpha))
+  Output$Est.Contribution=data.frame(Contribution=EstContribution(X, Y, alpha=Output$opt.alpha))
   # Call to plot() to plot the contributions and threshold.
-  plot(output$Est.Contribution$Contribution, type='l', main="X and Y (alpha=1)", 
+  plot(Output$Est.Contribution$Contribution, type='l', main="X and Y (alpha=1)", 
        xlab="Explanatory Variables", ylab="Contribution", 
        cex=1.3, cex.lab=1.3, cex.axis=1.3, cex.main=2.5, cex.sub=1.3)
   # Calculate threshold
-  output$threshold=Threshold(X, Y, alpha=output$opt.alpha, level=level, nrep=nrep)
+  Output$threshold=Threshold(X, Y, alpha=Output$opt.alpha, level=level, nrep=nrep)
   # Draw the threshold in the plot
-  abline(a=output$threshold, b=0, col="blue")
-  return(output)
+  abline(a=Output$threshold, b=0, col="blue")
+  return(Output)
 }
 EstContribution=function(X, Y, alpha=1){
   # Input: Data matrices X and Y, and the power alpha
@@ -4890,7 +4369,6 @@ Mortgage_Calculator=function(HP=500000,          # House Price
   } 
   return(as.data.table(Periodic_Table)) 
 }
-
 
 
 
