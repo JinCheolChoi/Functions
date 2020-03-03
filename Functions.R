@@ -778,7 +778,9 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
                            which.family=which.family)
     
     Output=rbind(Output, Temp$summ_table)
-    #print(paste0(i, " ", Pred_Vars[i]))
+    
+    # print progress
+    print(paste0(i, " ", Pred_Vars[i]))
   }
   return(Output)
 }
@@ -816,14 +818,14 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   Data=as.data.frame(Data)
   
   # delete data with missing value
-  #Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
+  Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
+  GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))),
                data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
-               id=Data[, Group_Var], 
-               family=which.family, 
+               id=Data[, Group_Var],
+               family=which.family,
                corstr="exchangeable")
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
@@ -1402,7 +1404,6 @@ GLMM_Multivariable=function(Data,
   return(Output)
 }
 
-
 #**************************
 # GLMM_Confounder_Selection
 #**************************
@@ -1473,6 +1474,7 @@ GLMM_Confounder_Selection=function(Full_Model,
   while(loop.key==0){ # while - start
     # indicate how many steps have been processed
     print(paste0("Step : ", step))
+    
     
     #
     Fixed_Effects_Current_Full_Model=fixef(Current_Full_Model)
@@ -3531,10 +3533,10 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
 # 
 # Data_to_use=Format_Columns(Data_to_use,
-#                     Res_Var="outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # 
 # # generate 100 missing data in outcome
 # Data_to_use=as.data.table(Data_to_use)
@@ -3543,8 +3545,8 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 # set.seed(2019) # set seed in order to obtain the same imputed values for the future reproduction of analysis results
 # m=2 # the number of imputed datasets to creates
 # amelia.imp=amelia(Data_to_use[,
-#                        .SD,
-#                        .SDcols=c(Pred_Vars, Res_Var)],
+#                               .SD,
+#                               .SDcols=c(Pred_Vars, Res_Var)],
 #                   p2s=0,
 #                   Mvalue="NA",
 #                   m=m,
