@@ -193,6 +193,103 @@ Segmented_Regression_Model_Plot=function(Data,
   Trend_Plot
 }
 
+#************************
+#
+# [ --- COX PH --- ] ----
+#
+#************************
+# COX_Bivariate
+#**************
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# #
+# COX_Bivariate(Data=Data_to_use,
+#               Pred_Vars=c("x1", "x2", "x3"),
+#               Res_Var="event",
+#               Start_Time="start",
+#               Stop_Time="stop")
+COX_Bivariate=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time){
+  # main algorithm
+  Output=c()
+  for(i in 1:length(Pred_Vars)){
+    #i=1
+    # run model
+    Temp=COX_Multivariable(Data=Data,
+                           Pred_Vars=Pred_Vars[i],
+                           Res_Var=Res_Var,
+                           Start_Time=Start_Time,
+                           Stop_Time=Stop_Time)
+    Output=rbind(Output, Temp$summ_table)
+  }
+  return(Output)
+}
+
+#******************
+# COX_Multivariable
+#******************
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# #
+# COX_Multivariable(Data=Data_to_use,
+#                   Pred_Vars=c("x1", "x2", "x3"),
+#                   Res_Var="event",
+#                   Start_Time="start",
+#                   Stop_Time="stop")
+COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time){
+  # check out packages
+  lapply(c("survival"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  #Data=na.omit(Data[, c(Res_Var, Pred_Vars)])
+  
+  # main algorithm
+  Output=c()
+  #i=1
+  # run model
+  
+  if(is.null(Start_Time)){
+    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+  }else{fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))}
+  
+  model.fit=coxph(fullmod, na.action=na.exclude, data=Data)
+  Output$model_fit=model.fit
+  Output$cox.zph=cox.zph(model.fit)
+  
+  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  Fit.Summary=summary(model.fit)
+  HR.Coefficients=Fit.Summary$coefficients
+  HR.Conf.int=Fit.Summary$conf.int
+  
+  # Output
+  Output$summ_table=rbind(Output$summ_table, 
+                          data.frame(
+                            Estimate=round2(HR.Coefficients[, "coef"], 3),
+                            Std.Error=round2(HR.Coefficients[, "se(coef)"], 3),
+                            `P-value`=ifelse(HR.Coefficients[, "Pr(>|z|)"]<0.001, "<0.001", 
+                                             format(round2(HR.Coefficients[, "Pr(>|z|)"], 3), nsmall=3)),
+                            HR.and.CI=paste0(format(round2(HR.Conf.int[, "exp(coef)"] , 2), nsmall=2),
+                                             " (", format(round2(as.numeric(HR.Conf.int[, "lower .95"]), 2), nsmall=2), " - ", 
+                                             format(round2(as.numeric(HR.Conf.int[, "upper .95"]), 2), nsmall=2), ")"),
+                            row.names=names(coef(model.fit))
+                          )
+  )
+  
+  return(Output)
+}
+
 #*********************
 #
 # [ --- GLM --- ] ----
@@ -819,6 +916,9 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   
   # delete data with missing value
   Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
+  
+  # Convert code to numeric (This is very important when running gee!)
+  Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
