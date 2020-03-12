@@ -332,6 +332,9 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
                            Res_Var=Res_Var,
                            which.family=which.family)
     Output=rbind(Output, Temp$summ_table)
+    
+    # print progress
+    print(paste0(Pred_Vars[i], " (", i, "/", length(Pred_Vars), ")"))
   }
   return(Output)
 }
@@ -359,10 +362,10 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GLM_Multivariable(Data_to_use,
+# GLM_Multivariable(Data=Data_to_use,
 #                   Pred_Vars,
 #                   Res_Var=Res_Var,
-#                   which.family="binomial")
+#                   which.family="gaussian")
 GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   # check out packages
   lapply(c("MASS"), checkpackages)
@@ -388,19 +391,33 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   est=cbind(summary(model.fit)$coefficients, OR.CI)
   
   # Output
-  Output$summ_table=rbind(Output$summ_table, 
-                          data.frame(
-                            Estimate=round2(est[-1, "Estimate"], 3), 
-                            Std.Error=round2(est[-1, "Std. Error"], 3), 
-                            `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001", 
-                                             format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
-                            OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2), 
-                                             " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ", 
-                                             format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"), 
-                            row.names=names(coef(model.fit))[-1]
-                          )
-  )
-  
+  if(which.family=="gaussian"){
+    Output$summ_table=rbind(Output$summ_table,
+                            data.frame(
+                              Estimate=round2(est[-1, "Estimate"], 3),
+                              Std.Error=round2(est[-1, "Std. Error"], 3),
+                              `P-value`=ifelse(est[-1, "Pr(>|t|)"]<0.001, "<0.001",
+                                               format(round2(est[-1, "Pr(>|t|)"], 3), nsmall=3)),
+                              Estimate.and.CI=paste0(format(round2(est[-1, "Estimate"] , 2), nsmall=2),
+                                                     " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
+                                                     format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
+                              row.names=names(coef(model.fit))[-1]
+                            )
+    )
+  }else{
+    Output$summ_table=rbind(Output$summ_table,
+                            data.frame(
+                              Estimate=round2(est[-1, "Estimate"], 3),
+                              Std.Error=round2(est[-1, "Std. Error"], 3),
+                              `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
+                                               format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
+                              OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2),
+                                               " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
+                                               format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
+                              row.names=names(coef(model.fit))[-1]
+                            )
+    )
+  }
   return(Output)
 }
 
@@ -877,7 +894,7 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
     Output=rbind(Output, Temp$summ_table)
     
     # print progress
-    print(paste0(i, " ", Pred_Vars[i]))
+    print(paste0(Pred_Vars[i], " (", i, "/", length(Pred_Vars), ")"))
   }
   return(Output)
 }
@@ -889,20 +906,20 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
 #************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
-# Data=respiratory
+# Data_to_use=respiratory
 # # generate missing data
 # Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data[, Pred_Vars], class))=="integer", "num", "fact")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data=Format_Columns(Data,
-#                     Res_Var="outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # # run GEE_Multivariable
-# GEE_Multivariable(Data,
+# GEE_Multivariable(Data=Data_to_use,
 #                   Pred_Vars=Pred_Vars,
 #                   Res_Var="outcome",
 #                   Group_Var="id",
@@ -4475,6 +4492,37 @@ Mortgage_Calculator=function(HP=500000,          # House Price
 }
 
 
+#*********
+# Joy_Plot
+#*********
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# 
+# Joy_Plot(Data=Data_to_use,
+#          X_Var="age",
+#          Y_Var="sex",
+#          scale=2,
+#          rel_min_height=0.0001)
+Joy_Plot=function(Data, X_Var, Y_Var, ...){
+  lapply(c("ggridges",
+           "ggplot2",
+           "viridis",
+           "hrbrthemes"), 
+         checkpackages)
+  
+  Data=as.data.frame(Data)
+  Data[, X_Var]=as.numeric(Data[, X_Var])
+  Data[, Y_Var]=as.factor(Data[, Y_Var])
+  
+  ggplot(Data, aes(x=eval(parse(text=X_Var)), y=eval(parse(text=Y_Var)), fill=..x..))+
+    geom_density_ridges_gradient(...)+ 
+    xlab(X_Var)+
+    ylab(Y_Var)+
+    scale_fill_viridis(name="X_Var", option="C")
+}
 
 
 #**************
@@ -4560,9 +4608,49 @@ mclapply.hack=function(...){
 }
 
 
-
-
-
+#**********************
+# Example of doParallel
+#**********************
+# lapply(c("foreach", "doParallel"), checkpackages)
+# numCores=detectCores()
+# registerDoParallel(numCores)  # use multicore, set to the number of our cores
+# 
+# # 1 - use lapply
+# x=iris[which(iris[,5]!="setosa"), c(1,5)]
+# trials=seq(1, 10000)
+# boot_fx=function(trial){
+#   ind=sample(100, 100, replace=TRUE)
+#   result1=glm(x[ind,2]~x[ind,1], family=binomial(logit))
+#   r=coefficients(result1)
+#   res=rbind(data.frame(), r)
+# }
+# system.time({
+#   results=lapply(trials, boot_fx)
+# })
+# 
+# # 2 - use foreach - compare that to what it takes to do the same analysis in serial
+# trials=10000
+# system.time({
+#   r=foreach(icount(trials), .combine=rbind)%do%{
+#     ind=sample(100, 100, replace=TRUE)
+#     result1=glm(x[ind,2]~x[ind,1], family=binomial(logit))
+#     coefficients(result1)
+#   }
+# })
+# 
+# # 3 - use a parallel bootstrap
+# # From the doParallel vignette, but slightly modified
+# trials=10000
+# system.time({
+#   r.2=foreach(icount(trials), .combine=rbind)%dopar%{
+#     ind=sample(100, 100, replace=TRUE)
+#     result1=glm(x[ind,2]~x[ind,1], family=binomial(logit))
+#     coefficients(result1)
+#   }
+# })
+# 
+# # When you're done, clean up the cluster
+# stopImplicitCluster()
 
 
 
