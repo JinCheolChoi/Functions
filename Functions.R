@@ -1033,7 +1033,6 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                         Group_Var))
   Data<<-as.data.frame(Data)
   
-  
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
   GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
@@ -1049,8 +1048,8 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   Output=c()
   Output$model_fit=GEE.m
   
-  if(length(Pred_Vars)>=2){Output$vif=HH::vif(GEE.m)}
-  if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=HH::vif(GEE.m)} # if the only variable is not numeric (that's, if it is categorical), compute vif
+  if(length(Pred_Vars)>=2){Output$vif=car::vif(GEE.m)}
+  if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(GEE.m)} # if the only variable is not numeric (that's, if it is categorical), compute vif
   
   if(which.family=="gaussian"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
