@@ -103,6 +103,7 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
   return(Data)
 }
 
+
 #*************************************************
 #
 # [ --- ITS ( Interrupted Time Series ) --- ] ----
@@ -138,12 +139,13 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
 #                                 Group_Var="group",
 #                                 Y_Lab="Frequency")
 Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
-  # 
-  #Data=Long_Table
+  # as data frame
   Data=as.data.frame(Data)
+  Origin_N_Rows=nrow(Data)
   
-  # 
-  #Data=na.omit(Data[, c(Res_Var, Pred_Vars)])
+  # delete data with missing value
+  Data=na.omit(Data[, c(Res_Var, Time_Var, Int_Var)])
+  Used_N_Rows=nrow(Data)
   
   Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
   
@@ -155,6 +157,7 @@ Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
   
   # Output
   Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
   Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
   colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
@@ -225,7 +228,9 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time){
                            Res_Var=Res_Var,
                            Start_Time=Start_Time,
                            Stop_Time=Stop_Time)
-    Output=rbind(Output, Temp$summ_table)
+    Output=rbind(Output,
+                 cbind(Temp$summ_table,
+                       Data_Used=Temp$N_data_used))
   }
   return(Output)
 }
@@ -253,7 +258,11 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time)
   
   # as data frame
   Data=as.data.frame(Data)
-  #Data=na.omit(Data[, c(Res_Var, Pred_Vars)])
+  Origin_N_Rows=nrow(Data)
+  
+  # delete data with missing value
+  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Start_Time, Stop_Time)])
+  Used_N_Rows=nrow(Data)
   
   # main algorithm
   Output=c()
@@ -265,6 +274,7 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time)
   }else{fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))}
   
   model.fit=coxph(fullmod, na.action=na.exclude, data=Data)
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model.fit
   Output$cox.zph=cox.zph(model.fit)
   
@@ -331,7 +341,9 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
                            Pred_Vars=Pred_Vars[i],
                            Res_Var=Res_Var,
                            which.family=which.family)
-    Output=rbind(Output, Temp$summ_table)
+    Output=rbind(Output,
+                 cbind(Temp$summ_table,
+                       Data_Used=Temp$N_data_used))
     
     # print progress
     print(paste0(Pred_Vars[i], " (", i, "/", length(Pred_Vars), ")"))
@@ -372,7 +384,11 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   # as data frame
   Data=as.data.frame(Data)
-  #Data=na.omit(Data[, c(Res_Var, Pred_Vars)])
+  Origin_N_Rows=nrow(Data)
+  
+  # delete data with missing value
+  Data=na.omit(Data[, c(Pred_Vars, Res_Var)])
+  Used_N_Rows=nrow(Data)
   
   # main algorithm
   Output=c()
@@ -380,6 +396,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   # run model
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
   model.fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model.fit
   
   # vif
@@ -694,7 +711,9 @@ GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_name){
                               Pred_Vars=Pred_Vars[i],
                               Res_Var=Res_Var,
                               Offset_name=Offset_name)
-    Output=rbind(Output, Temp$summ_table)
+    Output=rbind(Output,
+                 cbind(Temp$summ_table,
+                       Data_Used=Temp$N_data_used))
   }
   return(Output)
 }
@@ -727,15 +746,20 @@ GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_name){
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
 # GLM_NB_Multivariable(Data=Data_to_use,
-#                       Pred_Vars=Pred_Vars,
-#                       Res_Var="count_outcome",
-#                       Offset_name="visit")
+#                      Pred_Vars=Pred_Vars,
+#                      Res_Var="count_outcome",
+#                      Offset_name="visit")
 GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   # check out packages
   lapply(c("MASS"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
+  Origin_N_Rows=nrow(Data)
+  
+  # delete data with missing value
+  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Offset_name)])
+  Used_N_Rows=nrow(Data)
   
   # run model
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+offset(log(", Offset_name, "))"))
@@ -748,6 +772,7 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   
   # Output
   Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model.fit
   Output$summ_table=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
                                Std.Error=round2(est[-1, "Std. Error"], 3), 
@@ -891,7 +916,9 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
                            Group_Var=Group_Var,
                            which.family=which.family)
     
-    Output=rbind(Output, Temp$summ_table)
+    Output=rbind(Output,
+                 cbind(Temp$summ_table,
+                       Data_Used=Temp$N_data_used))
     
     # print progress
     print(paste0(Pred_Vars[i], " (", i, "/", length(Pred_Vars), ")"))
@@ -930,9 +957,11 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   
   # as data frame
   Data=as.data.frame(Data)
+  Origin_N_Rows=nrow(Data)
   
   # delete data with missing value
   Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
+  Used_N_Rows=nrow(Data)
   
   # Convert code to numeric (This is very important when running gee!)
   Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
@@ -950,6 +979,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   
   # Output
   Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=GEE.m
   #Output$vif=HH::vif(GEE.m)
   
@@ -1027,11 +1057,16 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
   
   # as data frame
+  Data=as.data.frame(Data)
+  
+  # as data frame
+  Origin_N_Rows=nrow(Data)
   Data=Remove_missing(Data, # remove missing data
                       c(Pred_Vars,
                         Res_Var,
                         Group_Var))
   Data<<-as.data.frame(Data)
+  Used_N_Rows=nrow(Data)
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -1046,6 +1081,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   
   # Output
   Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=GEE.m
   
   if(length(Pred_Vars)>=2){Output$vif=car::vif(GEE.m)}
@@ -1289,6 +1325,7 @@ GEE_Confounder_Selection=function(Full_Model,
 # GEE_Confounder$Full_Multivariable_Model$summ_table
 # GEE_Confounder$Confounder_Steps$Confounders
 # GEE_Confounder$Confounder_Model$summ_table
+# GEE_Confounder$Confounder_Model$N_data_used
 GEE_Confounder_Model=function(Input_Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
@@ -1388,7 +1425,9 @@ GLMM_Bivariate=function(Data,
                             NAGQ=NAGQ,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
-    Output=rbind(Output, Temp$summ_table)
+    Output=rbind(Output,
+                 cbind(Temp$summ_table,
+                       Data_Used=Temp$N_data_used))
   }
   Output=as.data.frame(Output)
   return(Output)
@@ -1436,6 +1475,11 @@ GLMM_Multivariable=function(Data,
   
   # as data frame
   Data=as.data.frame(Data)
+  Origin_N_Rows=nrow(Data)
+  
+  # delete data with missing value
+  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
+  Used_N_Rows=nrow(Data)
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
@@ -1480,6 +1524,7 @@ GLMM_Multivariable=function(Data,
   # Output
   #*******
   Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
   # random effect plot (exponentiated)
   Output$re_plot=plot_model(myfit, type="re")
   # info of model fit
@@ -1719,6 +1764,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 # GLMM_Confounder$Full_Multivariable_Model$summ_table
 # GLMM_Confounder$Confounder_Steps$Confounders
 # GLMM_Confounder$Confounder_Model$summ_table
+# GLMM_Confounder$Confounder_Model$N_data_used
 GLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
@@ -2041,10 +2087,10 @@ GLMM_LASSO=function(Data, pred_vars, res_var, rand_var, which.family="binomial(l
 # levels.of.fact[which(pred_vars=="sex")]="F"
 # 
 # Data_to_use=Format_Columns(Data_to_use,
-#                     Res_Var="outcome",
-#                     Pred_Vars=pred_vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+#                            Res_Var="outcome",
+#                            Pred_Vars=pred_vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # 
 # head(Data_to_use)
 # GLMM_Bivariate_Plot(Data=Data_to_use,
@@ -2090,7 +2136,7 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
   mm=model.matrix(~X, newdat.margin)
   raw_fit=mm%*%fixef(Model)
   pvar1=diag(mm%*%tcrossprod(vcov(Model), mm))
-  VarCorr_out=unlist(VarCorr(Model))
+  VarCorr_out=unlist(lme4::VarCorr(Model))
   tvar1=pvar1+VarCorr_out[names(VarCorr_out)==Group_Var]
   
   if(which.family=="poisson"){ # code for 'poisson' family
@@ -2281,7 +2327,7 @@ GLMM_Overdispersion_Test=function(model){
     nrow(m)*(nrow(m)+1)/2
   }
   # The next two lines calculate the residual degrees of freedom
-  model.df=sum(sapply(VarCorr(model), vpars)) + length(fixef(model))
+  model.df=sum(sapply(lme4::VarCorr(model), vpars)) + length(fixef(model))
   rdf=nrow(model.frame(model)) - model.df
   # extracts the Pearson residuals
   rp=residuals(model, type="pearson")
@@ -2331,9 +2377,10 @@ GLMM_Multinomial_Bivariate=function(Data,
                                     Group_Var,
                                     k=2,
                                     maxit=500,
-                                    tol=1e-04){
+                                    tol=1e-04,
+                                    par.update=F){
   # check out packages
-  lapply(c("mixcat"), checkpackages)
+  lapply(c("mixcat", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -2347,133 +2394,25 @@ GLMM_Multinomial_Bivariate=function(Data,
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
-    #i=17
-    X=Data[, Pred_Vars[i]]
+    Temp=GLMM_Multinomial_Multivariate(Data=Data,
+                                       Pred_Vars=Pred_Vars[i],
+                                       Res_Var=Res_Var,
+                                       Group_Var=Group_Var,
+                                       k=k,
+                                       maxit=maxit,
+                                       par.update=par.update)
     
-    # run algorithm until convergence
-    while_trs=0
-    count=0
-    temp_k=k
-    temp_maxit=maxit
-    temp_tol=tol
-    while(while_trs==0){
-      count=count+1
-      
-      # run model
-      myfit=npmlt(Y~X,
-                  formula.npo=~X,
-                  random=~1,
-                  id=ID,
-                  k=temp_k,
-                  link="blogit", # specify that the model is a baseline logit random effects model
-                  EB=FALSE,
-                  maxit=temp_maxit,
-                  tol=temp_tol)
-      
-      #
-      while_trs=1
-      if(is.na(myfit$coefficients[1])){
-        temp_k=temp_k+ifelse(sample(c(0,1), 1)==0, 1, -1)
-        if(temp_k==1){temp_k=2}else if(temp_k>=length(Pred_Vars)-1){temp_k=2}
-        print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Fail to converge. Try k=", temp_k))
-        while_trs=0 # re-run algorithm
-        Sys.sleep(0.5)
-      }else{
-        if(myfit$flagcvm>0 | myfit$flaginfo>0){
-          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Reduce 'tol' from ", temp_tol, " to ", temp_tol/100))
-          temp_tol=temp_tol/100
-          while_trs=0 # re-run algorithm
-        }
-        if(myfit$iter==myfit$maxit){
-          print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Increase 'maxit' from ", temp_maxit, " to ", temp_maxit+10000))
-          temp_maxit=temp_maxit+10000
-          while_trs=0 # re-run algorithm
-        }
-      }
-    }
-    print(paste0("[ ", Pred_Vars[i], " : ", count, "th run ] - Algorithm converged (k=", temp_k, ", maxit=", temp_maxit, ", tol=", temp_tol, ")"))
-    
-    # coefficient
-    Coef=myfit$coefficients
-    Coef.ind=which(grepl("X", row.names(Coef)))
-    # standard error
-    SE.Coef=myfit$SE.coefficients
-    # confidence interval (exponentiated)
-    Raw_Upper_Bound=Coef[Coef.ind]+qnorm(0.975)*SE.Coef[Coef.ind]
-    Raw_Lower_Bound=Coef[Coef.ind]-qnorm(0.975)*SE.Coef[Coef.ind]
-    # p-values
-    Z_value=Coef/SE.Coef # Wald test statistic
-    P_values=(1-pnorm(abs(Z_value), 0, 1))*2
-    # CI (upper and lower bounds)
-    Upper_Bound=exp(Raw_Upper_Bound)
-    Lower_Bound=exp(Raw_Lower_Bound)
-    
-    # Output
-    temp_out=c()
-    
-    # record 
-    if(is.factor(X)){
-      temp_out$Estimate=matrix(round2(Coef[Coef.ind], 3), 
-                               ncol=length(levels(X))-1, 
-                               nrow=length(levels(Y))-1)
-      temp_out$Std.Error=matrix(round2(SE.Coef[Coef.ind], 3), 
-                                ncol=length(levels(X))-1, 
-                                nrow=length(levels(Y))-1)
-      temp_out$`P-value`=matrix(
-        ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-               format(round2(P_values[Coef.ind], 3), nsmall=3)), 
-        ncol=length(levels(X))-1, 
-        nrow=length(levels(Y))-1)
-      temp_out$OR.and.CI=matrix(
-        paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-               " (",
-               format(round(Lower_Bound, 2), nsmall=2),
-               " - ",
-               format(round(Upper_Bound, 2), nsmall=2),
-               ")"), 
-        ncol=length(levels(X))-1, 
-        nrow=length(levels(Y))-1)
-      # names for row and column
-      X_Levels=levels(X)
-      Temp_Row_Names=Y_Levels[-1]
-      Temp_Column_Names=paste0(Pred_Vars[i], " / ", X_Levels[-1])
-    }else if(is.numeric(X)){
-      temp_out$Estimate=data.frame(X=round2(Coef[Coef.ind], 3))
-      temp_out$Std.Error=data.frame(X=round2(SE.Coef[Coef.ind], 3))
-      temp_out$`P-value`=data.frame(
-        X=ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                 format(round2(P_values[Coef.ind], 3), nsmall=3))
-      )
-      temp_out$OR.and.CI=data.frame(
-        X=paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                 " (",
-                 format(round(Lower_Bound, 2), nsmall=2),
-                 " - ",
-                 format(round(Upper_Bound, 2), nsmall=2),
-                 ")")
-      )
-      # names for row and column
-      Temp_Row_Names=Y_Levels[-1]
-      Temp_Column_Names=Pred_Vars[i]
-    }
-    
-    rownames(temp_out$Estimate)=Temp_Row_Names
-    colnames(temp_out$Estimate)=Temp_Column_Names
-    rownames(temp_out$Std.Error)=Temp_Row_Names
-    colnames(temp_out$Std.Error)=Temp_Column_Names
-    rownames(temp_out$`P-value`)=Temp_Row_Names
-    colnames(temp_out$`P-value`)=Temp_Column_Names
-    rownames(temp_out$OR.and.CI)=Temp_Row_Names
-    colnames(temp_out$OR.and.CI)=Temp_Column_Names
-    
-    Output$Estimate=rbind(Output$Estimate, t(temp_out$Estimate))
-    Output$Std.Error=rbind(Output$Std.Error, t(temp_out$Std.Error))
-    Output$`P-value`=rbind(Output$`P-value`,t(temp_out$`P-value`))
-    Output$OR.and.CI=rbind(Output$OR.and.CI, t(temp_out$OR.and.CI))
-    #print(paste(i, " ", Pred_Vars[i], sep=""))
+    Output$N_data_used=rbind(Output$N_data_used, Temp$N_data_used)
+    Output$Estimate=rbind(Output$Estimate, Temp$Estimate)
+    Output$Std.Error=rbind(Output$Std.Error, Temp$Std.Error)
+    Output$`P-value`=rbind(Output$`P-value`, Temp$`P-value`)
+    Output$OR.and.CI=rbind(Output$OR.and.CI, Temp$OR.and.CI)
   }
+  
   return(Output)
 }
+
+
 
 #******************************
 # GLMM_Multinomial_Multivariate
@@ -2518,6 +2457,11 @@ GLMM_Multinomial_Multivariate=function(Data,
   
   # as data frame
   Data=as.data.frame(Data)
+  Origin_N_Rows=nrow(Data)
+  
+  # delete data with missing value
+  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
+  Used_N_Rows=nrow(Data)
   
   # values
   Data[, Res_Var]=as.factor(Data[, Res_Var])
@@ -2588,6 +2532,7 @@ GLMM_Multinomial_Multivariate=function(Data,
   
   # Output
   Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=myfit
   
   Output$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
@@ -4446,6 +4391,70 @@ rwmetro=function(target, N, x, VCOV, burnin=0){
 # [ --- Etc --- ] ---- 
 # 
 #*********************
+# Stepwise_AIC
+#*************
+# Example
+#********
+# lapply(c("stats", "geepack"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# 
+# # run GEE_Multivariable
+# Full_Model=GLM_Multivariable(Data=respiratory,
+#                              Pred_Vars=c("center", "treat", "sex", "age", "baseline"),
+#                              Res_Var="outcome",
+#                              which.family="gaussian")$model_fit
+# Stepwise_AIC(Full_Model)
+Stepwise_AIC=function(Full_Model, ...){ # names of people should be numeric
+  # run model
+  AIC_Results=stepAIC(Full_Model, ...)
+  
+  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  est=esticon(AIC_Results, diag(length(coef(AIC_Results))))[-1, ]
+  
+  # Output
+  Output=c()
+  Output$model_fit=AIC_Results
+  Output$vif=car::vif(AIC_Results)
+  
+  if(which.family=="gaussian"){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
+                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
+                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
+                                 row.names=names(coef(AIC_Results))[-1]
+    )
+  }else if(which.family=="binomial"){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 row.names=names(coef(AIC_Results))[-1]
+    )
+    
+  }else if(which.family=="poisson"){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 row.names=names(coef(AIC_Results))[-1]
+    )
+  }
+  
+  return(Output)
+}
+
+
+#******************** 
 # Mortgage_Calculator 
 #******************** 
 # Example
