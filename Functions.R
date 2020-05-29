@@ -396,7 +396,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   #i=1
   # run model
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  model_fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
+  model_fit=glm(fullmod, family=eval(parse(text=which.family)), na.action=na.exclude, data=Data)
   
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
@@ -406,13 +406,13 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   # vif
   if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}else{Output$vif=""}
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
-  colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
-  est=cbind(summary(model_fit)$coefficients, OR.CI)
-  
   # Output
   if(which.family=="gaussian"){
+    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    Est.CI=cbind(OR=coef(model_fit), confint(model_fit, level=0.95))
+    colnames(Est.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
+    est=cbind(summary(model_fit)$coefficients, Est.CI)
+    
     Output$summ_table=rbind(Output$summ_table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
@@ -425,7 +425,12 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                               row.names=names(coef(model_fit))[-1]
                             )
     )
-  }else{
+  }else if(which.family=="binomial"){ # default with the logit link function
+    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
+    colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
+    est=cbind(summary(model_fit)$coefficients, OR.CI)
+  
     Output$summ_table=rbind(Output$summ_table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
@@ -433,6 +438,42 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                               `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
                                                format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
                               OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2),
+                                               " (", format(round2(as.numeric(est[-1, "Lower OR"]), 2), nsmall=2), " - ",
+                                               format(round2(as.numeric(est[-1, "Upper OR"]), 2), nsmall=2), ")"),
+                              row.names=names(coef(model_fit))[-1]
+                            )
+    )
+  }else if(which.family=="binomial(link='log')"){ # log-binomial regression with the log link function
+    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
+    colnames(RR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
+    est=cbind(summary(model_fit)$coefficients, RR.CI)
+    
+    Output$summ_table=rbind(Output$summ_table,
+                            data.frame(
+                              Estimate=round2(est[-1, "Estimate"], 3),
+                              Std.Error=round2(est[-1, "Std. Error"], 3),
+                              `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
+                                               format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
+                              RR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2),
+                                               " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
+                                               format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
+                              row.names=names(coef(model_fit))[-1]
+                            )
+    )
+  }else if(which.family=="poisson"){
+    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
+    colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
+    est=cbind(summary(model_fit)$coefficients, RR.CI)
+  
+    Output$summ_table=rbind(Output$summ_table,
+                            data.frame(
+                              Estimate=round2(est[-1, "Estimate"], 3),
+                              Std.Error=round2(est[-1, "Std. Error"], 3),
+                              `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
+                                               format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
+                              RR.and.CI=paste0(format(round2(est[-1, "Rate Ratio"] , 2), nsmall=2),
                                                " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
                                                format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
                               row.names=names(coef(model_fit))[-1]
@@ -781,6 +822,10 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   
   # Output
   Output=c()
+  
+  # vif
+  if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}else{Output$vif=""}
+  
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
   Output$summ_table=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
@@ -1075,19 +1120,19 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
-  Data=Remove_missing(Data, # remove missing data
-                      c(Pred_Vars,
-                        Res_Var,
-                        Group_Var))
+  Non_Missing_Data<<-Remove_missing(Data, # remove missing data
+                                    c(Pred_Vars,
+                                      Res_Var,
+                                      Group_Var))
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
   model_fit=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
-                   data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
-                   id=Data[, Group_Var], 
+                   data=Non_Missing_Data[, c(Pred_Vars, Group_Var, Res_Var)], 
+                   id=Non_Missing_Data[, Group_Var], 
                    family=which.family, 
                    corstr="exchangeable")
-  
+
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
@@ -1099,8 +1144,9 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
   
-  if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}
-  if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(model_fit)} # if the only variable is not numeric (that's, if it is categorical), compute vif
+  if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}else{Output$vif=""}
+  # if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(model_fit)} # if the only variable is not numeric (that's, if it is categorical), compute vif
+  # if(length(Pred_Vars)==1 & is.numeric(Data[, Pred_Vars])){Output$vif=""} # if the only variable is numeric, don't compute vif
   
   if(which.family=="gaussian"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -1227,6 +1273,7 @@ GEE_Confounder_Selection=function(Full_Model,
     for(i in 1:length(Potential_Con_Vars[Include_Index])){
       #i=1
       Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse="-"))))
+      
       Fixed_Effects_Current_Reduced_Model=coef(Current_Reduced_Model)
       Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
       
@@ -1329,7 +1376,7 @@ GEE_Confounder_Selection=function(Full_Model,
 #                            levels.of.fact)
 # Main_Pred_Var="sex"
 # Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"]
-# GEE_Confounder=GEE_Confounder_Model(Input_Data=Data_to_use,
+# GEE_Confounder=GEE_Confounder_Model(Data=Data_to_use,
 #                                     Main_Pred_Var=Main_Pred_Var,
 #                                     Potential_Con_Vars=Potential_Con_Vars,
 #                                     Res_Var="outcome",
@@ -1341,7 +1388,7 @@ GEE_Confounder_Selection=function(Full_Model,
 # GEE_Confounder$Confounder_Steps$Confounders
 # GEE_Confounder$Confounder_Model$summ_table
 # GEE_Confounder$Confounder_Model$N_data_used
-GEE_Confounder_Model=function(Input_Data,
+GEE_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
                               Res_Var,
@@ -1355,10 +1402,13 @@ GEE_Confounder_Model=function(Input_Data,
   # Output
   Output=c()
   
+  # convert Data to data frame
+  Data=as.data.frame(Data)
+  
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
   
-  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data<<-Input_Data,
+  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data<<-Data,
                                                              Pred_Vars<<-Pred_Vars,
                                                              Res_Var<<-Res_Var,
                                                              Group_Var<<-Group_Var,
@@ -1374,12 +1424,12 @@ GEE_Confounder_Model=function(Input_Data,
   Output$Confounder_Steps=Confounder_Steps
   Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
   
-  Input_Data=Remove_missing(Input_Data, # remove missing data
-                            c(Pred_Vars[Confounder_Ind],
-                              Res_Var,
-                              Group_Var))
+  Data=Remove_missing(Data, # remove missing data
+                      c(Pred_Vars[Confounder_Ind],
+                        Res_Var,
+                        Group_Var))
   # Multivariable model with confounders
-  Output$Confounder_Model=GEE_Multivariable_with_vif(Data<<-Input_Data,
+  Output$Confounder_Model=GEE_Multivariable_with_vif(Data<<-Data,
                                                      Pred_Vars<<-Pred_Vars[Confounder_Ind],
                                                      Res_Var<<-Res_Var,
                                                      Group_Var<<-Group_Var,
