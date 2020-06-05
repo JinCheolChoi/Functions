@@ -141,19 +141,10 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
 Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-  Origin_N_Rows=nrow(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Res_Var, Time_Var, Int_Var)])
-  Used_N_Rows=nrow(Data)
-  
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
   
->>>>>>> Stashed changes
   Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
   
   Data[, Time_Var]=as.factor(Data[, Time_Var])
@@ -162,12 +153,9 @@ Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
   # fit model
   model_fit=lm(as.formula(paste(Res_Var, "~", Int_Var, "*Time_Order")), data=Data)
   
-<<<<<<< Updated upstream
-=======
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
->>>>>>> Stashed changes
   # Output
   Output=c()
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
@@ -243,11 +231,7 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time){
                            Stop_Time=Stop_Time)
     Output=rbind(Output,
                  cbind(Temp$summ_table,
-<<<<<<< Updated upstream
-                       Data_Used=Temp$N_data_used))
-=======
                        N_events=Temp$N_events))
->>>>>>> Stashed changes
   }
   return(Output)
 }
@@ -275,19 +259,10 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time)
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-  Origin_N_Rows=nrow(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Start_Time, Stop_Time)])
-  Used_N_Rows=nrow(Data)
-  
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
   
->>>>>>> Stashed changes
   # main algorithm
   Output=c()
   #i=1
@@ -297,15 +272,6 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time)
     fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
   }else{fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))}
   
-<<<<<<< Updated upstream
-  model.fit=coxph(fullmod, na.action=na.exclude, data=Data)
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-  Output$model_fit=model.fit
-  Output$cox.zph=cox.zph(model.fit)
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  Fit.Summary=summary(model.fit)
-=======
   model_fit=coxph(fullmod, na.action=na.exclude, data=Data)
   
   # number of observations from a model fit
@@ -317,7 +283,6 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time)
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   Fit.Summary=summary(model_fit)
->>>>>>> Stashed changes
   HR.Coefficients=Fit.Summary$coefficients
   HR.Conf.int=Fit.Summary$conf.int
   
@@ -331,11 +296,7 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Start_Time=NULL, Stop_Time)
                             HR.and.CI=paste0(format(round2(HR.Conf.int[, "exp(coef)"] , 2), nsmall=2),
                                              " (", format(round2(as.numeric(HR.Conf.int[, "lower .95"]), 2), nsmall=2), " - ", 
                                              format(round2(as.numeric(HR.Conf.int[, "upper .95"]), 2), nsmall=2), ")"),
-<<<<<<< Updated upstream
-                            row.names=names(coef(model.fit))
-=======
                             row.names=names(coef(model_fit))
->>>>>>> Stashed changes
                           )
   )
   
@@ -426,37 +387,15 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-  Origin_N_Rows=nrow(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, Res_Var)])
-  Used_N_Rows=nrow(Data)
-  
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
   
->>>>>>> Stashed changes
   # main algorithm
   Output=c()
   #i=1
   # run model
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-<<<<<<< Updated upstream
-  model.fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-  Output$model_fit=model.fit
-  
-  # vif
-  if(length(Pred_Vars)>=2){Output$vif=car::vif(model.fit)}else{Output$vif=""}
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  OR.CI=exp(cbind(OR=coef(model.fit), confint(model.fit, level=0.95)))
-  colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
-  est=cbind(summary(model.fit)$coefficients, OR.CI)
-=======
   model_fit=glm(fullmod, family=which.family, na.action=na.exclude, data=Data)
   
   # number of observations from a model fit
@@ -471,7 +410,6 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
   colnames(OR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(model_fit)$coefficients, OR.CI)
->>>>>>> Stashed changes
   
   # Output
   if(which.family=="gaussian"){
@@ -484,11 +422,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                               Estimate.and.CI=paste0(format(round2(est[-1, "Estimate"] , 2), nsmall=2),
                                                      " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
                                                      format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
-<<<<<<< Updated upstream
-                              row.names=names(coef(model.fit))[-1]
-=======
                               row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
                             )
     )
   }else{
@@ -501,11 +435,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                               OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2),
                                                " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
                                                format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
-<<<<<<< Updated upstream
-                              row.names=names(coef(model.fit))[-1]
-=======
                               row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
                             )
     )
   }
@@ -829,22 +759,6 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-  Origin_N_Rows=nrow(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Offset_name)])
-  Used_N_Rows=nrow(Data)
-  
-  # run model
-  fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+offset(log(", Offset_name, "))"))
-  model.fit=glm.nb(fullmod, data=Data)
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  RR.CI=exp(cbind(RR=coef(model.fit), confint(model.fit, level=0.95)))
-  colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
-  est=cbind(summary(model.fit)$coefficients, RR.CI)
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
@@ -860,16 +774,11 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   RR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
   colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(model_fit)$coefficients, RR.CI)
->>>>>>> Stashed changes
   
   # Output
   Output=c()
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-<<<<<<< Updated upstream
-  Output$model_fit=model.fit
-=======
   Output$model_fit=model_fit
->>>>>>> Stashed changes
   Output$summ_table=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
                                Std.Error=round2(est[-1, "Std. Error"], 3), 
                                `P-value`=ifelse(round2(est[-1, "Pr(>|z|)"], 3)<0.001, "<0.001", 
@@ -877,11 +786,7 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
                                RR.and.CI=paste0(format(round2(est[-1, "Rate Ratio"] , 2), nsmall=2), 
                                                 " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ", 
                                                 format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                               row.names=names(coef(model.fit))[-1]
-=======
                                row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
   )
   return(Output)
 }
@@ -1057,19 +962,12 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-  Origin_N_Rows=nrow(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, Group_Var, Res_Var)])
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
   
   # number of observations from a model fit
   Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
->>>>>>> Stashed changes
   Used_N_Rows=nrow(Data)
   
   # Convert code to numeric (This is very important when running gee!)
@@ -1077,16 +975,6 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-<<<<<<< Updated upstream
-  GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))),
-               data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
-               id=Data[, Group_Var],
-               family=which.family,
-               corstr="exchangeable")
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1, ]
-=======
   model_fit=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))),
                    data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
                    id=Data[, Group_Var],
@@ -1095,18 +983,12 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
->>>>>>> Stashed changes
   
   # Output
   Output=c()
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-<<<<<<< Updated upstream
-  Output$model_fit=GEE.m
-  #Output$vif=HH::vif(GEE.m)
-=======
   Output$model_fit=model_fit
   #Output$vif=HH::vif(model_fit)
->>>>>>> Stashed changes
   
   if(which.family=="gaussian"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -1116,11 +998,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
                                  Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
                                                         " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
                                                         format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                                 row.names=names(coef(GEE.m))[-1]
-=======
                                  row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
     )
   }else if(which.family=="binomial"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -1130,11 +1008,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
                                  OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                                 row.names=names(coef(GEE.m))[-1]
-=======
                                  row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
     )
     
   }else if(which.family=="poisson"){
@@ -1145,11 +1019,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
                                  RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                                 row.names=names(coef(GEE.m))[-1]
-=======
                                  row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
     )
   }
   return(Output)
@@ -1189,10 +1059,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 #                            Res_Var<-Res_Var,
 #                            Group_Var<-Group_Var,
 #                            which.family<-"binomial")
-<<<<<<< Updated upstream
-=======
 # Data_original=as.data.table(Data_original)
->>>>>>> Stashed changes
 GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
@@ -1201,31 +1068,13 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   Data=as.data.frame(Data)
   
   # as data frame
-<<<<<<< Updated upstream
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
->>>>>>> Stashed changes
   Origin_N_Rows=nrow(Data)
   Data=Remove_missing(Data, # remove missing data
                       c(Pred_Vars,
                         Res_Var,
                         Group_Var))
-<<<<<<< Updated upstream
-  Data<<-as.data.frame(Data)
-  Used_N_Rows=nrow(Data)
-  
-  # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  GEE.m=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))), 
-               data=Data[, c(Pred_Vars, Group_Var, Res_Var)], 
-               id=Data[, Group_Var], 
-               family=which.family, 
-               corstr="exchangeable")
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  est=esticon(GEE.m, diag(length(coef(GEE.m))))[-1, ]
-=======
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -1240,22 +1089,14 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
->>>>>>> Stashed changes
   
   # Output
   Output=c()
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-<<<<<<< Updated upstream
-  Output$model_fit=GEE.m
-  
-  if(length(Pred_Vars)>=2){Output$vif=car::vif(GEE.m)}
-  if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(GEE.m)} # if the only variable is not numeric (that's, if it is categorical), compute vif
-=======
   Output$model_fit=model_fit
   
   if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}
   if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(model_fit)} # if the only variable is not numeric (that's, if it is categorical), compute vif
->>>>>>> Stashed changes
   
   if(which.family=="gaussian"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -1265,11 +1106,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
                                                         " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
                                                         format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                                 row.names=names(coef(GEE.m))[-1]
-=======
                                  row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
     )
   }else if(which.family=="binomial"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -1279,11 +1116,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                                 row.names=names(coef(GEE.m))[-1]
-=======
                                  row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
     )
   }else if(which.family=="poisson"){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
@@ -1293,11 +1126,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-<<<<<<< Updated upstream
-                                 row.names=names(coef(GEE.m))[-1]
-=======
                                  row.names=names(coef(model_fit))[-1]
->>>>>>> Stashed changes
     )
   }
   return(Output)
@@ -1657,19 +1486,10 @@ GLMM_Multivariable=function(Data,
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-  Origin_N_Rows=nrow(Data)
-  
-  # delete data with missing value
-  Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
-  Used_N_Rows=nrow(Data)
-  
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
   
->>>>>>> Stashed changes
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
   if(which.family=="gaussian"){
@@ -1685,12 +1505,9 @@ GLMM_Multivariable=function(Data,
                 control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }
   
-<<<<<<< Updated upstream
-=======
   # number of observations from a model fit
   Used_N_Rows=nobs(myfit)
   
->>>>>>> Stashed changes
   # coefficient
   Coef=summary(myfit)$coefficients
   Coef.ind=c()
@@ -2612,8 +2429,6 @@ GLMM_Multinomial_Bivariate=function(Data,
 #******************************
 # GLMM_Multinomial_Multivariate
 #******************************
-<<<<<<< Updated upstream
-=======
 # Note : The function (nobs) obtaining the number of observations used doesn't work for 'npmlt'. Hence, it's calculated by deleting data with missing value from the input data.
 #
 #         ------ Current
@@ -2625,7 +2440,6 @@ GLMM_Multinomial_Bivariate=function(Data,
 #         #number of observations from a model fit
 #         Used_N_Rows=nobs(myfit)
 #************************************
->>>>>>> Stashed changes
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data=respiratory
@@ -2666,11 +2480,8 @@ GLMM_Multinomial_Multivariate=function(Data,
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
->>>>>>> Stashed changes
   Origin_N_Rows=nrow(Data)
   
   # delete data with missing value
@@ -2840,12 +2651,9 @@ CLMM_Ordinal_Bivariate=function(Data,
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
->>>>>>> Stashed changes
   
   # values
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
@@ -2858,11 +2666,7 @@ CLMM_Ordinal_Bivariate=function(Data,
     #i=7
     i<<-i
     if(Type_Odds[i]=="Prop"){
-<<<<<<< Updated upstream
-      model.fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
-=======
       model_fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
->>>>>>> Stashed changes
                       #nominal=as.formula(paste("~", Nom_Vars[i])),
                       random=eval(parse(text=Group_Var)),
                       data=Data,
@@ -2870,11 +2674,7 @@ CLMM_Ordinal_Bivariate=function(Data,
                       nAGQ=NAGQ,
                       link="logistic")
     }else if(Type_Odds[i]=="Non_Prop"){
-<<<<<<< Updated upstream
-      model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
-=======
       model_fit=clmm2(as.formula(paste(Res_Var, "~1")),
->>>>>>> Stashed changes
                       nominal=as.formula(paste("~", Pred_Vars[i])),
                       random=eval(parse(text=Group_Var)),
                       data=Data,
@@ -2883,21 +2683,12 @@ CLMM_Ordinal_Bivariate=function(Data,
                       link="logistic")
     }
     
-<<<<<<< Updated upstream
-    model.fit.summ=summary(model.fit)$coefficients
-    Coef.ind=which(grepl(Pred_Vars[i], row.names(model.fit.summ)))
-    # coefficient
-    Coef=model.fit.summ[Coef.ind, 1]
-    # standard error
-    SE.Coef=model.fit.summ[Coef.ind, 2]
-=======
     model_fit.summ=summary(model_fit)$coefficients
     Coef.ind=which(grepl(Pred_Vars[i], row.names(model_fit.summ)))
     # coefficient
     Coef=model_fit.summ[Coef.ind, 1]
     # standard error
     SE.Coef=model_fit.summ[Coef.ind, 2]
->>>>>>> Stashed changes
     # confidence interval (exponentiated)
     Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
     Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
@@ -2909,18 +2700,11 @@ CLMM_Ordinal_Bivariate=function(Data,
     if(Type_Odds[i]=="Prop"){
       # Output
       temp_out=c()
-<<<<<<< Updated upstream
-      temp_out$Estimate=round2(Coef, 3)
-      temp_out$Std.Error=round2(SE.Coef, 3)
-      temp_out$`P-value`=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
-                                format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
-=======
       
       temp_out$Estimate=round2(Coef, 3)
       temp_out$Std.Error=round2(SE.Coef, 3)
       temp_out$`P-value`=ifelse(model_fit.summ[Coef.ind, 4]<0.001, "<0.001", 
                                 format(round2(model_fit.summ[Coef.ind, 4], 3), nsmall=3))
->>>>>>> Stashed changes
       temp_out$COR.and.CI=paste0(format(round(exp(Coef), 2), nsmall=2), 
                                  " (",
                                  format(round(Lower_Bound, 2), nsmall=2),
@@ -2936,15 +2720,12 @@ CLMM_Ordinal_Bivariate=function(Data,
         row.names(temp_out)=paste0(Pred_Vars[i])
       }
       # Output
-<<<<<<< Updated upstream
-=======
       # number of observations from a model fit
       Used_N_Rows=nobs(model_fit)
       temp_obs=as.matrix(paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)"))
       rownames(temp_obs)=Pred_Vars[i]
       Output$N_data_used=rbind(Output$N_data_used, temp_obs)
       # 
->>>>>>> Stashed changes
       Output$Prop_Odds=rbind(Output$Prop_Odds, temp_out)
     }else if(Type_Odds[i]=="Non_Prop"){
       # Output
@@ -2960,13 +2741,8 @@ CLMM_Ordinal_Bivariate=function(Data,
                                   ncol=length(X_Levels)-1, 
                                   nrow=length(Y_Levels)-1)
         temp_out$`P-value`=matrix(
-<<<<<<< Updated upstream
-          ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
-                 format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3)), 
-=======
           ifelse(model_fit.summ[Coef.ind, 4]<0.001, "<0.001", 
                  format(round2(model_fit.summ[Coef.ind, 4], 3), nsmall=3)), 
->>>>>>> Stashed changes
           ncol=length(X_Levels)-1, 
           nrow=length(Y_Levels)-1)
         temp_out$COR.and.CI=matrix(
@@ -2985,13 +2761,8 @@ CLMM_Ordinal_Bivariate=function(Data,
         temp_out$Estimate=data.frame(X=round2(Coef, 3))
         temp_out$Std.Error=data.frame(X=round2(SE.Coef, 3))
         temp_out$`P-value`=data.frame(
-<<<<<<< Updated upstream
-          X=ifelse(model.fit.summ[Coef.ind, 4]<0.001, "<0.001", 
-                   format(round2(model.fit.summ[Coef.ind, 4], 3), nsmall=3))
-=======
           X=ifelse(model_fit.summ[Coef.ind, 4]<0.001, "<0.001", 
                    format(round2(model_fit.summ[Coef.ind, 4], 3), nsmall=3))
->>>>>>> Stashed changes
         )
         temp_out$COR.and.CI=data.frame(
           X=paste0(format(round(exp(Coef), 2), nsmall=2), 
@@ -3016,15 +2787,12 @@ CLMM_Ordinal_Bivariate=function(Data,
       colnames(temp_out$COR.and.CI)=Temp_Column_Names
       
       # Output
-<<<<<<< Updated upstream
-=======
       # number of observations from a model fit
       Used_N_Rows=nobs(model_fit)
       temp_obs=as.matrix(paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)"))
       rownames(temp_obs)=Pred_Vars[i]
       Output$N_data_used=rbind(Output$N_data_used, temp_obs)
       # 
->>>>>>> Stashed changes
       Output$Non_Prop_Odds$Estimate=rbind(Output$Non_Prop_Odds$Estimate, t(temp_out$Estimate))
       Output$Non_Prop_Odds$Std.Error=rbind(Output$Non_Prop_Odds$Std.Error, t(temp_out$Std.Error))
       Output$Non_Prop_Odds$`P-value`=rbind(Output$Non_Prop_Odds$`P-value`,t(temp_out$`P-value`))
@@ -3086,12 +2854,9 @@ CLMM_Ordinal_Multivariable=function(Data,
   
   # as data frame
   Data=as.data.frame(Data)
-<<<<<<< Updated upstream
-=======
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
->>>>>>> Stashed changes
   
   # values
   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
@@ -3103,11 +2868,7 @@ CLMM_Ordinal_Multivariable=function(Data,
   Nom_Vars<<-Pred_Vars[Type_Odds=="Non_Prop"]
   
   if(length(Loc_Vars)==0){ # if all are not proportional odds
-<<<<<<< Updated upstream
-    model.fit=clmm2(as.formula(paste(Res_Var, "~1")),
-=======
     model_fit=clmm2(as.formula(paste(Res_Var, "~1")),
->>>>>>> Stashed changes
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
                     random=eval(parse(text=Group_Var)),
                     data=Data,
@@ -3115,11 +2876,7 @@ CLMM_Ordinal_Multivariable=function(Data,
                     nAGQ=NAGQ,
                     link="logistic")
   }else if(length(Nom_Vars)==0){ # if all are proportional odds
-<<<<<<< Updated upstream
-    model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
-=======
     model_fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
->>>>>>> Stashed changes
                     #nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
                     random=eval(parse(text=Group_Var)),
                     data=Data,
@@ -3127,11 +2884,7 @@ CLMM_Ordinal_Multivariable=function(Data,
                     nAGQ=NAGQ,
                     link="logistic")
   }else if(length(Loc_Vars)!=0 & length(Nom_Vars)!=0){ # mixed
-<<<<<<< Updated upstream
-    model.fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
-=======
     model_fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
->>>>>>> Stashed changes
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
                     random=eval(parse(text=Group_Var)),
                     data=Data,
@@ -3140,15 +2893,6 @@ CLMM_Ordinal_Multivariable=function(Data,
                     link="logistic")
   }
   
-<<<<<<< Updated upstream
-  # save model fit
-  Output$model_fit=model.fit
-  model.fit.summ=summary(model.fit)$coefficients[-c(1:(length(levels(Data[, Res_Var]))-1)), ]
-  
-  # coefficient
-  Coef=model.fit.summ[, 1]
-  SE.Coef=model.fit.summ[, 2]
-=======
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
@@ -3160,7 +2904,6 @@ CLMM_Ordinal_Multivariable=function(Data,
   # coefficient
   Coef=model_fit.summ[, 1]
   SE.Coef=model_fit.summ[, 2]
->>>>>>> Stashed changes
   # confidence interval (exponentiated)
   Raw_Upper_Bound=Coef+qnorm(0.975)*SE.Coef
   Raw_Lower_Bound=Coef-qnorm(0.975)*SE.Coef
@@ -3180,13 +2923,8 @@ CLMM_Ordinal_Multivariable=function(Data,
       
       temp_out$Estimate=round2(Coef[Target_Ind], 3)
       temp_out$Std.Error=round2(SE.Coef[Target_Ind], 3)
-<<<<<<< Updated upstream
-      temp_out$`P-value`=ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
-                                format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3))
-=======
       temp_out$`P-value`=ifelse(model_fit.summ[Target_Ind, 4]<0.001, "<0.001", 
                                 format(round2(model_fit.summ[Target_Ind, 4], 3), nsmall=3))
->>>>>>> Stashed changes
       temp_out$COR.and.CI=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
                                  " (",
                                  format(round(Lower_Bound[Target_Ind], 2), nsmall=2),
@@ -3217,13 +2955,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                                   ncol=length(X_Levels)-1, 
                                   nrow=length(Y_Levels)-1)
         temp_out$`P-value`=matrix(
-<<<<<<< Updated upstream
-          ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
-                 format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3)), 
-=======
           ifelse(model_fit.summ[Target_Ind, 4]<0.001, "<0.001", 
                  format(round2(model_fit.summ[Target_Ind, 4], 3), nsmall=3)), 
->>>>>>> Stashed changes
           ncol=length(X_Levels)-1, 
           nrow=length(Y_Levels)-1)
         temp_out$COR.and.CI=matrix(
@@ -3242,13 +2975,8 @@ CLMM_Ordinal_Multivariable=function(Data,
         temp_out$Estimate=data.frame(X=round2(Coef[Target_Ind], 3))
         temp_out$Std.Error=data.frame(X=round2(SE.Coef[Target_Ind], 3))
         temp_out$`P-value`=data.frame(
-<<<<<<< Updated upstream
-          X=ifelse(model.fit.summ[Target_Ind, 4]<0.001, "<0.001", 
-                   format(round2(model.fit.summ[Target_Ind, 4], 3), nsmall=3))
-=======
           X=ifelse(model_fit.summ[Target_Ind, 4]<0.001, "<0.001", 
                    format(round2(model_fit.summ[Target_Ind, 4], 3), nsmall=3))
->>>>>>> Stashed changes
         )
         temp_out$COR.and.CI=data.frame(
           X=paste0(format(round(exp(Coef[Target_Ind]), 2), nsmall=2), 
@@ -3642,17 +3370,10 @@ Proportional_Odds_Assumption_Test=function(Data,
   for(i in 1:length(Pred_Vars)){
     #i=1
     Covariate<<-Pred_Vars[i]
-<<<<<<< Updated upstream
-    model.fit=clm(as.formula(paste0(Res_Var, "~", Covariate)),
-                  #nominal=as.formula(paste("~", Pred_Vars[i])),
-                  data=Data)
-    lr_test[[i]]=nominal_test(model.fit)
-=======
     model_fit=clm(as.formula(paste0(Res_Var, "~", Covariate)),
                   #nominal=as.formula(paste("~", Pred_Vars[i])),
                   data=Data)
     lr_test[[i]]=nominal_test(model_fit)
->>>>>>> Stashed changes
     p_value[i]=lr_test[[i]]$`Pr(>Chi)`[-1]
   }
   p_value[is.na(p_value)]=1
@@ -4112,21 +3833,15 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 # 
 # # randomly generate NAs in some variables
 # Data_to_use$sex[sample(1:nrow(Data_to_use), 30)]=NA
-<<<<<<< Updated upstream
-=======
 # 
->>>>>>> Stashed changes
 # Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
 # Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=NA
 # #Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=2
 # 
 # # Work on predictor with more than 2 levels
 # Data_to_use=as.data.table(Data_to_use)
-<<<<<<< Updated upstream
-=======
 # Data_to_use[sample(nrow(Data_to_use), 50), sex:="N"]
 # 
->>>>>>> Stashed changes
 # Data_to_use[age<20, age_cat:="<20"]
 # Data_to_use[20<=age & age<30, age_cat:="20<=age<30"]
 # Data_to_use[30<=age & age<40, age_cat:="30<=age<40"]
@@ -4145,17 +3860,8 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 #                             Row_Var="sex",
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="F",
-<<<<<<< Updated upstream
-#                             Missing="Not_Include")
-# Contingency_Table_Generator(Data=Data_to_use,
-#                             Row_Var="age_cat",
-#                             Col_Var="outcome",
-#                             Ref_of_Row_Var="<20",
-#                             Missing="Include") # independence test does not account for missing data
-=======
 #                             Missing="Include",
 #                             Ind_P_Value=T)
->>>>>>> Stashed changes
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include", Ind_P_Value=F){
   # library
   library(epitools)
@@ -4240,12 +3946,9 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
     # 
     Out=as.data.table(Out)
     Out[Value==Ref_of_Row_Var, c("OR (95% CI)")]=""
-<<<<<<< Updated upstream
-=======
     
     # delete OR for NA
     Out[Value=="NA", c("OR (95% CI)")]=""
->>>>>>> Stashed changes
   }
   
   # 

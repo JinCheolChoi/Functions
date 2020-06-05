@@ -430,7 +430,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
     OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
     est=cbind(summary(model_fit)$coefficients, OR.CI)
-  
+    
     Output$summ_table=rbind(Output$summ_table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
@@ -466,7 +466,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
     RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model_fit)$coefficients, RR.CI)
-  
+    
     Output$summ_table=rbind(Output$summ_table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
@@ -1132,7 +1132,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                    id=Non_Missing_Data[, Group_Var], 
                    family=which.family, 
                    corstr="exchangeable")
-
+  
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
@@ -4763,7 +4763,4 @@ mclapply.hack=function(...){
 # 
 # # When you're done, clean up the cluster
 # stopImplicitCluster()
-
-
-
 

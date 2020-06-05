@@ -765,7 +765,15 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   
   # run model
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+offset(log(", Offset_name, "))"))
+<<<<<<< Updated upstream
   model_fit=glm.nb(fullmod, data=Data)
+=======
+  model_fit=glm.nb(fullmod, data=Data, control=glm.control(maxit=25)) # maxit=25 is default
+  
+  # this is to avoide an error "profiling has found a better solution, so original fit had not converged"
+  class(model_fit)=c("myglm", class(model_fit))
+  confint.myglm=confint.default
+>>>>>>> Stashed changes
   
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
