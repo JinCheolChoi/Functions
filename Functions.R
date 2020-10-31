@@ -1019,7 +1019,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
   Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
   Used_N_Rows=nrow(Data)
   
-  # Convert code to numeric (This is very important when running gee!)
+  # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
   Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
   
   # run model
@@ -1124,6 +1124,9 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                     c(Pred_Vars,
                                       Res_Var,
                                       Group_Var))
+  
+  # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
+  Non_Missing_Data[, Group_Var]=as.numeric(as.factor(Non_Missing_Data[, Group_Var]))
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -1493,6 +1496,8 @@ GLMM_Bivariate=function(Data,
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
+    
+    print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
   }
   Output=as.data.frame(Output)
   return(Output)
@@ -4014,7 +4019,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
                                                                "<0.001 (*Ind Test)",
                                                                paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value, 3), " (*Ind Test)"))  # return
   
-  return(Out)
+  return(as.data.table(Out))
 }
 
 
@@ -4177,7 +4182,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+5)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)", "P-value (T_test)", "P-value (ANOVA)")
   
   # return
-  return(Out)
+  return(as.data.table(Out))
 }
 
 #******************************
