@@ -1477,10 +1477,11 @@ GEE_Confounder_Model=function(Data,
   Output$Confounder_Steps=Confounder_Steps
   Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
   
-  Data=Remove_missing(Data, # remove missing data
-                      c(Pred_Vars[Confounder_Ind],
-                        Res_Var,
-                        Group_Var))
+  # Data=Remove_missing(Data, # remove missing data
+  #                     c(Pred_Vars[Confounder_Ind],
+  #                       Res_Var,
+  #                       Group_Var))
+  
   # Multivariable model with confounders
   Output$Confounder_Model=GEE_Multivariable_with_vif(Data<<-Data,
                                                      Pred_Vars<<-Pred_Vars[Confounder_Ind],
