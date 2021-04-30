@@ -1592,7 +1592,7 @@ GLMM_Bivariate=function(Data,
       print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
     }
   }
-  Output=as.data.frame(Output)
+  
   return(Output)
 }
 
@@ -1725,7 +1725,7 @@ GLMM_Multivariable=function(Data,
       ")"
     ))
   }
-  Output$summ_table=as.data.frame(Output$summ_table)
+  Output$summ_table=as.data.frame(Output$summ_table) %>% as.data.table(keep.rownames=TRUE)
   return(Output)
 }
 
