@@ -1561,6 +1561,34 @@ GEE_Confounder_Model=function(Data,
 #                NAGQ<-1,
 #                Compute.Power=F, # power can be computed for a non-gaussian distribution
 #                nsim=5)
+# 
+# #**********************************
+# # Example - (2) : negative binomial
+# #**********************************
+# set.seed(101)
+# Data_to_use=expand.grid(f1 = factor(1:3),
+#                         f2 = LETTERS[1:2], g=1:9, rep=1:15,
+#                         KEEP.OUT.ATTRS=FALSE)
+# summary(mu <- 5*(-4 + with(Data_to_use, as.integer(f1) + 4*as.numeric(f2))))
+# Data_to_use$y <- rnbinom(nrow(Data_to_use), mu = mu, size = 0.5)
+# Pred_Vars=c("f1", "f2")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="f1")]="1"
+# levels.of.fact[which(Pred_Vars=="f2")]="A"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="y",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLMM_Mult_model=GLMM_Bivariate(Data=Data_to_use,
+#                                Pred_Vars=list(c("f1" ,"f2", "f1:f2")),
+#                                Res_Var="y",
+#                                Group_Var="g",
+#                                which.family<-"negative_binomial", # gaussian, binomial, poisson
+#                                NAGQ<-1,
+#                                Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                nsim=5)
 GLMM_Bivariate=function(Data,
                         Pred_Vars,
                         Res_Var,
@@ -1601,8 +1629,8 @@ GLMM_Bivariate=function(Data,
 #*******************
 # GLMM_Multivariable
 #*******************
-# Example
-#************************************
+# # Example - (1)
+# #************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -1625,6 +1653,34 @@ GLMM_Bivariate=function(Data,
 #                                    NAGQ<-1,
 #                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
 #                                    nsim=5)
+# 
+# #**********************************
+# # Example - (2) : negative binomial
+# #**********************************
+# set.seed(101)
+# Data_to_use=expand.grid(f1 = factor(1:3),
+#                         f2 = LETTERS[1:2], g=1:9, rep=1:15,
+#                         KEEP.OUT.ATTRS=FALSE)
+# summary(mu <- 5*(-4 + with(Data_to_use, as.integer(f1) + 4*as.numeric(f2))))
+# Data_to_use$y <- rnbinom(nrow(Data_to_use), mu = mu, size = 0.5)
+# Pred_Vars=c("f1", "f2")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="f1")]="1"
+# levels.of.fact[which(Pred_Vars=="f2")]="A"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="y",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLMM_Mult_model=GLMM_Multivariable(Data=Data_to_use,
+#                                    Pred_Vars=c("f1" ,"f2", "f1:f2"),
+#                                    Res_Var="y",
+#                                    Group_Var="g",
+#                                    which.family<-"negative_binomial", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=T, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
 GLMM_Multivariable=function(Data,
                             Pred_Vars,
                             Res_Var,
@@ -1634,7 +1690,7 @@ GLMM_Multivariable=function(Data,
                             Compute.Power=FALSE,
                             nsim=1000){
   # check out packages
-  lapply(c("lme4", "simr", "sjPlot"), checkpackages)
+  lapply(c("lme4", "simr", "sjPlot", "MASS"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1649,6 +1705,19 @@ GLMM_Multivariable=function(Data,
                na.action=na.exclude, 
                data=Data, 
                control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)))
+  }else if(grepl("negative_binomial", which.family)){
+    # estimate theta
+    print("Distribution : Negative Binomial / Estimating the overdispersion parameter, theta")
+    Overdispersion=GLMM_NB_Overdispersion_Estimator(Data=Data,
+                                                    Pred_Vars=Pred_Vars,
+                                                    Res_Var=Res_Var,
+                                                    Group_Var=Group_Var)
+    
+    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+                family=eval(parse(text=paste0("MASS::negative.binomial(theta=", Overdispersion$theta, ")"))), 
+                na.action=na.exclude, 
+                data=Data, nAGQ=NAGQ, 
+                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }else{
     myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
                 family=eval(parse(text=which.family)), 
@@ -1671,13 +1740,14 @@ GLMM_Multivariable=function(Data,
   CI.ind=c()
   # power
   Var.Power=list()
-  for(i in 1:length(Pred_Vars)){
-    Coef.ind=c(Coef.ind, which(grepl(Pred_Vars[i], row.names(Coef))))
-    CI.raw.ind=c(CI.raw.ind, which(grepl(Pred_Vars[i], row.names(CI.raw))))
-    CI.ind=c(CI.ind, which(grepl(Pred_Vars[i], row.names(CI))))
+  Estimates=row.names(Coef)[-1]
+  for(i in 1:length(Estimates)){
+    Coef.ind=c(Coef.ind, which(grepl(Estimates[i], row.names(Coef))))
+    CI.raw.ind=c(CI.raw.ind, which(grepl(Estimates[i], row.names(CI.raw))))
+    CI.ind=c(CI.ind, which(grepl(Estimates[i], row.names(CI))))
     if(Compute.Power==T){
       lapply(c("simr"), checkpackages)
-      Var.Power[[i]]=powerSim(myfit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)}
+      Var.Power[[i]]=powerSim(myfit, fixed(Estimates[i], "lr"), nsim=nsim, progress=F)}
   }
   
   Coef.ind=sort(unique(Coef.ind))
@@ -1705,15 +1775,16 @@ GLMM_Multivariable=function(Data,
     Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
+  }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
+    Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+                                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
+                                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
     Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
-  }else if(grepl("poisson", which.family)){
-    Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
-                                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
-                                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
+  
   # power
   if(Compute.Power==T){
     Output$summ_table$power=sapply(Var.Power, function(x) paste0(
@@ -1726,15 +1797,21 @@ GLMM_Multivariable=function(Data,
     ))
   }
   Output$summ_table=as.data.frame(Output$summ_table) %>% as.data.table(keep.rownames=TRUE)
+  
+  # if the distribution is negative binomial, then include additional components in Output
+  if(grepl("negative_binomial", which.family)){
+    Output$Overdispersion=Overdispersion
+  }
   return(Output)
 }
 
 #**************************
 # GLMM_Confounder_Selection
 #**************************
-# Example
+# Example - (1)
 #******************
 # for now, algorithm works with no interaction term
+#**************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -1767,6 +1844,44 @@ GLMM_Multivariable=function(Data,
 #                                            Main_Pred_Var="sex",
 #                                            Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"], # for now, algorithm works with no interaction term
 #                                            which.family="binomial (link='logit')", # distribution of the response variable
+#                                            # !! Unlike GEE_Confounder_Selection, this which.family is not applied when the model is updated (update()) as the process of building the confounding model.
+#                                            Min.Change.Percentage=5,
+#                                            Estimate="raw_estimate") # raw_estimate, converted_estimate
+# Confounder_Steps$Confounders
+# 
+# #**********************************
+# # Example - (2) : negative binomial
+# #**********************************
+# set.seed(101)
+# Data_to_use=expand.grid(f1 = factor(1:3),
+#                         f2 = LETTERS[1:2], 
+#                         f3 = rep(2:5),
+#                         g=1:5, rep=1:3,
+#                         KEEP.OUT.ATTRS=FALSE)
+# summary(mu <- 5*(-4 + with(Data_to_use, as.integer(f1) + 4*as.numeric(f2))))
+# Data_to_use$y <- rnbinom(nrow(Data_to_use), mu = mu, size = 0.5)
+# Pred_Vars=c("f1", "f2", "f3")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="f1")]="1"
+# levels.of.fact[which(Pred_Vars=="f2")]="A"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="y",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLMM.fit=GLMM_Multivariable(Data=Data_to_use,
+#                             Pred_Vars=c("f1" ,"f2", "f3", "f2:f3"),
+#                             Res_Var="y",
+#                             Group_Var="g",
+#                             which.family<-"negative_binomial", # gaussian, binomial, poisson
+#                             NAGQ<-1,
+#                             Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                             nsim=5)
+# Confounder_Steps=GLMM_Confounder_Selection(Full_Model=GLMM.fit$model_fit,
+#                                            Main_Pred_Var="f1",
+#                                            Potential_Con_Vars=Pred_Vars[Pred_Vars!="f1"], # for now, algorithm works with no interaction term
+#                                            which.family="negative_binomial", # distribution of the response variable
 #                                            # !! Unlike GEE_Confounder_Selection, this which.family is not applied when the model is updated (update()) as the process of building the confounding model.
 #                                            Min.Change.Percentage=5,
 #                                            Estimate="raw_estimate") # raw_estimate, converted_estimate
@@ -1894,6 +2009,8 @@ GLMM_Confounder_Selection=function(Full_Model,
 #**********************
 # GLMM_Confounder_Model
 #**********************
+# Example - (1)
+#**************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -1926,7 +2043,44 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=5,
 #                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
-# GLMM_Confounder$Full_Multivariable_Model$summ_tablel
+# GLMM_Confounder$Full_Multivariable_Model$summ_table
+# GLMM_Confounder$Confounder_Steps$Confounders
+# GLMM_Confounder$Confounder_Model$summ_table
+# GLMM_Confounder$Confounder_Model$N_data_used
+# 
+# #**********************************
+# # Example - (2) : negative binomial
+# #**********************************
+# set.seed(101)
+# Data_to_use=expand.grid(f1 = factor(1:3),
+#                         f2 = LETTERS[1:2],
+#                         f3 = rep(2:5),
+#                         g=1:5, rep=1:3,
+#                         KEEP.OUT.ATTRS=FALSE)
+# summary(mu <- 5*(-4 + with(Data_to_use, as.integer(f1) + 4*as.numeric(f2))))
+# Data_to_use$y <- rnbinom(nrow(Data_to_use), mu = mu, size = 0.5)
+# Pred_Vars=c("f1", "f2", "f3")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="f1")]="1"
+# levels.of.fact[which(Pred_Vars=="f2")]="A"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="y",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# 
+# Main_Pred_Var="f1"
+# GLMM_Confounder=GLMM_Confounder_Model(Data=Data_to_use,
+#                                       Main_Pred_Var=Main_Pred_Var,
+#                                       Potential_Con_Vars=Pred_Vars[Pred_Vars!=Main_Pred_Var], # for now, algorithm works with no interaction term
+#                                       Res_Var="y",
+#                                       Group_Var="g",
+#                                       which.family="negative_binomial", # gaussian, binomial, poisson
+#                                       NAGQ=1,
+#                                       Min.Change.Percentage=5,
+#                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
+# GLMM_Confounder$Full_Multivariable_Model$summ_table
 # GLMM_Confounder$Confounder_Steps$Confounders
 # GLMM_Confounder$Confounder_Model$summ_table
 # GLMM_Confounder$Confounder_Model$N_data_used
@@ -2522,6 +2676,64 @@ GLMM_Overdispersion_Test=function(model){
   pval=pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
   c(chisq=Pearson.chisq, ratio=prat, rdf=rdf, p=pval)
 }
+
+
+
+#*********************************
+#
+# GLMM_NB_Overdispersion_Estimator
+#
+#********************************************
+# Estimate the overdispersion parameter theta
+#********************************************
+# Example
+#********
+# set.seed(101)
+# Data_to_use=expand.grid(f1 = factor(1:3),
+#                         f2 = LETTERS[1:2], g=1:9, rep=1:15,
+#                         KEEP.OUT.ATTRS=FALSE)
+# summary(mu <- 5*(-4 + with(Data_to_use, as.integer(f1) + 4*as.numeric(f2))))
+# Data_to_use$y <- rnbinom(nrow(Data_to_use), mu = mu, size = 0.5)
+# Pred_Vars=c("f1", "f2", "g")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="f1")]="1"
+# levels.of.fact[which(Pred_Vars=="f2")]="A"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="y",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# Overdispersion_Theta=GLMM_NB_Overdispersion_Estimator(Data=Data_to_use,
+#                                                       Pred_Vars=c("f1", "f2", "f1:f2"),
+#                                                       Res_Var="y",
+#                                                       Group_Var="g")
+GLMM_NB_Overdispersion_Estimator=function(Data, Pred_Vars, Res_Var, Group_Var){
+  # check out packages
+  lapply(c("lme4", "MASS"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+  Data=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data)
+  
+  # run model
+  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
+  myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+                 na.action=na.exclude, 
+                 data=Data, 
+                 nb.control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                 verbose=FALSE)
+  
+  Output=c()
+  Output$model_fit=myfit
+  Output$theta=getME(myfit, "glmer.nb.theta")
+  
+  return(Output)
+}
+
+
 
 #**************************************
 #
