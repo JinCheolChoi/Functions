@@ -2723,7 +2723,7 @@ GLMM_NB_Overdispersion_Estimator=function(Data, Pred_Vars, Res_Var, Group_Var){
   myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
                  na.action=na.exclude, 
                  data=Data, 
-                 nb.control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                 nb.control=glmerControl(optimizer=c("Nelder_Mead"), optCtrl=list(maxfun=1e7)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
                  verbose=FALSE)
   
   Output=c()
