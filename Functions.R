@@ -2413,6 +2413,9 @@ GLMM_LASSO=function(Data, pred_vars, res_var, rand_var, which.family="binomial(l
 # GLMM_Bivariate_Plot
 #
 #********************
+#The blue curves represent the fixed effect of age on outcome, which corresponds to the center of subject-specific regression lines with varying intercepts (grey-dotted lines) on a log scale (A) and a logit scale (B and C).
+#The blue-shaded bands represent 95% confidence intervals of prediction.
+#***********************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
