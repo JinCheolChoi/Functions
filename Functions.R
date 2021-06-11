@@ -1699,9 +1699,9 @@ GLMM_Multivariable=function(Data,
   Origin_N_Rows=nrow(Data)
   
   # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
+  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
   if(grepl("gaussian", which.family)){
-    myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+    myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                na.action=na.exclude, 
                data=Data, 
                control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)))
@@ -1713,13 +1713,13 @@ GLMM_Multivariable=function(Data,
                                                     Res_Var=Res_Var,
                                                     Group_Var=Group_Var)
     
-    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                 family=eval(parse(text=paste0("MASS::negative.binomial(theta=", Overdispersion$theta, ")"))), 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
                 control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }else{
-    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                 family=eval(parse(text=which.family)), 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
@@ -2722,8 +2722,8 @@ GLMM_NB_Overdispersion_Estimator=function(Data, Pred_Vars, Res_Var, Group_Var){
   Origin_N_Rows=nrow(Data)
   
   # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
-  myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
+  myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                  na.action=na.exclude, 
                  data=Data, 
                  nb.control=glmerControl(optimizer=c("Nelder_Mead"), optCtrl=list(maxfun=1e7)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
@@ -4157,7 +4157,7 @@ Combine_Multiple_Results=function(Input_Data_Names){
                            " (", round(exp(Output[, Estimate]-qnorm(0.975)*Output[, Std.Error]), 2),
                            " - ",
                            round(exp(Output[, Estimate]+qnorm(0.975)*Output[, Std.Error]), 2), ")")
-         ]
+  ]
   
   return(Output)
 }
