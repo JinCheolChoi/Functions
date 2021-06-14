@@ -286,7 +286,7 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
 #                   Stop_Time="stop")
 COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL, Stop_Time){
   # check out packages
-  lapply(c("survival"), checkpackages)
+  lapply(c("survival", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -437,7 +437,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
 #                   which.family="binomial (link='logit')")
 GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   # check out packages
-  lapply(c("MASS"), checkpackages)
+  lapply(c("MASS", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1080,7 +1080,7 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
 #                   which.family="binomial (link='logit')")
 GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
-  lapply(c("geepack", "MESS", "doBy"), checkpackages)
+  lapply(c("geepack", "MESS", "doBy", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1189,7 +1189,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 # Data_original=as.data.table(Data_original)
 GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
-  lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
+  lapply(c("geepack", "MESS", "doBy", "HH", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1690,7 +1690,7 @@ GLMM_Multivariable=function(Data,
                             Compute.Power=FALSE,
                             nsim=1000){
   # check out packages
-  lapply(c("lme4", "simr", "sjPlot", "MASS"), checkpackages)
+  lapply(c("lme4", "simr", "sjPlot", "MASS", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -2867,7 +2867,7 @@ GLMM_Multinomial_Multivariate=function(Data,
                                        tol=1e-04,
                                        par.update=FALSE){
   # check out packages
-  lapply(c("mixcat"), checkpackages)
+  lapply(c("mixcat", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -3273,7 +3273,7 @@ CLMM_Ordinal_Multivariable=function(Data,
                                     Group_Var,
                                     NAGQ=3){
   # check out packages
-  lapply(c("ordinal"), checkpackages)
+  lapply(c("ordinal", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
