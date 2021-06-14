@@ -1704,7 +1704,7 @@ GLMM_Multivariable=function(Data,
     myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                na.action=na.exclude, 
                data=Data, 
-               control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)))
+               control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e20)))
   }else if(grepl("negative_binomial", which.family)){
     # estimate theta
     print("Distribution : Negative Binomial / Estimating the overdispersion parameter, theta")
@@ -1717,13 +1717,13 @@ GLMM_Multivariable=function(Data,
                 family=eval(parse(text=paste0("MASS::negative.binomial(theta=", Overdispersion$theta, ")"))), 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
-                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e20))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }else{
     myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                 family=eval(parse(text=which.family)), 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
-                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e20))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }
   
   # number of observations from a model fit
@@ -2726,7 +2726,7 @@ GLMM_NB_Overdispersion_Estimator=function(Data, Pred_Vars, Res_Var, Group_Var){
   myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                  na.action=na.exclude, 
                  data=Data, 
-                 nb.control=glmerControl(optimizer=c("Nelder_Mead"), optCtrl=list(maxfun=1e7)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                 nb.control=glmerControl(optimizer=c("Nelder_Mead"), optCtrl=list(maxfun=1e20)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
                  verbose=FALSE)
   
   Output=c()
