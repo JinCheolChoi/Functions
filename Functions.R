@@ -1769,17 +1769,21 @@ GLMM_Multivariable=function(Data,
   # summary table
   Output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
   Output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
-  Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                                     format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
+  
   if(grepl("gaussian", which.family)){
+    Output$summ_table$`P-value`=c()
     Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
+    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                                       format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
+    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                                       format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
