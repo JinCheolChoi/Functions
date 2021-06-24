@@ -405,6 +405,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
       print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
     }
   }
+  
   return(Output)
 }
 
@@ -535,6 +536,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
   }
+  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
   return(Output)
 }
 
@@ -5146,7 +5148,6 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   
   return(Out[order(match(Out$Value, Row_Levels)), ])
 }
-
 
 
 #************************************
