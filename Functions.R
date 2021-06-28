@@ -286,7 +286,7 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
 #                   Stop_Time="stop")
 COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL, Stop_Time){
   # check out packages
-  lapply(c("survival"), checkpackages)
+  lapply(c("survival", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -405,6 +405,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
       print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
     }
   }
+  
   return(Output)
 }
 
@@ -437,7 +438,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
 #                   which.family="binomial (link='logit')")
 GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   # check out packages
-  lapply(c("MASS"), checkpackages)
+  lapply(c("MASS", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -535,6 +536,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
   }
+  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
   return(Output)
 }
 
@@ -1076,11 +1078,11 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
 # GEE_Multivariable(Data=Data_to_use,
 #                   Pred_Vars=c("center", "treat", "sex", "age", "sex:age"),
 #                   Res_Var="outcome",
-#                   Group_Var="id",
+#                   Group_Var=c("id"),
 #                   which.family="binomial (link='logit')")
 GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
-  lapply(c("geepack", "MESS", "doBy"), checkpackages)
+  lapply(c("geepack", "MESS", "doBy", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1149,8 +1151,8 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
                                  row.names=names(coef(model_fit))[-1]
     )
   }
+  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
   return(Output)
-  
 }
 
 #***************************
@@ -1189,7 +1191,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 # Data_original=as.data.table(Data_original)
 GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
   # check out packages
-  lapply(c("geepack", "MESS", "doBy", "HH"), checkpackages)
+  lapply(c("geepack", "MESS", "doBy", "HH", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1267,6 +1269,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
                                  row.names=names(coef(model_fit))[-1]
     )
   }
+  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
   return(Output)
 }
 
@@ -1284,6 +1287,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use[sample(1:nrow(Data_to_use), 20), "visit"]=NA
 # 
 # Data_to_use$sex=as.character(Data_to_use$sex)
 # Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
@@ -1298,7 +1302,6 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 # 
 # Res_Var="outcome"
 # Group_Var="id"
-# 
 # # All arguments must be declared with '<-'!
 # GEE.fit=GEE_Multivariable_with_vif(Data<-Data_to_use,
 #                                    Pred_Vars<-Pred_Vars,
@@ -1328,9 +1331,9 @@ GEE_Confounder_Selection=function(Full_Model,
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
   
-  # Full_Model=GEE.example$model_fit
-  # Main_Pred_Var="sex"
-  # Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
+  Full_Model=GEE.fit$model_fit
+  Main_Pred_Var="sex"
+  Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
   
   # Out
   Out=c()
@@ -1440,9 +1443,9 @@ GEE_Confounder_Selection=function(Full_Model,
   return(Out)
 }
 
-#**********************
+#*********************
 # GEE_Confounder_Model
-#**********************
+#*********************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -1526,6 +1529,377 @@ GEE_Confounder_Model=function(Data,
                                                      which.family<<-which.family)
   return(Output)
 }
+
+
+
+#********************
+#
+# GEE_Backward_by_QIC
+#
+#*******************************
+# QIC-based backward elimination
+#********
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# 
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# 
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GEE.fit=GEE_Multivariable_with_vif(Data=Data_to_use,
+#                                    Pred_Vars=Pred_Vars,
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial")
+# QIC_Selection_Steps=GEE_Backward_by_QIC(Full_Model=GEE.fit$model_fit,
+#                                                      Pred_Vars=Pred_Vars)
+GEE_Backward_by_QIC=function(Full_Model,
+                             Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GEE.fit$model_fit
+  # Pred_Vars
+  
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GEE.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Pred_Vars=Pred_Vars
+  Include_Index=c(1:length(Pred_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Current_Full_Model_QIC=QIC(Current_Full_Model)["QIC"]
+    
+    Reduced_Model_QICs=c()
+    
+    # run GEE excluding one variable at once
+    for(i in 1:length(Pred_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+      Reduced_Model_QICs[i]=QIC(Current_Reduced_Model)["QIC"]
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+    }
+    
+    # QIC of multivariable model excluding each variable
+    Temp_Table=data.table(
+      Inclusion="-",
+      Var=c("(none)", Pred_Vars[Include_Index]),
+      QIC=c(Current_Full_Model_QIC, Reduced_Model_QICs))
+    
+    # order by QIC
+    Temp_Table=Temp_Table[order(QIC), ]
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(Temp_Table$QIC[1]>=Current_Full_Model_QIC){
+      loop.key=1
+    }else{
+      # if there is a variable whose exclusion leads to an improvement of the model (deacresed QIC)
+      # remove the variable
+      Var_to_Remove=Temp_Table[1, Var]
+      
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Pred_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[setdiff(1:length(Pred_Vars), Include_Index)], collapse="-"))))
+      # increase step
+      step=step+1
+      
+      # # if there's no more variable left
+      # if(length(Include_Index)==0){
+      #   Temp_Table=data.table(
+      #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
+      #     Estimate=c(QIC(Current_Full_Model)[-1]),
+      #     Delta="",
+      #     Rank=""
+      #   )
+      #   Out$summ_table[[step]]=Temp_Table
+      #   loop.key=1
+      # }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Selected_Vars=Pred_Vars[Include_Index]
+  
+  return(Out)
+}
+
+
+
+#*******************
+#
+# GEE_Backward_by_P
+#
+#*******************
+# Example
+#************************************
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# # generate missing data
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use[sample(1:nrow(Data_to_use), 20), "treat"]=NA
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GEE.fit=GEE_Multivariable_with_vif(Data=Data_to_use,
+#                                    Pred_Vars=Pred_Vars,
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial")
+# Backward_Elimination_Steps=GEE_Backward_by_P(GEE.fit$model_fit,
+#                                              Data=Data_to_use,
+#                                              Pred_Vars=Pred_Vars)
+# # run GEE_Multivariable
+# Backward_Elimination_Steps_Katya=GEE_Backward_by_P_Katya(Data=Data_to_use,
+#                                                          Pred_Vars=Pred_Vars,
+#                                                          Res_Var="outcome",
+#                                                          Group_Var=c("id"),
+#                                                          which.family="binomial")
+# Backward_Elimination_Steps$Selected_Vars
+# Backward_Elimination_Steps_Katya
+GEE_Backward_by_P=function(Full_Model,
+                           Data,
+                           Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GEE.fit$model_fit
+  # Pred_Vars
+  # Data=Data_to_use
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GLMM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  Data=as.data.table(Data)
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Pred_Vars=Pred_Vars
+  Include_Index=c(1:length(Pred_Vars))
+  
+  Name_Dictionary=list()
+  for(i in 1:length(Pred_Vars)){
+    Name_Dictionary[[Pred_Vars[i]]]=paste0(colnames(Data[, .SD, .SDcols=Pred_Vars[i]]), Data[, levels(unlist(.SD)), .SDcols=Pred_Vars[i]])
+  }
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step, " of ", length(Pred_Vars)))
+    
+    # update the current full model
+    if(length(Pred_Vars)!=length(Include_Index)){
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[setdiff(1:length(Pred_Vars), Include_Index)], collapse="-"))))
+    }
+    
+    # save QIC of the current model
+    Out$Model_QIC[step]=QIC(Current_Full_Model)["QIC"]
+    
+    # p-values of multivariable model excluding each variable
+    Temp_Summary=summary(Current_Full_Model)
+    Temp_Table=data.table(
+      Var=rownames(Temp_Summary$coefficients),
+      Pvalue=Temp_Summary$coefficients[, "Pr(>|W|)"])
+    
+    # order by Pvalue
+    Temp_Table=Temp_Table[Var!="(Intercept)", ]
+    Temp_Table=Temp_Table[order(Pvalue, decreasing=T), ]
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(nrow(Temp_Table)==1){
+      loop.key=1
+    }else{
+      # if there is a variable whose exclusion leads to an improvement of the model (deacresed QIC)
+      # remove the variable
+      Temp_Var_to_Remove=Temp_Table[1, Var]
+      
+      Var_to_Remove=c()
+      for(i in 1:length(Pred_Vars)){
+        if(sum(Temp_Var_to_Remove==Name_Dictionary[[Pred_Vars[[i]]]])>0){
+          Var_to_Remove=Pred_Vars[[i]]
+        }
+      }
+      
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Pred_Vars==Var_to_Remove)]
+      # increase step
+      step=step+1
+      
+      # # if there's no more variable left
+      # if(length(Include_Index)==0){
+      #   Temp_Table=data.table(
+      #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
+      #     Estimate=c(QIC(Current_Full_Model)[-1]),
+      #     Delta="",
+      #     Rank=""
+      #   )
+      #   Out$summ_table[[step]]=Temp_Table
+      #   loop.key=1
+      # }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Temp_Vars=Out$summ_table[[which(Out$Model_QIC==min(Out$Model_QIC))]]$Var
+  Selected_Vars=c()
+  for(j in 1:length(Temp_Vars)){
+    for(i in 1:length(Pred_Vars)){
+      if(sum(Temp_Vars[j]==Name_Dictionary[[Pred_Vars[[i]]]])>0){
+        Selected_Vars[j]=Pred_Vars[[i]]
+      }
+    }
+  }
+  Out$Selected_Vars=Selected_Vars
+  
+  return(Out)
+}
+
+
+
+#************************
+#
+# GEE_Backward_by_P_Katya
+#
+#************************
+GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ ## names of people should be numeric
+  Data=as.data.frame(Data)
+  Data[, Group_Var]=gsub("A", 999, Data[, Group_Var])
+  Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
+  
+  # as data frame
+  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+  
+  Data=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data)
+  if(sum(grepl(":", Pred_Vars))>0){
+    Non_Missing_Data<<-Remove_missing(Data, # remove missing data
+                                      c(Pred_Vars[!grepl(":", Pred_Vars)],
+                                        Res_Var,
+                                        Group_Var))
+  }else{
+    Non_Missing_Data<<-Remove_missing(Data, # remove missing data
+                                      c(Pred_Vars,
+                                        Res_Var,
+                                        Group_Var))
+  }
+  Data=Non_Missing_Data
+  
+  ## check if some columns have a similar name
+  
+  N.of.similar.cols=array()
+  for(i in 1:length(Pred_Vars)){
+    N.of.similar.cols[i]=length(grep(Pred_Vars[i], Pred_Vars))
+  }
+  if(max(N.of.similar.cols)>1){
+    
+    rename.these=which(N.of.similar.cols>1)
+    print(paste("Please, rename these columns to something unique: " , Pred_Vars[rename.these], sep=""))
+  }else{
+    
+    
+    library(geepack)
+    library(MESS)
+    library(doBy) 
+    
+    vars=Pred_Vars
+    vars.ALL=Pred_Vars
+    
+    QIC.RES=REMOVE.RES=COL.NAMES=array()
+    QIC.RES[1]=NA
+    QIC.RES_p=NA
+    
+    ## while(QIC.RES[i]<QIC.RES[i-1]){
+    for(i in 1:(length(vars)-1)){
+      fullmod=as.formula( paste( Res_Var, " ~ ", paste(vars, collapse = "+")))
+      r1=geeglm(fullmod, data=Data, id=Data[, Group_Var], family=which.family, corstr="exchangeable")
+      QIC.RES[i+1]=QIC(r1)[1]
+      remove.this.id.name=names(which(as.matrix(summary(r1)$coefficients)[-1, 4]==max(as.matrix(summary(r1)$coefficients)[-1, 4])))
+      remove.this.id.name=remove.this.id.name[1]
+      QIC.RES_p=c(QIC.RES_p, round2(max(as.matrix(summary(r1)$coefficients)[-1, 4]), 2))
+      remove.this.id.name.clean=Pred_Vars[sapply(1:length(Pred_Vars), function(x) grepl(Pred_Vars[x], remove.this.id.name))]
+      
+      remove.this.id=sapply(1:length(vars), function(x) grepl(remove.this.id.name.clean, vars[x]))
+      
+      REMOVE.RES[i]=vars[remove.this.id]
+      vars= setdiff(vars, vars[remove.this.id])
+      #i=i+1
+      print(i)
+      print(QIC.RES)
+      print(REMOVE.RES)
+    }
+    QIC.RES=QIC.RES[-1]
+    QIC.RES_p=QIC.RES_p[-1]
+    REMOVE.RES=REMOVE.RES
+    
+    RES=cbind(QIC.RES, QIC.RES_p, REMOVE.RES)
+    colnames(RES)=c("QIC Before removal", "p Before removal", "Removed variable")
+    RES.QIC=RES
+    
+    Top=(which.min(as.numeric(RES[, "QIC Before removal"]))-1)
+    if(Top==0){vars.keep=vars.ALL}else{
+      vars.keep=vars.ALL[which(vars.ALL%in%(RES[1:Top, "Removed variable"])==F)]
+    }
+    
+    RES.QIC[, "Removed variable"]=gsub("as.factor", "", RES.QIC[, "Removed variable"])
+    RES.QIC[, "Removed variable"]=gsub("as.numeric", "", RES.QIC[, "Removed variable"])
+    RES.QIC[, "Removed variable"]=gsub(")1", "", RES.QIC[, "Removed variable"])
+    RES.QIC[, "Removed variable"]=gsub(") 1", "", RES.QIC[, "Removed variable"])
+    RES.QIC[, "Removed variable"]=gsub("[()]", "", RES.QIC[, "Removed variable"])
+    
+    return(vars.keep)
+  }
+} ## names of people should be numeric
 
 
 
@@ -1690,7 +2064,7 @@ GLMM_Multivariable=function(Data,
                             Compute.Power=FALSE,
                             nsim=1000){
   # check out packages
-  lapply(c("lme4", "simr", "sjPlot", "MASS"), checkpackages)
+  lapply(c("lme4", "simr", "sjPlot", "MASS", "data.table", "optimx"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -1699,12 +2073,12 @@ GLMM_Multivariable=function(Data,
   Origin_N_Rows=nrow(Data)
   
   # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
+  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
   if(grepl("gaussian", which.family)){
-    myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+    myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                na.action=na.exclude, 
                data=Data, 
-               control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)))
+               control=lmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e09)))
   }else if(grepl("negative_binomial", which.family)){
     # estimate theta
     print("Distribution : Negative Binomial / Estimating the overdispersion parameter, theta")
@@ -1713,17 +2087,18 @@ GLMM_Multivariable=function(Data,
                                                     Res_Var=Res_Var,
                                                     Group_Var=Group_Var)
     
-    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                 family=eval(parse(text=paste0("MASS::negative.binomial(theta=", Overdispersion$theta, ")"))), 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
-                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e09))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }else{
-    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+    myfit=glmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                 family=eval(parse(text=which.family)), 
                 na.action=na.exclude, 
                 data=Data, nAGQ=NAGQ, 
-                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e09))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+    #control=glmerControl(optimizer=c("optimx"), optCtrl=list(method="nlminbwrap"))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }
   
   # number of observations from a model fit
@@ -1769,17 +2144,21 @@ GLMM_Multivariable=function(Data,
   # summary table
   Output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
   Output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
-  Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
-                                     format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
+  
   if(grepl("gaussian", which.family)){
+    Output$summ_table$`P-value`=c()
     Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
+    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                                       format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
+    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+                                       format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
@@ -1803,7 +2182,9 @@ GLMM_Multivariable=function(Data,
     Output$Overdispersion=Overdispersion
   }
   return(Output)
-}
+} 
+
+
 
 #**************************
 # GLMM_Confounder_Selection
@@ -2413,6 +2794,9 @@ GLMM_LASSO=function(Data, pred_vars, res_var, rand_var, which.family="binomial(l
 # GLMM_Bivariate_Plot
 #
 #********************
+#The blue curves represent the fixed effect of age on outcome, which corresponds to the center of subject-specific regression lines with varying intercepts (grey-dotted lines) on a log scale (A) and a logit scale (B and C).
+#The blue-shaded bands represent 95% confidence intervals of prediction.
+#***********************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -2670,12 +3054,367 @@ GLMM_Overdispersion_Test=function(model){
   rdf=nrow(model.frame(model)) - model.df
   # extracts the Pearson residuals
   rp=residuals(model, type="pearson")
-  Pearson.chisq=sum(rp^2)
+  Pearson.chisq=sum(rp^2, na.rm=TRUE)
   prat=Pearson.chisq/rdf
   # Generates a p-value. If less than 0.05, the data are overdispersed.
   pval=pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
   c(chisq=Pearson.chisq, ratio=prat, rdf=rdf, p=pval)
 }
+
+
+
+#**********************
+#
+# GLMM_Backward_by_AIC
+#
+#*******************************
+# AIC-based backward elimination
+#*******************************
+# data(mtcars)
+# MultiLinearReg=glm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb, data=mtcars, family="gaussian")
+# 
+# stepAIC(MultiLinearReg, trace=TRUE)
+# 
+# AIC(MultiLinearReg)
+# AIC(glm(mpg~disp+hp+drat+wt+qsec+vs+am+gear+carb, data=mtcars, family="gaussian"))
+# AIC(glm(mpg~disp+hp+drat+wt+qsec+am+gear+carb, data=mtcars, family="gaussian"))
+# 
+# summary(MultiLinearReg)
+#********
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# 
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# 
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLMM.fit=GLMM_Multivariable(Data=Data_to_use,
+#                             Pred_Vars=Pred_Vars[Pred_Vars!="visit"],
+#                             Res_Var="outcome",
+#                             Group_Var=c("id"," visit"),
+#                             which.family="binomial", # gaussian, binomial, poisson
+#                             NAGQ=1,
+#                             Compute.Power=F,
+#                             nsim=30)
+# AIC_Selection_Steps=GLMM_Backward_by_AIC(Full_Model=GLMM.fit$model_fit,
+#                                                      Pred_Vars=Pred_Vars)
+GLMM_Backward_by_AIC=function(Full_Model,
+                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GLMM.fit$model_fit
+  # Pred_Vars
+  
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GLMM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Pred_Vars=Pred_Vars
+  Include_Index=c(1:length(Pred_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Current_Full_Model_AIC=AIC(Current_Full_Model)
+    
+    Reduced_Model_AICs=c()
+    
+    # run GLMM excluding one variable at once
+    for(i in 1:length(Pred_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+      Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+    }
+    
+    # AIC of multivariable model excluding each variable
+    Temp_Table=data.table(
+      Inclusion="-",
+      Var=c("(none)", Pred_Vars[Include_Index]),
+      AIC=c(Current_Full_Model_AIC, Reduced_Model_AICs))
+    
+    # order by AIC
+    Temp_Table=Temp_Table[order(AIC), ]
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(Temp_Table$AIC[1]>=Current_Full_Model_AIC){
+      loop.key=1
+    }else{
+      # if there is a variable whose exclusion leads to an improvement of the model (deacresed AIC)
+      # remove the variable
+      Var_to_Remove=Temp_Table[1, Var]
+      
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Pred_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[setdiff(1:length(Pred_Vars), Include_Index)], collapse="-"))))
+      # increase step
+      step=step+1
+      
+      # # if there's no more variable left
+      # if(length(Include_Index)==0){
+      #   Temp_Table=data.table(
+      #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
+      #     Estimate=c(AIC(Current_Full_Model)[-1]),
+      #     Delta="",
+      #     Rank=""
+      #   )
+      #   Out$summ_table[[step]]=Temp_Table
+      #   loop.key=1
+      # }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Selected_Vars=Pred_Vars[Include_Index]
+  
+  return(Out)
+}
+
+
+
+#*******************
+#
+# GLMM_Backward_by_P
+#
+#*******************
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="N"
+# Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# 
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# NAGQ=1
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLMM.fit=GLMM_Multivariable(Data=Data_to_use,
+#                             Pred_Vars=Pred_Vars,
+#                             Res_Var="outcome",
+#                             Group_Var=c("id", "visit"),
+#                             which.family="binomial", # gaussian, binomial, poisson
+#                             NAGQ=1,
+#                             Compute.Power=F,
+#                             nsim=30)
+# Backward_Elimination_Steps=GLMM_Backward_by_P(GLMM.fit$model_fit,
+#                                               Data=Data_to_use,
+#                                               Pred_Vars=Pred_Vars)
+# Backward_Elimination_Steps_Katya=GLMM_Backward_by_P_Katya(Data=Data_to_use,
+#                                                           Pred_Vars=Pred_Vars,
+#                                                           Res_Var="outcome",
+#                                                           Group_Var=c("id"," visit"),
+#                                                           which.family="binomial",
+#                                                           NAGQ=NAGQ)
+# Backward_Elimination_Steps$Selected_Vars
+# Backward_Elimination_Steps_Katya
+GLMM_Backward_by_P=function(Full_Model,
+                            Data,
+                            Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GLMM.fit$model_fit
+  # Pred_Vars
+  # Data=Data_to_use
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GLMM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  Data=as.data.table(Data)
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Pred_Vars=Pred_Vars
+  Include_Index=c(1:length(Pred_Vars))
+  
+  Name_Dictionary=list()
+  for(i in 1:length(Pred_Vars)){
+    Name_Dictionary[[Pred_Vars[i]]]=paste0(colnames(Data[, .SD, .SDcols=Pred_Vars[i]]), Data[, levels(unlist(.SD)), .SDcols=Pred_Vars[i]])
+  }
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step, " of ", length(Pred_Vars)))
+    
+    # update the current full model
+    if(length(Pred_Vars)!=length(Include_Index)){
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[setdiff(1:length(Pred_Vars), Include_Index)], collapse="-"))))
+    }
+    
+    # save AIC of the current model
+    Out$Model_AIC[step]=AIC(Current_Full_Model)
+    
+    # p-values of multivariable model excluding each variable
+    Temp_Summary=summary(Current_Full_Model)
+    Temp_Table=data.table(
+      Var=rownames(Temp_Summary$coefficients),
+      Pvalue=Temp_Summary$coefficients[, "Pr(>|z|)"])
+    
+    # order by Pvalue
+    Temp_Table=Temp_Table[Var!="(Intercept)", ]
+    Temp_Table=Temp_Table[order(Pvalue, decreasing=T), ]
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(nrow(Temp_Table)==1){
+      loop.key=1
+    }else{
+      # if there is a variable whose exclusion leads to an improvement of the model (deacresed AIC)
+      # remove the variable
+      Temp_Var_to_Remove=Temp_Table[1, Var]
+      
+      Var_to_Remove=c()
+      for(i in 1:length(Pred_Vars)){
+        if(sum(Temp_Var_to_Remove==Name_Dictionary[[Pred_Vars[[i]]]])>0){
+          Var_to_Remove=Pred_Vars[[i]]
+        }
+      }
+      
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Pred_Vars==Var_to_Remove)]
+      # increase step
+      step=step+1
+      
+      # # if there's no more variable left
+      # if(length(Include_Index)==0){
+      #   Temp_Table=data.table(
+      #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
+      #     Estimate=c(AIC(Current_Full_Model)[-1]),
+      #     Delta="",
+      #     Rank=""
+      #   )
+      #   Out$summ_table[[step]]=Temp_Table
+      #   loop.key=1
+      # }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Temp_Vars=Out$summ_table[[which(Out$Model_AIC==min(Out$Model_AIC))]]$Var
+  Selected_Vars=c()
+  for(j in 1:length(Temp_Vars)){
+    for(i in 1:length(Pred_Vars)){
+      if(sum(Temp_Vars[j]==Name_Dictionary[[Pred_Vars[[i]]]])>0){
+        Selected_Vars[j]=Pred_Vars[[i]]
+      }
+    }
+  }
+  Out$Selected_Vars=Selected_Vars
+  
+  return(Out)
+}
+
+
+
+#*************************
+#
+# GLMM_Backward_by_P_Katya
+#
+#*************************
+GLMM_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.family, NAGQ){
+  
+  library("lme4")
+  
+  vars=Pred_Vars
+  vars.ALL=vars
+  
+  AIC.RES=REMOVE.RES=COL.NAMES=array()
+  AIC.RES[1]=NA
+  AIC.RES_p=NA
+  
+  #while(AIC.RES[i]<AIC.RES[i-1]){
+  for(i in 1:(length(vars)-1)){
+    
+    fullmod=as.formula(paste(Res_Var, "~", paste(vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
+    myfit=glmer(fullmod, family=which.family, na.action=na.exclude, data=Data, nAGQ=NAGQ)
+    ss=as.matrix(summary(myfit)$coefficients)
+    AIC.RES[i+1]=AIC(myfit)[1]
+    
+    remove.this.id.name=names(which(ss[-1, "Pr(>|z|)"]==max(ss[-1, "Pr(>|z|)"])))
+    remove.this.id.name=remove.this.id.name[1]
+    AIC.RES_p=c(AIC.RES_p, round2(max(ss[-1, "Pr(>|z|)"]), 2))
+    remove.this.id.name.clean=Pred_Vars[sapply(1:length(Pred_Vars), function(x) grepl(Pred_Vars[x], remove.this.id.name))]
+    remove.this.id=sapply(1:length(vars), function(x) grepl(remove.this.id.name.clean, vars[x]))
+    REMOVE.RES[i]=vars[remove.this.id]
+    vars= setdiff(vars, vars[remove.this.id])
+    print(i)
+    print(AIC.RES)
+    print(REMOVE.RES)
+  }
+  AIC.RES=AIC.RES[-1]
+  AIC.RES_p=AIC.RES_p[-1]
+  
+  RES=cbind(AIC.RES, AIC.RES_p, REMOVE.RES)
+  colnames(RES)=c("AIC Before removal", "p Before removal", "Removed variable")
+  RES.AIC=RES
+  
+  Top=(which.min(as.numeric(RES[, "AIC Before removal"]))-1)
+  if(Top==0){vars.keep=vars.ALL}else{
+    vars.keep=vars.ALL[which(vars.ALL%in%(RES[1:Top, "Removed variable"])==F)]}
+  
+  return(vars.keep)
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -2719,11 +3458,11 @@ GLMM_NB_Overdispersion_Estimator=function(Data, Pred_Vars, Res_Var, Group_Var){
   Origin_N_Rows=nrow(Data)
   
   # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep=""))
-  myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+(1|", Group_Var, ")", sep="")), 
+  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
+  myfit=glmer.nb(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                  na.action=na.exclude, 
                  data=Data, 
-                 nb.control=glmerControl(optimizer=c("bobyqa"), optCtrl=list(maxfun=1e7)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
+                 nb.control=glmerControl(optimizer=c("Nelder_Mead"), optCtrl=list(maxfun=1e09)), # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
                  verbose=FALSE)
   
   Output=c()
@@ -2864,7 +3603,7 @@ GLMM_Multinomial_Multivariate=function(Data,
                                        tol=1e-04,
                                        par.update=FALSE){
   # check out packages
-  lapply(c("mixcat"), checkpackages)
+  lapply(c("mixcat", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -3270,7 +4009,7 @@ CLMM_Ordinal_Multivariable=function(Data,
                                     Group_Var,
                                     NAGQ=3){
   # check out packages
-  lapply(c("ordinal"), checkpackages)
+  lapply(c("ordinal", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -4154,7 +4893,7 @@ Combine_Multiple_Results=function(Input_Data_Names){
                            " (", round(exp(Output[, Estimate]-qnorm(0.975)*Output[, Std.Error]), 2),
                            " - ",
                            round(exp(Output[, Estimate]+qnorm(0.975)*Output[, Std.Error]), 2), ")")
-         ]
+  ]
   
   return(Output)
 }
@@ -4409,7 +5148,6 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   
   return(Out[order(match(Out$Value, Row_Levels)), ])
 }
-
 
 
 #************************************
