@@ -1331,10 +1331,6 @@ GEE_Confounder_Selection=function(Full_Model,
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
   
-  Full_Model=GEE.fit$model_fit
-  Main_Pred_Var="sex"
-  Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
-  
   # Out
   Out=c()
   
@@ -1527,6 +1523,7 @@ GEE_Confounder_Model=function(Data,
                                                      Res_Var<<-Res_Var,
                                                      Group_Var<<-Group_Var,
                                                      which.family<<-which.family)
+  
   return(Output)
 }
 
