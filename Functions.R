@@ -5429,15 +5429,16 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
   Table=round(summary(Data[, Var]), 2)
   
   if(Form==1){
-    Out=cbind(Var, paste0(Table[3], " (", Table[5]-Table[2], ")"))
-    colnames(Out)=c("Variable", "Median (IQR)") 
+    Out=cbind(Var, 
+              Value="Median (IQR)", 
+              paste0(Table[3], " (", Table[5]-Table[2], ")"))
+    
   }else if(Form==2){
     Out=cbind(Var,
               Value=c(names(Table)),
               data.table(unclass(Table)))
-    colnames(Out)=c("Variable", "Label", "Value") 
   }
-  
+  colnames(Out)=c("Variable", "Value", paste0("Total (n=", nrow(Data), ")")) 
   return(as.data.table(Out))
 }
 
