@@ -1971,7 +1971,7 @@ GLMM_Bivariate=function(Data,
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
-    #i=1
+    #i=3
     Temp=GLMM_Multivariable(Data=Data,
                             Pred_Vars=unlist(Pred_Vars[i]),
                             Res_Var=Res_Var,
@@ -5423,13 +5423,21 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 #   ungroup()
 # #
 # Contingency_Table_Univariable_Conti_X(Data=BL_Data, Var="age")
-Contingency_Table_Univariable_Conti_X=function(Data, Var){
+Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
   Data=as.data.frame(Data)
   
   Table=round(summary(Data[, Var]), 2)
   
-  Out=cbind(Var, paste0(Table[3], " (", Table[5]-Table[2], ")"))
-  colnames(Out)=c("Variable", "Median (IQR)")
+  if(Form==1){
+    Out=cbind(Var, paste0(Table[3], " (", Table[5]-Table[2], ")"))
+    colnames(Out)=c("Variable", "Median (IQR)") 
+  }else if(Form==2){
+    Out=cbind(Var,
+              Value=c(names(Table)),
+              data.table(unclass(Table)))
+    colnames(Out)=c("Variable", "Label", "Value") 
+  }
+  
   return(as.data.table(Out))
 }
 
