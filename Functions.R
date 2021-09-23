@@ -235,8 +235,9 @@ Segmented_Regression_Model_Plot=function(Data,
 # Data_to_use$x3=as.factor(Data_to_use$x3)
 # #
 # COX_Bivariate(Data=Data_to_use,
-#               Pred_Vars=list("x1",
-#                              c("x2", "x3", "x2:x3")),
+#               # Pred_Vars=list("x1",
+#               #                c("x2", "x3", "x2:x3")), #!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
+#               Pred_Vars=list("x1", "x2", "x3"),
 #               Res_Var="event",
 #               Group_Var="id",
 #               Start_Time="start",
@@ -255,7 +256,8 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        N_events=Temp$N_events,
-                       PH_assumption_P.value=Temp$cox.zph$table[1, "p"]))
+                       PH_assumption_P.value=Temp$cox.zph$table[1, "p"],
+                       N_non_missing_data=Temp$N_non_missing_data))
   }
   return(Output)
 }
@@ -277,9 +279,9 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
 #                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
 # Data_to_use$x3=as.factor(Data_to_use$x3)
 # 
-# 
 # COX_Multivariable(Data=Data_to_use,
-#                   Pred_Vars=c("x1", "x2", "x3", "x2:x3"),
+#                   Pred_Vars=c("x1", "x2", "x3", "x2:x3"), #!!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
+#                   #Pred_Vars=c("x1", "x2", "x3"),
 #                   Res_Var="event",
 #                   Group_Var="id",
 #                   Start_Time="start",
@@ -314,7 +316,11 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
+  # number of non-missing observations
+  Used_Non_Missing_N=Origin_N_Rows-sum(is.na(Data[, Pred_Vars]))
+  
   Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
   
   # Examine the proportional hazards assumption that hazard ratio is constant over time, 
@@ -351,6 +357,305 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=
   
   return(Output)
 }
+
+
+#**************************
+# COX_Confounder_Selection
+#**************************
+# Example
+#********
+# for now, algorithm works with no interaction term
+#**************************************************
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# 
+# COX.fit=COX_Multivariable(Data<-Data_to_use,
+#                           Pred_Vars<-c("x1", "x2", "x3"),
+#                           Res_Var="event",
+#                           # Group_Var="id",
+#                           Start_Time="start",
+#                           Stop_Time="stop")
+# Confounder_Steps=COX_Confounder_Selection(Full_Model=COX.fit$model_fit,
+#                                           Main_Pred_Var="x1",
+#                                           Potential_Con_Vars=Pred_Vars[Pred_Vars!="x1"], # for now, algorithm works with no interaction term
+#                                           Min.Change.Percentage=5,
+#                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
+# Confounder_Steps$Confounders
+COX_Confounder_Selection=function(Full_Model, 
+                                  Main_Pred_Var, 
+                                  Potential_Con_Vars, 
+                                  Min.Change.Percentage=5,
+                                  Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Potential_Con_Vars=Potential_Con_Vars
+  Include_Index=c(1:length(Potential_Con_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Fixed_Effects_Current_Full_Model=coef(Current_Full_Model)
+    Main_Effects_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    
+    # when indep_var is factor, we pick max coef of its levels
+    Main_Cov_Level=names(which.max(abs(Main_Effects_Current_Full_Model)))
+    Main_Effect_Current_Full_Model=Main_Effects_Current_Full_Model[Main_Cov_Level]
+    Main_Effect_Current_Reduced_Model=c()
+    
+    # run COX_PH model excluding one variable at once
+    for(i in 1:length(Potential_Con_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[Include_Index][i], collapse="-"))))
+      
+      Fixed_Effects_Current_Reduced_Model=coef(Current_Reduced_Model)
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
+      
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
+    }
+    
+    if(Estimate=="raw_estimate"){
+      #**** refer to the raw coefficient estimate ****
+      Temp_Table=data.table(
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+        Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+        Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(Estimate=="converted_estimate"){
+      # summary table
+      Temp_Table=data.table(
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+        Est_HR=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+      loop.key=1
+      
+    }else{
+      # decide the variable to remove
+      Var_to_Remove=Temp_Table[Rank==min(Rank, na.rm=T), Removed_Var]
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse="-"))))
+      # increase step
+      step=step+1
+      
+      # if there's no more variable left
+      if(length(Include_Index)==0){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", names(Current_Full_Model$coefficients)[-1], ")"), Potential_Con_Vars[Include_Index]),
+          Estimate=c(coef(Current_Full_Model)[-1]),
+          Delta="",
+          Rank=""
+        )
+        Out$summ_table[[step]]=Temp_Table
+        loop.key=1
+      }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  
+  return(Out)
+}
+
+
+#**********************
+# COX_Confounder_Model
+#**********************
+# Example
+#**************
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# 
+# Pred_Vars=c("x1", "x2", "x3")
+# Potential_Con_Vars=Pred_Vars[Pred_Vars!="x1"]
+# COX_Confounder=COX_Confounder_Model(Data=Data_to_use,
+#                                     Main_Pred_Var="x1",
+#                                     Potential_Con_Vars=Pred_Vars[Pred_Vars!="x1"], # for now, algorithm works with no interaction term
+#                                     Res_Var="event",
+#                                     Group_Var="id",
+#                                     Start_Time="start",
+#                                     Stop_Time="stop",
+#                                     Min.Change.Percentage=5,
+#                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
+# COX_Confounder$Full_Multivariable_Model$summ_table
+# COX_Confounder$Confounder_Steps$Confounders
+# COX_Confounder$Confounder_Model$summ_table
+COX_Confounder_Model=function(Data,
+                              Main_Pred_Var,
+                              Potential_Con_Vars,
+                              Res_Var,
+                              Group_Var=NULL,
+                              Start_Time=NULL,
+                              Stop_Time="End_Time",
+                              Min.Change.Percentage=5,
+                              Estimate="raw_estimate"){
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
+  # Output
+  Output=c()
+  
+  # convert Data to data frame
+  Data=as.data.frame(Data)
+  
+  # Full multivariable model
+  Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
+  
+  Output$Full_Multivariable_Model=COX_Multivariable(Data<<-Data,
+                                                    Pred_Vars<<-Pred_Vars,
+                                                    Res_Var<<-Res_Var,
+                                                    Group_Var<<-Group_Var,
+                                                    Start_Time<<-Start_Time,
+                                                    Stop_Time<<-Stop_Time)
+  
+  # Confounder selection
+  Confounder_Steps=COX_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
+                                            Main_Pred_Var=Main_Pred_Var,
+                                            Potential_Con_Vars=Pred_Vars[Pred_Vars!=Main_Pred_Var],
+                                            Min.Change.Percentage=Min.Change.Percentage,
+                                            Estimate=Estimate) # raw_estimate, converted_estimate
+  Output$Confounder_Steps=Confounder_Steps
+  Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
+  
+  # Data=Remove_missing(Data, # remove missing data
+  #                     c(Pred_Vars[Confounder_Ind],
+  #                       Res_Var,
+  #                       Group_Var))
+  
+  # Multivariable model with confounders
+  Output$Confounder_Model=COX_Multivariable(Data<<-Data,
+                                            Pred_Vars<<-Pred_Vars[Confounder_Ind],
+                                            Res_Var<<-Res_Var,
+                                            Group_Var<<-Group_Var,
+                                            Start_Time<<-Start_Time,
+                                            Stop_Time<<-Stop_Time)
+  
+  return(Output)
+}
+
+
+#********
+# KM_Plot
+#********
+# Example
+#********
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1))
+# 
+# KM_Plot(Data=Data_to_use,
+#         Stop_Time="stop",
+#         Res_Var="event",
+#         Pred_Vars="x2",
+#         xlab="xlab",
+#         ylab="ylab",
+#         title="title",
+#         font.x=25,
+#         font.y=25,
+#         font.tickslab=25,
+#         font.legend=25,
+#         font.title=25,
+#         conf.int=T,
+#         palette=c("red3", "green3"))
+KM_Plot=function(Data,
+                 Start_Time=NULL,
+                 Stop_Time,
+                 Res_Var,
+                 Pred_Vars="1",
+                 ...){
+  if(!is.null(Start_Time)){
+    fullmod=as.formula(paste("Surv(", Start_Time, ", ", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+  }else{
+    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+  }
+  
+  
+  # if the model is not a null model
+  if(sum(Pred_Vars!="1")>0){
+    surv_diff=do.call(survdiff, args=list(formula=fullmod, data=Data))
+    p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
+    p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
+    
+    if(p.val=="< 0.001"){
+      Log_rank_test=paste0("Log rank p ", p.val)
+    }else{
+      Log_rank_test=paste0("Log rank p = ", p.val)
+    }
+    
+  }else{ # if the model is a null model
+    Log_rank_test=""
+  }
+  
+  ggsurvplot(
+    fit=do.call(survfit, args=list(formula=fullmod, data=Data)),
+    ...
+  )$plot+
+    annotate("text", x=0, y=0.2, 
+             label=Log_rank_test,
+             cex=15, col="black", 
+             vjust=0, hjust=0,
+             fontface=4)
+  
+  # ggsurvplot(
+  #   fit=do.call(survfit, args=list(formula=fullmod, data=Data)),
+  #   xlab="Days",
+  #   ylab="Retention Rate",
+  #   title="Kaplan-Meier curve for retention rate in assigned treatment on all randomized participants (mITT==1), stratified by fentanyl use at SCR",
+  #   font.x=25,
+  #   font.y=25,
+  #   font.tickslab=25,
+  #   font.legend=25,
+  #   font.title=25
+  # )$plot+
+  #   annotate("text", x=0, y=0.2, 
+  #            label=Log_rank_test,
+  #            cex=10, col="black", 
+  #            vjust=0, hjust=0,
+  #            fontface=4)
+}
+
 
 #*********************
 #
@@ -1231,10 +1536,10 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   
   # Output
   Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
   
-  if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}else{Output$vif=""}
+  if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
   # if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(model_fit)} # if the only variable is not numeric (that's, if it is categorical), compute vif
   # if(length(Pred_Vars)==1 & is.numeric(Data[, Pred_Vars])){Output$vif=""} # if the only variable is numeric, don't compute vif
   
@@ -1270,6 +1575,18 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
     )
   }
   Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  
+  
+  if(!is.null(dim(Output_vif))){
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            N_data_used=N_data_used)
+  }else{
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+                            VIF=Output_vif,
+                            N_data_used=N_data_used)
+  }
+  
   return(Output)
 }
 
@@ -1971,7 +2288,7 @@ GLMM_Bivariate=function(Data,
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
-    #i=3
+    #i=1
     Temp=GLMM_Multivariable(Data=Data,
                             Pred_Vars=unlist(Pred_Vars[i]),
                             Res_Var=Res_Var,
@@ -2000,8 +2317,8 @@ GLMM_Bivariate=function(Data,
 #*******************
 # GLMM_Multivariable
 #*******************
-# # Example - (1)
-# #************************************
+# Example - (1)
+#************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -2130,13 +2447,13 @@ GLMM_Multivariable=function(Data,
   # Output
   #*******
   Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
   # random effect plot (exponentiated)
   Output$re_plot=plot_model(myfit, type="re")
   # info of model fit
   Output$model_fit=myfit
   # vif
-  if(length(Pred_Vars)>=2){Output$vif=car::vif(myfit)}else{Output$vif=""}
+  if(length(Pred_Vars)>=2){Output_vif=car::vif(myfit)}else{Output_vif=""}
   
   # summary table
   Output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
@@ -2161,6 +2478,20 @@ GLMM_Multivariable=function(Data,
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
   
+  
+  Output$summ_table=as.data.frame(Output$summ_table) %>% as.data.table(keep.rownames=TRUE)
+  
+  
+  if(!is.null(dim(Output_vif))){
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            N_data_used=N_data_used)
+  }else{
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+                            VIF=Output_vif,
+                            N_data_used=N_data_used)
+  }
+  
   # power
   if(Compute.Power==T){
     Output$summ_table$power=sapply(Var.Power, function(x) paste0(
@@ -2172,14 +2503,13 @@ GLMM_Multivariable=function(Data,
       ")"
     ))
   }
-  Output$summ_table=as.data.frame(Output$summ_table) %>% as.data.table(keep.rownames=TRUE)
   
   # if the distribution is negative binomial, then include additional components in Output
   if(grepl("negative_binomial", which.family)){
     Output$Overdispersion=Overdispersion
   }
   return(Output)
-} 
+}
 
 
 
@@ -2424,8 +2754,8 @@ GLMM_Confounder_Selection=function(Full_Model,
 # GLMM_Confounder$Full_Multivariable_Model$summ_table
 # GLMM_Confounder$Confounder_Steps$Confounders
 # GLMM_Confounder$Confounder_Model$summ_table
-# GLMM_Confounder$Confounder_Model$N_data_used
 # 
+#
 # #**********************************
 # # Example - (2) : negative binomial
 # #**********************************
@@ -2461,7 +2791,6 @@ GLMM_Confounder_Selection=function(Full_Model,
 # GLMM_Confounder$Full_Multivariable_Model$summ_table
 # GLMM_Confounder$Confounder_Steps$Confounders
 # GLMM_Confounder$Confounder_Model$summ_table
-# GLMM_Confounder$Confounder_Model$N_data_used
 GLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
