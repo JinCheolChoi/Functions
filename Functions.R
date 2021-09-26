@@ -237,12 +237,19 @@ Segmented_Regression_Model_Plot=function(Data,
 # COX_Bivariate(Data=Data_to_use,
 #               # Pred_Vars=list("x1",
 #               #                c("x2", "x3", "x2:x3")), #!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
-#               Pred_Vars=list("x1", "x2", "x3"),
+#               Pred_Vars=list("x1", "x2"),
 #               Res_Var="event",
-#               Group_Var="id",
+#               Group_Vars="id",
+#               Strat_Vars="x3",
 #               Start_Time="start",
 #               Stop_Time="stop")
-COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL, Stop_Time){
+COX_Bivariate=function(Data,
+                       Pred_Vars,
+                       Res_Var,
+                       Group_Vars=NULL,
+                       Strat_Vars=NULL,
+                       Start_Time=NULL,
+                       Stop_Time){
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
@@ -251,6 +258,8 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
     Temp=COX_Multivariable(Data=Data,
                            Pred_Vars=unlist(Pred_Vars[i]),
                            Res_Var=Res_Var,
+                           Group_Vars=Group_Vars,
+                           Strat_Vars=Strat_Vars,
                            Start_Time=Start_Time,
                            Stop_Time=Stop_Time)
     Output=rbind(Output,
@@ -261,7 +270,6 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
   }
   return(Output)
 }
-
 
 
 #******************
@@ -280,13 +288,20 @@ COX_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL
 # Data_to_use$x3=as.factor(Data_to_use$x3)
 # 
 # COX_Multivariable(Data=Data_to_use,
-#                   Pred_Vars=c("x1", "x2", "x3", "x2:x3"), #!!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
-#                   #Pred_Vars=c("x1", "x2", "x3"),
+#                   # Pred_Vars=c("x1", "x2", "x3", "x2:x3"), #!!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
+#                   Pred_Vars=c("x1", "x2"),
 #                   Res_Var="event",
-#                   Group_Var="id",
+#                   Group_Vars="id",
+#                   Strat_Vars="x3",
 #                   Start_Time="start",
 #                   Stop_Time="stop")
-COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=NULL, Stop_Time){
+COX_Multivariable=function(Data,
+                           Pred_Vars,
+                           Res_Var,
+                           Group_Vars=NULL,
+                           Strat_Vars=NULL,
+                           Start_Time=NULL,
+                           Stop_Time){
   # check out packages
   lapply(c("survival", "data.table"), checkpackages)
   
@@ -300,15 +315,17 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=
   Output=c()
   #i=1
   # run model
-  if(is.null(Group_Var)){ # if cluster (group) variable is not specified
-    if(is.null(Start_Time)){
-      fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
-    }else{fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))}
-  }else{ # if cluster (group) is specified
-    # The term cluster (ID) in the model formula indicates that there are multiple observations (clusters) from the same subject and requests that robust standard errors be produced for the coefficient estimates.
-    if(is.null(Start_Time)){
-      fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~ cluster(", Group_Var, ") + ", paste(Pred_Vars, collapse="+")))
-    }else{fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ")", "~ cluster(", Group_Var, ") + ", paste(Pred_Vars, collapse="+")))}
+  if(!is.null(Group_Vars)){
+    Group_Parts=paste0("+", paste0(" cluster(", Group_Vars, ")", collapse=" +"))
+  }else{Group_Parts=""}
+  if(!is.null(Strat_Vars)){
+    Strat_Parts=paste0("+", paste0(" strata(", Strat_Vars, ")", collapse=" +"))
+  }else{Strat_Parts=""}
+  
+  if(is.null(Start_Time)){
+    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
+  }else{
+    fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
   }
   
   model_fit=coxph(fullmod, na.action=na.exclude, data=Data)
@@ -317,10 +334,11 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=
   Used_N_Rows=nobs(model_fit)
   
   # number of non-missing observations
-  Used_Non_Missing_N=Origin_N_Rows-sum(is.na(Data[, Pred_Vars]))
+  Used_Non_Missing_N=Origin_N_Rows-sum(is.na(Data[, Pred_Vars[!grepl(":", Pred_Vars)]]))
   
   Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
+  Output$fullmod=fullmod
   Output$model_fit=model_fit
   
   # Examine the proportional hazards assumption that hazard ratio is constant over time, 
@@ -337,7 +355,7 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=
   HR.Conf.int=Fit.Summary$conf.int
   
   # Output
-  if(is.null(Group_Var)){ # if cluster (group) variable is not specified, report regular standard errors
+  if(is.null(Group_Vars)){ # if cluster (group) variable is not specified, report regular standard errors
     Std.Error=round2(HR.Coefficients[, "se(coef)"], 3)
   }else{ # if cluster (group) is specified, report robust standard errors
     Std.Error=round2(HR.Coefficients[, "robust se"], 3)  }
@@ -377,9 +395,10 @@ COX_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var=NULL, Start_Time=
 # Data_to_use$x3=as.factor(Data_to_use$x3)
 # 
 # COX.fit=COX_Multivariable(Data<-Data_to_use,
-#                           Pred_Vars<-c("x1", "x2", "x3"),
+#                           Pred_Vars<-c("x1", "x2"),
 #                           Res_Var="event",
-#                           # Group_Var="id",
+#                           # Group_Vars="id",
+#                           Strat_Vars=c("x3"),
 #                           Start_Time="start",
 #                           Stop_Time="stop")
 # Confounder_Steps=COX_Confounder_Selection(Full_Model=COX.fit$model_fit,
@@ -504,13 +523,14 @@ COX_Confounder_Selection=function(Full_Model,
 #                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
 # Data_to_use$x3=as.factor(Data_to_use$x3)
 # 
-# Pred_Vars=c("x1", "x2", "x3")
+# Pred_Vars=c("x1", "x2")
 # Potential_Con_Vars=Pred_Vars[Pred_Vars!="x1"]
 # COX_Confounder=COX_Confounder_Model(Data=Data_to_use,
 #                                     Main_Pred_Var="x1",
 #                                     Potential_Con_Vars=Pred_Vars[Pred_Vars!="x1"], # for now, algorithm works with no interaction term
 #                                     Res_Var="event",
-#                                     Group_Var="id",
+#                                     Group_Vars="id",
+#                                     Strat_Vars="x3",
 #                                     Start_Time="start",
 #                                     Stop_Time="stop",
 #                                     Min.Change.Percentage=5,
@@ -522,7 +542,8 @@ COX_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
                               Res_Var,
-                              Group_Var=NULL,
+                              Group_Vars=NULL,
+                              Strat_Vars=NULL,
                               Start_Time=NULL,
                               Stop_Time="End_Time",
                               Min.Change.Percentage=5,
@@ -542,7 +563,8 @@ COX_Confounder_Model=function(Data,
   Output$Full_Multivariable_Model=COX_Multivariable(Data<<-Data,
                                                     Pred_Vars<<-Pred_Vars,
                                                     Res_Var<<-Res_Var,
-                                                    Group_Var<<-Group_Var,
+                                                    Group_Vars<<-Group_Vars,
+                                                    Strat_Vars<<-Strat_Vars,
                                                     Start_Time<<-Start_Time,
                                                     Stop_Time<<-Stop_Time)
   
@@ -558,13 +580,14 @@ COX_Confounder_Model=function(Data,
   # Data=Remove_missing(Data, # remove missing data
   #                     c(Pred_Vars[Confounder_Ind],
   #                       Res_Var,
-  #                       Group_Var))
+  #                       Group_Vars))
   
   # Multivariable model with confounders
   Output$Confounder_Model=COX_Multivariable(Data<<-Data,
                                             Pred_Vars<<-Pred_Vars[Confounder_Ind],
                                             Res_Var<<-Res_Var,
-                                            Group_Var<<-Group_Var,
+                                            Group_Vars<<-Group_Vars,
+                                            Strat_Vars<<-Strat_Vars,
                                             Start_Time<<-Start_Time,
                                             Stop_Time<<-Stop_Time)
   
