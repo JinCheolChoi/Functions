@@ -348,6 +348,8 @@ COX_Multivariable=function(Data,
   # Rejecting 'age' means that there is strong evidence of non-proportional hazards for age.
   # cox.zph : Test the assumption based on Schoenfeld residuals
   Output$cox.zph=cox.zph(model_fit)
+  Output$cox.zph$table[, "p"]=ifelse(Output$cox.zph$table[, "p"]<0.001, "<0.001", 
+                                     Output$cox.zph$table[, "p"])
   
   # IndivID_vecual Wald test and confID_vecence interval for each parameter
   Fit.Summary=summary(model_fit)
