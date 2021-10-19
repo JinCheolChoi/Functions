@@ -636,8 +636,7 @@ KM_Plot=function(Data,
     fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
   }
   
-  
-  # if the model is not a null model
+  # conduct Log-rank test if the model is not a null model
   if(sum(Pred_Vars!="1")>0){
     surv_diff=do.call(survdiff, args=list(formula=fullmod, data=Data))
     p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
@@ -649,19 +648,30 @@ KM_Plot=function(Data,
       Log_rank_test=paste0("Log rank p = ", p.val)
     }
     
+    # pairwise comparisons between group levels in case there are more than 2 groups
+    pairwise_test=pairwise_survdiff(formula=fullmod, data=Data)
+    
   }else{ # if the model is a null model
     Log_rank_test=""
+    pairwise_test=""
   }
   
-  ggsurvplot(
-    fit=do.call(survfit, args=list(formula=fullmod, data=Data)),
+  # survfit_output
+  survfit_output=do.call(survfit, args=list(formula=fullmod, data=Data))
+  
+  # ggsurvplot
+  (ggsurv_plot=ggsurvplot(
+    fit=survfit_output,
     ...
   )$plot+
     annotate("text", x=0, y=0.2, 
              label=Log_rank_test,
              cex=15, col="black", 
              vjust=0, hjust=0,
-             fontface=4)
+             fontface=4)+
+      guides(color=guide_legend(override.aes=list(size=1),
+                                keywidth=3,
+                                keyheight=3)))
   
   # ggsurvplot(
   #   fit=do.call(survfit, args=list(formula=fullmod, data=Data)),
@@ -679,6 +689,14 @@ KM_Plot=function(Data,
   #            cex=10, col="black", 
   #            vjust=0, hjust=0,
   #            fontface=4)
+  
+  # output
+  output=c()
+  output$survfit_output=survfit_output
+  output$ggsurv_plot=ggsurv_plot
+  output$pairwise_test=pairwise_test
+  
+  return(output)
 }
 
 
@@ -709,7 +727,7 @@ KM_Plot=function(Data,
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GLM_Bivariate(Data_to_use,
+# GLM_Bivariate(Data=Data_to_use,
 #               Pred_Vars=list("center",
 #                              c("sex", "age", "sex:age")),
 #               Res_Var=Res_Var,
@@ -725,7 +743,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
                            Res_Var=Res_Var,
                            which.family=which.family)
     Output=rbind(Output,
-                 cbind(Temp$summ_table,
+                 cbind(Temp$summ_table[, c(1, 2, 3, 5)],
                        Data_Used=Temp$N_data_used))
     
     # print out progress
@@ -738,6 +756,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
   
   return(Output)
 }
+
 
 #******************
 # GLM_Multivariable
@@ -786,11 +805,11 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
   
   # vif
-  if(length(Pred_Vars)>=2){Output$vif=car::vif(model_fit)}else{Output$vif=""}
+  if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
   
   # Output
   if(grepl("gaussian", which.family)){
@@ -866,7 +885,19 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
   }
+  
   Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  
+  if(!is.null(dim(Output_vif))){
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            N_data_used=N_data_used)
+  }else{
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+                            VIF=Output_vif,
+                            N_data_used=N_data_used)
+  }
+  
   return(Output)
 }
 
@@ -2323,7 +2354,7 @@ GLMM_Bivariate=function(Data,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
     Output=rbind(Output,
-                 cbind(Temp$summ_table,
+                 cbind(Temp$summ_table[, c(1, 2, 3, 5)],
                        Data_Used=Temp$N_data_used))
     
     # print out progress
