@@ -303,7 +303,7 @@ COX_Multivariable=function(Data,
                            Start_Time=NULL,
                            Stop_Time){
   # check out packages
-  lapply(c("survival", "data.table"), checkpackages)
+  lapply(c("survival", "data.table", "riskRegression"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -334,7 +334,7 @@ COX_Multivariable=function(Data,
   Used_N_Rows=nobs(model_fit)
   
   # number of non-missing observations
-  Used_Non_Missing_N=nrow(na.omit(Data[, Pred_Vars[!grepl(":", Pred_Vars)]]))
+  Used_Non_Missing_N=coxN(model_fit)
   
   Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
