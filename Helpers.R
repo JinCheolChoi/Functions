@@ -2538,11 +2538,14 @@ Descriptive_stats_all_types_of_data_Personal<-function(Baseline_Data){
       if(length(table(Unique))>=2){ ## if data is numeric ## it was "3" before
         temp<-as.numeric(temp)
         Med<-median(temp,na.rm=T)
-        Iqr<-IQR(temp,na.rm=T)
+        # Iqr<-IQR(temp,na.rm=T)
+        IQR_1<-summary(temp)["1st Qu."]
+        IQR_3<-summary(temp)["3rd Qu."]
         Min<-min(temp,na.rm=T)
         Max<-max(temp,na.rm=T)
         Mean<-mean(temp,na.rm=T)
-        mat<-cbind(c("median","IQR","Min","Max","Mean"),c(Med,Iqr,Min,Max,Mean))
+        # mat<-cbind(c("median","IQR","Min","Max","Mean"),c(Med,Iqr,Min,Max,Mean))
+        mat<-cbind(c("median","IQR_1","IQR_3","Min","Max","Mean"),c(Med,IQR_1,IQR_3,Min,Max,Mean))
       }}
     
     }
