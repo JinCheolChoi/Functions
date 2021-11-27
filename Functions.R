@@ -2354,7 +2354,7 @@ GLMM_Bivariate=function(Data,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
     Output=rbind(Output,
-                 cbind(Temp$summ_table[, c(1, 2, 3, 5)],
+                 cbind(Temp$summ_table[, c(1:5, 7)],
                        Data_Used=Temp$N_data_used))
     
     # print out progress
@@ -2539,11 +2539,11 @@ GLMM_Multivariable=function(Data,
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table,
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table,
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
