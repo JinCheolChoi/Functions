@@ -303,7 +303,7 @@ COX_Multivariable=function(Data,
                            Start_Time=NULL,
                            Stop_Time){
   # check out packages
-  lapply(c("survival", "data.table"), checkpackages)
+  lapply(c("survival", "data.table", "riskRegression"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -330,11 +330,11 @@ COX_Multivariable=function(Data,
   
   model_fit=coxph(fullmod, na.action=na.exclude, data=Data)
   
-  # number of observations from a model fit
+  # number of events from a model fit
   Used_N_Rows=nobs(model_fit)
   
   # number of non-missing observations
-  Used_Non_Missing_N=Origin_N_Rows-sum(is.na(Data[, Pred_Vars[!grepl(":", Pred_Vars)]]))
+  Used_Non_Missing_N=coxN(model_fit)
   
   Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
@@ -2354,7 +2354,7 @@ GLMM_Bivariate=function(Data,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
     Output=rbind(Output,
-                 cbind(Temp$summ_table[, c(1, 2, 3, 5)],
+                 cbind(Temp$summ_table[, c(1:5, 7)],
                        Data_Used=Temp$N_data_used))
     
     # print out progress
@@ -2539,11 +2539,11 @@ GLMM_Multivariable=function(Data,
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table,
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table,
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
@@ -4875,7 +4875,6 @@ CLMM_Confounder_Model=function(Data,
   return(Output)
 }
 
-
 #**********************************
 # Proportional_Odds_Assumption_Test
 #**********************************
@@ -4945,6 +4944,50 @@ Proportional_Odds_Assumption_Test=function(Data,
   
   return(Output)
 }
+# Proportional_Odds_Assumption_Test_CLMM=function(Data,
+#                                                 Pred_Vars,
+#                                                 Group_Var,
+#                                                 Res_Var){
+#   # check out packages
+#   lapply(c("ordinal"), checkpackages)
+#   
+#   # Cat_Vars
+#   Cat_Vars=Pred_Vars[sapply(Data[, .SD, .SDcols=Pred_Vars], class)=="factor"]
+#   
+#   # as data frame
+#   Data=as.data.frame(Data)
+#   
+#   # Group_Var
+#   Group_Var=Group_Var
+# 
+#   # values
+#   Data[, Res_Var]=factor(Data[, Res_Var], order=T)
+#   
+#   # main algorithm
+#   Output=c()
+#   lr_test=list()
+#   p_value=c()
+#   for(i in 1:length(Cat_Vars)){
+#     #i=19
+#     Covariate<<-Cat_Vars[i]
+#     prop_model_fit=clmm2(as.formula(paste0(Res_Var, "~", Covariate)),
+#                          random=eval(parse(text=Group_Var)),
+#                          #nominal=as.formula(paste("~", Cat_Vars[i])),
+#                          data=Data)
+#     non_prop_model_fit=clmm2(as.formula(paste0(Res_Var, "~ 1")),
+#                              random=eval(parse(text=Group_Var)),
+#                              nominal=as.formula(paste("~", Covariate)),
+#                              data=Data)
+#     lr_test[[i]]=anova(prop_model_fit, non_prop_model_fit)
+#     p_value[i]=lr_test[[i]]$`Pr(Chi)`[-1]
+#   }
+#   p_value[is.na(p_value)]=1
+#   Output$lr_test=lr_test
+#   Output$p_value=p_value
+#   Output$sig_vars=Cat_Vars[p_value<0.05]
+#   
+#   return(Output)
+# }
 
 #**********************
 #
