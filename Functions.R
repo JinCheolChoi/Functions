@@ -375,6 +375,7 @@ COX_Multivariable=function(Data,
                           )
   )
   
+  print("Note : PH Assumption is not necessary for the extended Cox model that includes time-variant variables (so, the data is formatted in the counting process layout).")
   return(Output)
 }
 
