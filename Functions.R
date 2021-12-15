@@ -249,11 +249,15 @@ COX_Bivariate=function(Data,
                        Group_Vars=NULL,
                        Strat_Vars=NULL,
                        Start_Time=NULL,
-                       Stop_Time){
+                       Stop_Time,
+                       Message="Yes"){
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
     #i=1
+    if(i>=2){
+      Message="No"
+    }
     # run model
     Temp=COX_Multivariable(Data=Data,
                            Pred_Vars=unlist(Pred_Vars[i]),
@@ -261,7 +265,8 @@ COX_Bivariate=function(Data,
                            Group_Vars=Group_Vars,
                            Strat_Vars=Strat_Vars,
                            Start_Time=Start_Time,
-                           Stop_Time=Stop_Time)
+                           Stop_Time=Stop_Time,
+                           Message=Message)
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        N_events=Temp$N_events,
@@ -301,7 +306,8 @@ COX_Multivariable=function(Data,
                            Group_Vars=NULL,
                            Strat_Vars=NULL,
                            Start_Time=NULL,
-                           Stop_Time){
+                           Stop_Time,
+                           Message="Yes"){
   # check out packages
   lapply(c("survival", "data.table", "riskRegression"), checkpackages)
   
@@ -375,7 +381,10 @@ COX_Multivariable=function(Data,
                           )
   )
   
-  print("Note : PH Assumption is not necessary for the extended Cox model that includes time-variant variables (so, the data is formatted in the counting process layout).")
+  # print a note
+  if(Message=="Yes"){
+    print("Note : PH Assumption is not necessary for the extended Cox model that includes time-variant variables (so, the data is formatted in the counting process layout).")
+  }
   return(Output)
 }
 
