@@ -476,7 +476,7 @@ COX_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
       
     }else{
@@ -665,11 +665,11 @@ KM_Plot=function(Data,
     fit=survfit_output,
     ...
   )$plot+
-    annotate("text", x=0, y=0.2, 
-             label=Log_rank_test,
-             cex=15, col="black", 
-             vjust=0, hjust=0,
-             fontface=4)+
+      annotate("text", x=0, y=0.2, 
+               label=Log_rank_test,
+               cex=15, col="black", 
+               vjust=0, hjust=0,
+               fontface=4)+
       guides(color=guide_legend(override.aes=list(size=1),
                                 keywidth=3,
                                 keyheight=3)))
@@ -1028,7 +1028,7 @@ GLM_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
     }else{
       # decide the variable to remove
@@ -1779,7 +1779,7 @@ GEE_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
       
     }else{
@@ -2738,7 +2738,7 @@ GLMM_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
     }else{
       # decide the variable to remove
@@ -4672,7 +4672,7 @@ CLMM_Confounder_Selection=function(Full_Model,
       #i=1
       Removed_Var_Temp=Potential_Con_Vars[Include_Index][i]
       
-      if(Removed_Var_Temp%in%Loc_Vars){ # if removed variable is proportional odds
+      if(Removed_Var_Temp%in%Loc_Vars){ # if the variable to remove is proportional odds
         if(Main_Pred_Var_Type_Odds=="Prop"){
           Current_Reduced_Model=update(Current_Full_Model, 
                                        location=formula(paste0("~.+", Main_Pred_Var, "-", Removed_Var_Temp)))
@@ -4683,7 +4683,7 @@ CLMM_Confounder_Selection=function(Full_Model,
                                        nominal=formula(paste0("~.+", Main_Pred_Var)))
         }
       }
-      if(Removed_Var_Temp%in%Nom_Vars){ # if removed variable is non-proportional odds
+      if(Removed_Var_Temp%in%Nom_Vars){ # if the variable to remove is non-proportional odds
         if(Main_Pred_Var_Type_Odds=="Prop"){
           Current_Reduced_Model=update(Current_Full_Model, 
                                        location=formula(paste0("~.+", Main_Pred_Var)), 
@@ -4723,7 +4723,7 @@ CLMM_Confounder_Selection=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than 10, terminate the while loop
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
     }else{
       # decide the variable to remove
@@ -4732,7 +4732,7 @@ CLMM_Confounder_Selection=function(Full_Model,
       Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove[1])]
       # update the current full model
       #Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Potential_Con_Vars[setdiff(1:length(Potential_Con_Vars), Include_Index)], collapse="-"))))
-      if(Var_to_Remove%in%Loc_Vars){ # if removed variable is proportional odds
+      if(Var_to_Remove%in%Loc_Vars){ # if the variable to remove is proportional odds
         if(Main_Pred_Var_Type_Odds=="Prop"){
           Current_Full_Model=update(Current_Full_Model, 
                                     location=formula(paste0("~.+", Main_Pred_Var, "-", Var_to_Remove)))
@@ -4743,7 +4743,7 @@ CLMM_Confounder_Selection=function(Full_Model,
                                     nominal=formula(paste0("~.+", Main_Pred_Var)))
         }
       }
-      if(Var_to_Remove%in%Nom_Vars){ # if removed variable is non-proportional odds
+      if(Var_to_Remove%in%Nom_Vars){ # if the variable to remove is non-proportional odds
         if(Main_Pred_Var_Type_Odds=="Prop"){
           Current_Full_Model=update(Current_Full_Model, 
                                     location=formula(paste0("~.+", Main_Pred_Var)), 
