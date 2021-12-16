@@ -4621,7 +4621,7 @@ CLMM_Ordinal_Multivariable=function(Data,
 #                                     Res_Var<-"outcome",
 #                                     Group_Var<-"id",
 #                                     NAGQ<-3)
-# # The value 'Data' must be defined!
+# # The value 'Data' and 'NAGC' must be defined in the global environme!
 # Data=Data_to_use
 # Confounder_Steps=CLMM_Confounder_Selection(Full_Model=CLMM.fit$model_fit,
 #                                            Main_Pred_Var="sex",
@@ -4638,6 +4638,13 @@ CLMM_Confounder_Selection=function(Full_Model,
                                    Potential_Con_Vars_Type_Odds,
                                    Min.Change.Percentage=5,
                                    Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+  #*****
+  # Note
+  #*****
+  # For now, algorithm works with no interaction term
+  # Due to the nature of 'clmm2', parameters must be defined and assigned with values in the global environment, including location, random, data, and nAGQ.
+  # The other parameters are not currently considered.
+  
   # Full_Model : An existing fit from the cumulative link mixed model (clmm2) function
   # Main_Pred_Var_Type_Odds : type of cumulative odds for the primary predictor variable of interest
   # Potential_Con_Vars_Type_Odds : type of cumulative odds for potential confounders
