@@ -4638,14 +4638,14 @@ CLMM_Confounder_Selection=function(Full_Model,
                                    Potential_Con_Vars_Type_Odds,
                                    Min.Change.Percentage=5,
                                    Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model : An existing fit from the cumulative link mixed model (clmm2) function
+  # Main_Pred_Var_Type_Odds : type of cumulative odds for the primary predictor variable of interest
+  # Potential_Con_Vars_Type_Odds : type of cumulative odds for potential confounders
+  # "Prop" for proportional; "Non_Prop" for non-proportional
+  
   # check packages
-  lapply(c("dplyr", "data.table"), checkpackages)
-  
-  # Full_Model=CLMM.example$model_fit
-  # Main_Pred_Var="sex"
-  # Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
-  # check out packages
-  
+  lapply(c("data.table"), checkpackages)
+
   # Out
   Out=c()
   
