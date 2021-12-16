@@ -4636,8 +4636,8 @@ CLMM_Confounder_Selection=function(Full_Model,
                                    Main_Pred_Var_Type_Odds,
                                    Potential_Con_Vars,
                                    Potential_Con_Vars_Type_Odds,
-                                   Min.Change.Percentage=5,
-                                   Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                   Min.Change.Percentage=5, # minimum percentage of change-in-estimate to terminate the algorithm
+                                   Estimate="raw_estimate"){
   #*****
   # Note
   #*****
