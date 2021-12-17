@@ -120,6 +120,131 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
   return(Data)
 }
 
+#**********************
+# SURVEY_Number_Updater
+#**********************
+SURVEY_Number_Updater=function(Data,
+                               Survey_Var,
+                               Int_Date_Var){
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
+  # data.table
+  if(!is.data.table(Data)){
+    print("Format Data into data.table")
+  }else{
+    # new Int_Date_Var
+    # 1) Int_Date_Var_NEW=Int_Date_Var
+    Data[, paste0(Survey_Var, "_NEW"):=eval(parse(text=Survey_Var))]
+    
+    # 2) conditional assignments to Int_Date_Var_NEW
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           eval(parse(text=Int_Date_Var))<"2006-06-01",
+         paste0(Survey_Var, "_NEW"):=0]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2006-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2006-12-01",
+         paste0(Survey_Var, "_NEW"):=1]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2006-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2007-06-01",
+         paste0(Survey_Var, "_NEW"):=2]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2007-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2007-12-01", 
+         paste0(Survey_Var, "_NEW"):=3]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2007-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2008-06-01", 
+         paste0(Survey_Var, "_NEW"):=4]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2008-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2008-12-01", 
+         paste0(Survey_Var, "_NEW"):=5]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2008-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2009-06-01", 
+         paste0(Survey_Var, "_NEW"):=6]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2009-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2009-12-01", 
+         paste0(Survey_Var, "_NEW"):=7]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2009-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2010-06-01", 
+         paste0(Survey_Var, "_NEW"):=8]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2010-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2010-12-01", 
+         paste0(Survey_Var, "_NEW"):=9]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2010-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2011-06-01", 
+         paste0(Survey_Var, "_NEW"):=10]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2011-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2011-12-01", 
+         paste0(Survey_Var, "_NEW"):=11]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2011-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2012-06-01", 
+         paste0(Survey_Var, "_NEW"):=12]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2012-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2012-12-01", 
+         paste0(Survey_Var, "_NEW"):=13]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2012-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2013-06-01", 
+         paste0(Survey_Var, "_NEW"):=14]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2013-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2013-12-01", 
+         paste0(Survey_Var, "_NEW"):=15]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2013-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2014-06-01", 
+         paste0(Survey_Var, "_NEW"):=16]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2014-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2014-12-01", 
+         paste0(Survey_Var, "_NEW"):=17]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2014-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2015-06-01", 
+         paste0(Survey_Var, "_NEW"):=18]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2015-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2015-12-01", 
+         paste0(Survey_Var, "_NEW"):=19]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2015-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2016-06-01", 
+         paste0(Survey_Var, "_NEW"):=20]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2016-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2016-12-01", 
+         paste0(Survey_Var, "_NEW"):=21]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2016-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2017-06-01", 
+         paste0(Survey_Var, "_NEW"):=22]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2017-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2017-12-01", 
+         paste0(Survey_Var, "_NEW"):=23]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2017-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2018-06-01", 
+         paste0(Survey_Var, "_NEW"):=24]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2018-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2018-12-01", 
+         paste0(Survey_Var, "_NEW"):=25]
+  }
+}
+
+
 
 #*************************************************
 #
@@ -4652,7 +4777,7 @@ CLMM_Confounder_Selection=function(Full_Model,
   
   # check packages
   lapply(c("data.table"), checkpackages)
-
+  
   # Out
   Out=c()
   
