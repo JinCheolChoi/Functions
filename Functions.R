@@ -5673,7 +5673,8 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   Out=Merged
   
   # calculate OR given a response variable of two levels
-  if(ncol(Contingency_Table)==2){
+  if(sum(rownames(Contingency_Table)!="NA")==2 &
+     sum(colnames(Contingency_Table)!="NA")>=2){
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
       oddsratio(method="wald")
@@ -5704,7 +5705,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   
   # 
   Out=as.data.table(Out)
-  if(nrow(Contingency_Table)>1 & ncol(Contingency_Table)>1){
+  if(sum(rownames(Contingency_Table)!="NA")>1 & sum(colnames(Contingency_Table)!="NA")>1){
     Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value<0.001,
                                                              "<0.001",
                                                              paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value, 3)))
