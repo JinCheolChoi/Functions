@@ -441,6 +441,7 @@ COX_Multivariable=function(Data,
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
+  Analyzed_Data<<-Data # for COX_Backward_by_AIC
   
   # main algorithm
   Output=c()
@@ -459,7 +460,7 @@ COX_Multivariable=function(Data,
     fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
   }
   
-  model_fit=coxph(fullmod, na.action=na.exclude, data=Data)
+  model_fit=coxph(fullmod, na.action=na.exclude, data=Analyzed_Data)
   
   # number of events from a model fit
   Used_N_Rows=nobs(model_fit)
@@ -832,6 +833,127 @@ KM_Plot=function(Data,
   output$pairwise_test=pairwise_test
   
   return(output)
+}
+
+
+#********************
+#
+# COX_Backward_by_AIC
+#
+#*******************************
+# AIC-based backward elimination
+#*******************************
+# # Example
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,NA,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,NA,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# COX.fit=COX_Multivariable(Data=Data_to_use,
+#                           # Pred_Vars=c("x1", "x2", "x3", "x2:x3"), #!!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
+#                           Pred_Vars=c("x1", "x2"),
+#                           Res_Var="event",
+#                           Group_Vars="id",
+#                           Strat_Vars="x3",
+#                           Start_Time="start",
+#                           Stop_Time="stop")
+# COX_Backward_by_AIC(Full_Model=COX.fit$model_fit,
+#                     Pred_Vars=c("x1", "x2"))
+COX_Backward_by_AIC=function(Full_Model,
+                             Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GLMM.fit$model_fit
+  # Pred_Vars
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GLMM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Pred_Vars=Pred_Vars
+  Include_Index=c(1:length(Pred_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Current_Full_Model_AIC=AIC(Current_Full_Model)
+    
+    Reduced_Model_AICs=c()
+    
+    # run GLMM excluding one variable at once
+    if(length(Include_Index)==0){
+      print("All variables are removed.")
+    }else{
+      for(i in 1:length(Pred_Vars[Include_Index])){
+        #i=1
+        Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+        Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
+        print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+      }
+    }
+    
+    # AIC of multivariable model excluding each variable
+    Temp_Table=data.table(
+      Exclusion="-",
+      Var=c("(none)", Pred_Vars[Include_Index]),
+      AIC=c(Current_Full_Model_AIC, Reduced_Model_AICs))
+    
+    # order by AIC
+    Temp_Table=Temp_Table[order(AIC), ]
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(Temp_Table$Var[1]=="(none)"){
+      loop.key=1
+    }else{
+      # if there is a variable whose exclusion leads to an improvement of the model (deacresed AIC)
+      # remove the variable
+      Var_to_Remove=Temp_Table[1, Var]
+      
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Pred_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[setdiff(1:length(Pred_Vars), Include_Index)], collapse="-"))))
+      # increase step
+      step=step+1
+      
+      # # if there's no more variable left
+      # if(length(Include_Index)==0){
+      #   Temp_Table=data.table(
+      #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
+      #     Estimate=c(AIC(Current_Full_Model)[-1]),
+      #     Delta="",
+      #     Rank=""
+      #   )
+      #   Out$summ_table[[step]]=Temp_Table
+      #   loop.key=1
+      # }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Selected_Vars=Pred_Vars[Include_Index]
+  
+  return(Out)
 }
 
 
@@ -1696,6 +1818,8 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
+  
+  # Non_Missing_Data for GEE_Backward_by_QIC
   if(sum(grepl(":", Pred_Vars))>0){
     Non_Missing_Data<<-Remove_missing(Data, # remove missing data
                                       c(Pred_Vars[!grepl(":", Pred_Vars)],
@@ -2108,11 +2232,15 @@ GEE_Backward_by_QIC=function(Full_Model,
     Reduced_Model_QICs=c()
     
     # run GEE excluding one variable at once
-    for(i in 1:length(Pred_Vars[Include_Index])){
-      #i=1
-      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
-      Reduced_Model_QICs[i]=QIC(Current_Reduced_Model)["QIC"]
-      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+    if(length(Include_Index)==0){
+      print("All variables are removed.")
+    }else{
+      for(i in 1:length(Pred_Vars[Include_Index])){
+        #i=1
+        Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+        Reduced_Model_QICs[i]=QIC(Current_Reduced_Model)["QIC"]
+        print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+      }
     }
     
     # QIC of multivariable model excluding each variable
@@ -3580,13 +3708,13 @@ GLMM_Overdispersion_Test=function(model){
 
 
 
-#**********************
+#*********************
 #
 # GLMM_Backward_by_AIC
 #
 #*******************************
 # AIC-based backward elimination
-# *******************************
+#*******************************
 # data(mtcars)
 # MultiLinearReg=glm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb, data=mtcars, family="gaussian")
 # 
@@ -3597,9 +3725,9 @@ GLMM_Overdispersion_Test=function(model){
 # AIC(glm(mpg~disp+hp+drat+wt+qsec+am+gear+carb, data=mtcars, family="gaussian"))
 # 
 # summary(MultiLinearReg)
-# ********
+#********
 # Example
-# ********
+#********
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -3664,11 +3792,15 @@ GLMM_Backward_by_AIC=function(Full_Model,
     Reduced_Model_AICs=c()
     
     # run GLMM excluding one variable at once
-    for(i in 1:length(Pred_Vars[Include_Index])){
-      #i=1
-      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
-      Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
-      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+    if(length(Include_Index)==0){
+      print("All variables are removed.")
+    }else{
+      for(i in 1:length(Pred_Vars[Include_Index])){
+        #i=1
+        Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+        Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
+        print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+      }
     }
     
     # AIC of multivariable model excluding each variable
