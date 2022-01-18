@@ -2071,7 +2071,7 @@ GEE_Confounder_Model=function(Data,
 #                                    Group_Var="id",
 #                                    which.family<-"binomial")
 # QIC_Selection_Steps=GEE_Backward_by_QIC(Full_Model=GEE.fit$model_fit,
-#                                                      Pred_Vars=Pred_Vars)
+#                                         Pred_Vars=Pred_Vars)
 GEE_Backward_by_QIC=function(Full_Model,
                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
   # Full_Model=GEE.fit$model_fit
@@ -2127,7 +2127,7 @@ GEE_Backward_by_QIC=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(Temp_Table$QIC[1]>=Current_Full_Model_QIC){
+    if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
     }else{
       # if there is a variable whose exclusion leads to an improvement of the model (deacresed QIC)
@@ -3586,7 +3586,7 @@ GLMM_Overdispersion_Test=function(model){
 #
 #*******************************
 # AIC-based backward elimination
-#*******************************
+# *******************************
 # data(mtcars)
 # MultiLinearReg=glm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb, data=mtcars, family="gaussian")
 # 
@@ -3597,9 +3597,9 @@ GLMM_Overdispersion_Test=function(model){
 # AIC(glm(mpg~disp+hp+drat+wt+qsec+am+gear+carb, data=mtcars, family="gaussian"))
 # 
 # summary(MultiLinearReg)
-#********
+# ********
 # Example
-#********
+# ********
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -3628,12 +3628,11 @@ GLMM_Overdispersion_Test=function(model){
 #                             Compute.Power=F,
 #                             nsim=30)
 # AIC_Selection_Steps=GLMM_Backward_by_AIC(Full_Model=GLMM.fit$model_fit,
-#                                                      Pred_Vars=Pred_Vars)
+#                                          Pred_Vars=Pred_Vars)
 GLMM_Backward_by_AIC=function(Full_Model,
                               Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
   # Full_Model=GLMM.fit$model_fit
   # Pred_Vars
-  
   
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
@@ -3674,7 +3673,7 @@ GLMM_Backward_by_AIC=function(Full_Model,
     
     # AIC of multivariable model excluding each variable
     Temp_Table=data.table(
-      Inclusion="-",
+      Exclusion="-",
       Var=c("(none)", Pred_Vars[Include_Index]),
       AIC=c(Current_Full_Model_AIC, Reduced_Model_AICs))
     
@@ -3684,7 +3683,7 @@ GLMM_Backward_by_AIC=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(Temp_Table$AIC[1]>=Current_Full_Model_AIC){
+    if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
     }else{
       # if there is a variable whose exclusion leads to an improvement of the model (deacresed AIC)
