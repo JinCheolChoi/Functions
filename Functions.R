@@ -5798,7 +5798,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   ) %>% as.data.frame()
   
   # post-processing
-  colnames(Merged)[1:2]=c("Predictor", "Value")
+  colnames(Merged)[1:2]=c("Variable", "Value")
   colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(Col_Var, "=", colnames(Contingency_Table), " (n=", Sum_Col_Wise, ")")
   colnames(Merged)[3+ncol(Contingency_Table)]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
   Out=Merged
@@ -6024,7 +6024,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   Out$`P.value_T_test`=as.character(Out$`P.value_T_test`)
   Out$`P.value_ANOVA`=as.character(Out$`P.value_ANOVA`)
   Out[-1, c("OR.and.CI", "P.value", "P.value_Mann_Whitney", "P.value_T_test", "P.value_ANOVA")]=""
-  colnames(Out)[1:2]=c("Predictor", "Value")
+  colnames(Out)[1:2]=c("Variable", "Value")
   
   #
   colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
