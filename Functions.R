@@ -241,6 +241,20 @@ SURVEY_Number_Updater=function(Data,
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
            "2018-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2018-12-01", 
          paste0(Survey_Var, "_NEW"):=25]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2018-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2019-06-01", 
+         paste0(Survey_Var, "_NEW"):=26]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2019-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2019-12-01", 
+         paste0(Survey_Var, "_NEW"):=27]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2019-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=28]
+    
+    
   }
 }
 
@@ -2708,6 +2722,7 @@ GLMM_Multivariable=function(Data,
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
   if(grepl("gaussian", which.family)){
+    lapply(c("lmerTest"), checkpackages) # this package is required to obtain p-values
     myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                na.action=na.exclude, 
                data=Data, 
@@ -2739,6 +2754,7 @@ GLMM_Multivariable=function(Data,
   
   # coefficient
   Coef=summary(myfit)$coefficients
+  
   Coef.ind=c()
   # confidence interval (raw)
   CI.raw=confint(myfit, level=0.95, method="Wald")
@@ -2779,18 +2795,19 @@ GLMM_Multivariable=function(Data,
   Output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
   
   if(grepl("gaussian", which.family)){
-    Output$summ_table$`P-value`=c()
+    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
+                                       format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
@@ -4403,11 +4420,11 @@ GLMM_Multinomial_Multivariate=function(Data,
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
-# 
+#
 # Data_to_use$sex=as.character(Data_to_use$sex) # make sex categorical
 # Data_to_use$sex[sample(1:length(Data_to_use$sex), 100)]="N"
 # Data_to_use$sex=factor(Data_to_use$sex)
-# 
+#
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
 # Data_to_use$outcome[sample(1:length(Data_to_use$outcome), 150)]=2 # make the outcome multinomial (categorical)
 # Data_to_use=Format_Columns(Data_to_use,
