@@ -999,8 +999,8 @@ COX_Backward_by_AIC=function(Full_Model,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # GLM_Bivariate(Data=Data_to_use,
-#               Pred_Vars=list("center",
-#                              c("sex", "age", "sex:age")),
+#               Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                           list(c("sex", "age", "sex:age"))),
 #               Res_Var=Res_Var,
 #               which.family="binomial (link='logit')")
 GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
@@ -1656,9 +1656,8 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # GEE_Bivariate(Data=Data_to_use,
-#               Pred_Vars=list("center",
-#                              "treat",
-#                              c("sex", "age", "sex:age")),
+#               Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                           list(c("sex", "age", "sex:age"))),
 #               Res_Var="outcome",
 #               Group_Var="id",
 #               which.family="binomial (link='logit')")
@@ -2574,8 +2573,8 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
 #                            levels.of.fact)
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
 # GLMM_Bivariate(Data=Data_to_use,
-#                Pred_Vars=list("center",
-#                               c("sex", "age", "sex:age")),
+#                Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                            list(c("sex", "age", "sex:age"))),
 #                Res_Var="outcome",
 #                Group_Var="id",
 #                which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
