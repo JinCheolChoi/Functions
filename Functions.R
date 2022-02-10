@@ -1665,11 +1665,11 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
-    Temp=GEE_Multivariable(Data=Data,
-                           Pred_Vars=unlist(Pred_Vars[i]),
-                           Res_Var=Res_Var,
-                           Group_Var=Group_Var,
-                           which.family=which.family)
+    Temp=GEE_Multivariable_with_vif(Data=Data,
+                                    Pred_Vars=unlist(Pred_Vars[i]),
+                                    Res_Var=Res_Var,
+                                    Group_Var=Group_Var,
+                                    which.family=which.family)
     
     Output=rbind(Output,
                  cbind(Temp$summ_table,
@@ -2630,7 +2630,7 @@ GLMM_Bivariate=function(Data,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
     Output=rbind(Output,
-                 cbind(Temp$summ_table[, c(1:5, 7)],
+                 cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
     
     # print out progress
@@ -2818,11 +2818,11 @@ GLMM_Multivariable=function(Data,
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table,
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table,
+    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
