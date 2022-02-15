@@ -1,6 +1,6 @@
 #***************************************
 #
-# [ --- Operational functions --- ] ----
+# [ --- Operational Functions --- ] ----
 #
 #***************************************
 # package check
@@ -258,6 +258,281 @@ SURVEY_Number_Updater=function(Data,
   }
 }
 
+
+#*********************************
+#
+# [ --- Marginal Effect --- ] ----
+#
+#*********************************
+# Marginal_Effect_2
+#
+# (based on 'margins')
+#*********************
+# This function is based on 'margins' (Version 0.3.26, Date 2021-01-10), which is available for the following object classes:
+#   
+# "betareg", see betareg
+# "glm", see glm, glm.nb
+# "ivreg", see ivreg
+# "lm", see lm
+# "loess", see loess
+# "merMod", see lmer, glmer
+# "nnet", see nnet
+# "polr", see polr
+# "svyglm", see svyglm
+#
+# Unfortunately, there are model classes that 'margins' does not support (ex. geeglm), for which other packages need to be used.
+# One good candidate is 'marginaleffects' that works on geeglm, based on which Marginal_Effect_2 is written.
+#********
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$id=as.factor(Data_to_use$id)
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
+#                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
+# GLMM_Marginal_Effect=Marginal_Effect(Model_Fit=GLMM_Mult_model$model_fit,
+#                                      Family="gaussian",
+#                                      Var_1="sex",
+#                                      Var_1_Levels=c("F", "M"),
+#                                      Var_2="age",
+#                                      Var_2_Levels=c(20, 30, 40, 50, 60))
+Marginal_Effect=function(Model_Fit,
+                         Family,
+                         Var_1,
+                         Var_1_Levels,
+                         Var_2,
+                         Var_2_Levels){
+  # check out packages
+  lapply(c("margins", "data.table"), checkpackages)
+  
+  # marginal effect of Var_1 conditional on Var_2
+  List_Var_2=list(Var_2=Var_2_Levels)
+  names(List_Var_2)=Var_2
+  assign(paste0("Marginal_", Var_1),
+         margins(Model_Fit,
+                 type="link",
+                 at=List_Var_2))
+  Marginal_Summ_Var_1=summary(get(paste0("Marginal_", Var_1)))[grepl(Var_1, summary(get(paste0("Marginal_", Var_1)))$factor), ]
+  
+  # marginal effect of Var_2 conditional on Var_1
+  List_Var_1=list(Var_1=Var_1_Levels)
+  names(List_Var_1)=Var_1
+  assign(paste0("Marginal_", Var_2),
+         margins(Model_Fit,
+                 type="link",
+                 at=List_Var_1))
+  Marginal_Summ_Var_2=summary(get(paste0("Marginal_", Var_2)))[grepl(Var_2, summary(get(paste0("Marginal_", Var_2)))$factor), ]
+  
+  # combine the marginal effect summaries
+  Out=rbind(data.table(round(Marginal_Summ_Var_1[, c("AME", "SE", "p")], 4)),
+            data.table(round(Marginal_Summ_Var_2[, c("AME", "SE", "p")], 4)))
+  
+  if(Family=="gaussian"){
+    Out$Estimate.and.CI=c(paste0(round(Marginal_Summ_Var_1[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_1[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_1[, "upper"], 3), ")"),
+                          paste0(round(Marginal_Summ_Var_2[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_2[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_2[, "upper"], 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "Estimate.and.CI")
+    
+    Out[, Variable:=c(paste0(Marginal_Summ_Var_1$factor, ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(Marginal_Summ_Var_2$factor, ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "Estimate.and.CI"))
+  }else if(Family=="binomial"){
+    Out$OR.and.CI=c(paste0(round(exp(Marginal_Summ_Var_1[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_1[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_1[, "upper"]), 3), ")"),
+                    paste0(round(exp(Marginal_Summ_Var_2[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_2[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_2[, "upper"]), 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "OR.and.CI")
+    
+    Out[, Variable:=c(paste0(Marginal_Summ_Var_1$factor, ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(Marginal_Summ_Var_2$factor, ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "OR.and.CI"))
+  }
+  
+  # P.value
+  Out[, P.value:=ifelse(P.value<0.001, "<0.001", P.value)]
+  
+  # return
+  return(as.data.table(Out[, c(1, 5, 4)]))
+}
+
+
+#******************
+# Marginal_Effect_2
+#
+# (based on 'marginaleffects')
+#*****************************
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$id=as.factor(Data_to_use$id)
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
+#                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
+# GLMM_Marginal_Effect_2=Marginal_Effect_2(Model_Fit=GLMM_Mult_model$model_fit,
+#                                          Family="gaussian",
+#                                          Var_1="sex",
+#                                          Var_1_Levels=c("F", "M"),
+#                                          Var_2="age",
+#                                          Var_2_Levels=c(20, 30, 40, 50, 60))
+Marginal_Effect_2=function(Model_Fit,
+                           Family,
+                           Var_1,
+                           Var_1_Levels,
+                           Var_2,
+                           Var_2_Levels,
+                           Model="GLMM"){
+  # check out packages
+  lapply(c("marginaleffects", "data.table"), checkpackages)
+  
+  # marginal effect of Var_1 conditional on Var_2
+  List_Var_2=list(x1=Model_Fit, x2=Var_2_Levels)
+  names(List_Var_2)=c("model", Var_2)
+  
+  # If GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
+  # (ignore) It seems that this part doesn't matter as the actual data stored in the model object is used.
+  # (ignore) Still (and weirdly), the name of data used when fitted by geeglm is checked if a value named the same exists in the global environment.
+  # (ignore) If there is no value matched the same in the global environment, an error is entailed.
+  if(Model=="GEE"){
+    Non_Missing_Data<<-Model_Fit$data
+    print("Model : GEE")
+  }
+  
+  # assign(paste0("Marginal_", Var_1),
+  #        marginaleffects(Model_Fit,
+  #                        type="link",
+  #                        newdata=datagrid(List_Var_2)))
+  # marginaleffects(Model_Fit,
+  #                 type="link",
+  #                 newdata=datagrid(RAND_TX=c("0", "1")))
+  Temp_Var_1=marginaleffects(Model_Fit,
+                             type="link",
+                             newdata=do.call(datagrid, List_Var_2))
+  setnames(Temp_Var_1,
+           c("term", "dydx", "std.error"),
+           c("factor", "AME", "SE"))
+  Temp_Var_1$z=Temp_Var_1$AME/Temp_Var_1$SE
+  Temp_Var_1$p=round(2*(1-pnorm(abs(Temp_Var_1$z))), 4)
+  Temp_Var_1$lower=round(Temp_Var_1$AME-qnorm(0.975)*Temp_Var_1$SE, 4)
+  Temp_Var_1$upper=round(Temp_Var_1$AME+qnorm(0.975)*Temp_Var_1$SE, 4)
+  
+  Temp_Var_1=Temp_Var_1[, !colnames(Temp_Var_1)%in%c("rowid", "type")]
+  
+  Marginal_Summ_Var_1=Temp_Var_1[grepl(Var_1, Temp_Var_1$factor), ]
+  
+  # marginal effect of Var_2 conditional on Var_1
+  List_Var_1=list(x1=Model_Fit, x2=Var_1_Levels)
+  names(List_Var_1)=c("model", Var_1)
+  # assign(paste0("Marginal_", Var_2),
+  #        marginaleffects(Model_Fit,
+  #                        type="link",
+  #                        newdata=datagrid(List_Var_1)))
+  # marginaleffects(Model_Fit,
+  #                 type="link",
+  #                 newdata=datagrid(RAND_TX=c("0", "1")))
+  Temp_Var_2=marginaleffects(Model_Fit,
+                             type="link",
+                             newdata=do.call(datagrid, List_Var_1))
+  setnames(Temp_Var_2,
+           c("term", "dydx", "std.error"),
+           c("factor", "AME", "SE"))
+  Temp_Var_2$z=Temp_Var_2$AME/Temp_Var_2$SE
+  Temp_Var_2$p=round(2*(1-pnorm(abs(Temp_Var_2$z))), 4)
+  Temp_Var_2$lower=round(Temp_Var_2$AME-qnorm(0.975)*Temp_Var_2$SE, 4)
+  Temp_Var_2$upper=round(Temp_Var_2$AME+qnorm(0.975)*Temp_Var_2$SE, 4)
+  
+  Temp_Var_2=Temp_Var_2[, !colnames(Temp_Var_2)%in%c("rowid", "type")]
+  
+  Marginal_Summ_Var_2=Temp_Var_2[grepl(Var_2, Temp_Var_2$factor), ]
+  
+  # combine the marginal effect summaries
+  Out=rbind(data.table(round(Marginal_Summ_Var_1[, c("AME", "SE", "p")], 4)),
+            data.table(round(Marginal_Summ_Var_2[, c("AME", "SE", "p")], 4)))
+  
+  if(Family=="gaussian"){
+    Out$Estimate.and.CI=c(paste0(round(Marginal_Summ_Var_1[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_1[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_1[, "upper"], 3), ")"),
+                          paste0(round(Marginal_Summ_Var_2[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_2[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_2[, "upper"], 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "Estimate.and.CI")
+    
+    Out[, Variable:=c(paste0(paste0(Marginal_Summ_Var_1$factor, Marginal_Summ_Var_1$contrast), ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(paste0(Marginal_Summ_Var_2$factor, Marginal_Summ_Var_2$contrast), ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "Estimate.and.CI"))
+  }else if(Family=="binomial"){
+    Out$OR.and.CI=c(paste0(round(exp(Marginal_Summ_Var_1[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_1[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_1[, "upper"]), 3), ")"),
+                    paste0(round(exp(Marginal_Summ_Var_2[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_2[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_2[, "upper"]), 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "OR.and.CI")
+    
+    Out[, Variable:=c(paste0(paste0(Marginal_Summ_Var_1$factor, Marginal_Summ_Var_1$contrast), ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(paste0(Marginal_Summ_Var_2$factor, Marginal_Summ_Var_2$contrast), ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "OR.and.CI"))
+  }
+  
+  # P.value
+  Out[, P.value:=ifelse(P.value<0.001, "<0.001", P.value)]
+  
+  # return
+  return(as.data.table(Out[, c(1, 5, 4)]))
+}
 
 
 #*************************************************
@@ -1846,7 +2121,8 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   }
   
   # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
-  Non_Missing_Data[, Group_Var]=as.numeric(as.factor(Non_Missing_Data[, Group_Var]))
+  # Non_Missing_Data[, Group_Var]=as.numeric(as.factor(Non_Missing_Data[, Group_Var]))
+  Non_Missing_Data[, Group_Var]=as.factor(Non_Missing_Data[, Group_Var])
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -1865,6 +2141,14 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   # Output
   Output=c()
   N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  
+  model_fit$call=str2lang(paste0("geeglm(formula=", paste(Res_Var, "~", paste(Pred_Vars, collapse="+")),
+                                 ", family=", which.family,
+                                 ", data=Non_Missing_Data",
+                                 ", id=", Group_Var,
+                                 ", corstr='exchangeable')",
+                                 collapse=""))
+  
   Output$model_fit=model_fit
   
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
@@ -2659,13 +2943,14 @@ GLMM_Bivariate=function(Data,
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$id=as.factor(Data_to_use$id)
 # Data_to_use=Format_Columns(Data_to_use,
 #                            Res_Var="outcome",
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use,Data_to_use),
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
 #                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
@@ -2710,7 +2995,10 @@ GLMM_Multivariable=function(Data,
                             Compute.Power=FALSE,
                             nsim=1000){
   # check out packages
-  lapply(c("lme4", "simr", "sjPlot", "MASS", "data.table", "optimx"), checkpackages)
+  lapply(c("lme4", "simr",
+           "glmmTMB",
+           "sjPlot",
+           "MASS", "data.table", "optimx"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -6646,4 +6934,5 @@ mclapply.hack=function(...){
 # 
 # # When you're done, clean up the cluster
 # stopImplicitCluster()
+
 
