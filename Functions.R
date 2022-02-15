@@ -323,6 +323,7 @@ Marginal_Effect=function(Model_Fit,
   # check out packages
   lapply(c("margins", "data.table"), checkpackages)
   
+  #**********************************************
   # marginal effect of Var_1 conditional on Var_2
   List_Var_2=list(Var_2=Var_2_Levels)
   names(List_Var_2)=Var_2
@@ -332,6 +333,7 @@ Marginal_Effect=function(Model_Fit,
                  at=List_Var_2))
   Marginal_Summ_Var_1=summary(get(paste0("Marginal_", Var_1)))[grepl(Var_1, summary(get(paste0("Marginal_", Var_1)))$factor), ]
   
+  #**********************************************
   # marginal effect of Var_2 conditional on Var_1
   List_Var_1=list(Var_1=Var_1_Levels)
   names(List_Var_1)=Var_1
@@ -431,10 +433,6 @@ Marginal_Effect_2=function(Model_Fit,
   # check out packages
   lapply(c("marginaleffects", "data.table"), checkpackages)
   
-  # marginal effect of Var_1 conditional on Var_2
-  List_Var_2=list(x1=Model_Fit, x2=Var_2_Levels)
-  names(List_Var_2)=c("model", Var_2)
-  
   # If GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
   # (ignore) It seems that this part doesn't matter as the actual data stored in the model object is used.
   # (ignore) Still (and weirdly), the name of data used when fitted by geeglm is checked if a value named the same exists in the global environment.
@@ -444,13 +442,11 @@ Marginal_Effect_2=function(Model_Fit,
     print("Model : GEE")
   }
   
-  # assign(paste0("Marginal_", Var_1),
-  #        marginaleffects(Model_Fit,
-  #                        type="link",
-  #                        newdata=datagrid(List_Var_2)))
-  # marginaleffects(Model_Fit,
-  #                 type="link",
-  #                 newdata=datagrid(RAND_TX=c("0", "1")))
+  #**********************************************
+  # marginal effect of Var_1 conditional on Var_2
+  List_Var_2=list(x1=Model_Fit, x2=Var_2_Levels)
+  names(List_Var_2)=c("model", Var_2)
+  
   Temp_Var_1=marginaleffects(Model_Fit,
                              type="link",
                              newdata=do.call(datagrid, List_Var_2))
@@ -466,16 +462,11 @@ Marginal_Effect_2=function(Model_Fit,
   
   Marginal_Summ_Var_1=Temp_Var_1[grepl(Var_1, Temp_Var_1$factor), ]
   
+  #**********************************************
   # marginal effect of Var_2 conditional on Var_1
   List_Var_1=list(x1=Model_Fit, x2=Var_1_Levels)
   names(List_Var_1)=c("model", Var_1)
-  # assign(paste0("Marginal_", Var_2),
-  #        marginaleffects(Model_Fit,
-  #                        type="link",
-  #                        newdata=datagrid(List_Var_1)))
-  # marginaleffects(Model_Fit,
-  #                 type="link",
-  #                 newdata=datagrid(RAND_TX=c("0", "1")))
+  
   Temp_Var_2=marginaleffects(Model_Fit,
                              type="link",
                              newdata=do.call(datagrid, List_Var_1))
@@ -491,6 +482,7 @@ Marginal_Effect_2=function(Model_Fit,
   
   Marginal_Summ_Var_2=Temp_Var_2[grepl(Var_2, Temp_Var_2$factor), ]
   
+  #**************************************
   # combine the marginal effect summaries
   Out=rbind(data.table(round(Marginal_Summ_Var_1[, c("AME", "SE", "p")], 4)),
             data.table(round(Marginal_Summ_Var_2[, c("AME", "SE", "p")], 4)))
