@@ -259,6 +259,22 @@ SURVEY_Number_Updater=function(Data,
 }
 
 
+#*************
+# align_plots1
+#*************
+align_plots1=function(...){
+  pl=list(...)
+  stopifnot(do.call(all, lapply(pl, inherits, "gg")))
+  gl=lapply(pl, ggplotGrob)
+  bind2=function(x, y) gtable:::rbind_gtable(x, y, "first")
+  combined=Reduce(bind2, gl[-1], gl[[1]])
+  wl=lapply(gl, "[[", "widths")
+  combined$widths=do.call(grid::unit.pmax, wl)
+  grid::grid.newpage()
+  grid::grid.draw(combined)
+}
+
+
 #*********************************
 #
 # [ --- Marginal Effect --- ] ----
@@ -1047,6 +1063,42 @@ KM_Plot=function(Data,
                  Res_Var,
                  Pred_Vars="1",
                  ...){
+  #**************
+  # temp function
+  # .set_font
+  .set_font=function(font){
+    font=ggpubr:::.parse_font(font)
+    ggtext::element_markdown(size=font$size, face=font$face, colour=font$color)
+  }
+  
+  # Survival_Table
+  Survival_Table=function(x, y, z){
+    temp_table=do.call(x,
+                       list(fit=survfit_output,
+                            data=Data,
+                            xlab=y,
+                            ylab=z,
+                            risk.table.title="",
+                            cumevents.title="",
+                            cumcensor.title="",
+                            fontsize=8,
+                            xlim=c(0, 180),
+                            break.time.by=28,
+                            legend.labs=c("Methadone", "Buprenorphine"),
+                            font.tickslab=20))
+    temp_table=temp_table+theme(plot.subtitle=.set_font(25),
+                                plot.caption=.set_font(25),
+                                axis.title.x=.set_font(30),
+                                axis.title.y=.set_font(20),
+                                axis.text.x=.set_font(25),
+                                axis.text.y=.set_font(15),
+                                panel.border=element_rect(color="black",
+                                                          fill=NA,
+                                                          size=1))
+    return(temp_table)
+  }
+  
+  #
   if(!is.null(Start_Time)){
     fullmod=as.formula(paste("Surv(", Start_Time, ", ", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
   }else{
@@ -1077,42 +1129,58 @@ KM_Plot=function(Data,
   survfit_output=do.call(survfit, args=list(formula=fullmod, data=Data))
   
   # ggsurvplot
-  (ggsurv_plot=ggsurvplot(
-    fit=survfit_output,
-    ...
-  )$plot+
-      annotate("text", x=0, y=0.2, 
-               label=Log_rank_test,
-               cex=15, col="black", 
-               vjust=0, hjust=0,
-               fontface=4)+
-      guides(color=guide_legend(override.aes=list(size=1),
-                                keywidth=3,
-                                keyheight=3)))
+  ggsurv_plot=ggsurvplot(
+    fit=survfit_output
+    # risk.table=TRUE,
+    # tables.height=0.2,
+    , fontsize=10
+    , break.time.by=28
+    , xlim=c(0, 180)
+    # , ggtheme=theme_bw(base_size=15)
+    # , pval= Log_rank_test
+    , ...
+  )
   
-  # ggsurvplot(
-  #   fit=do.call(survfit, args=list(formula=fullmod, data=Data)),
-  #   xlab="Days",
-  #   ylab="Retention Rate",
-  #   title="Kaplan-Meier curve for retention rate in assigned treatment on all randomized participants (mITT==1), stratified by fentanyl use at SCR",
-  #   font.x=25,
-  #   font.y=25,
-  #   font.tickslab=25,
-  #   font.legend=25,
-  #   font.title=25
-  # )$plot+
-  #   annotate("text", x=0, y=0.2, 
-  #            label=Log_rank_test,
-  #            cex=10, col="black", 
-  #            vjust=0, hjust=0,
-  #            fontface=4)
+  # ggsurv_plot
+  ggsurv_plot$plot=ggsurv_plot$plot+
+    annotate("text", x=0, y=0.2,
+             label=Log_rank_test,
+             cex=10, col="black",
+             vjust=0, hjust=0,
+             fontface=4)+
+    guides(color=guide_legend(override.aes=list(size=1),
+                              keywidth=3,
+                              keyheight=3))+
+    theme(panel.border=element_rect(color="black",
+                                    fill=NA,
+                                    size=1))
+  # tables
+  Funcs=c("ggrisktable",
+          "ggcumevents",
+          "ggcumcensor")
+  Xlabs=c("",
+          "",
+          "Days")
+  Ylabs=c("N at risk",
+          "Cum. events",
+          "Cum. censorings")
+  Tables=mapply(Survival_Table,
+                Funcs,
+                Xlabs,
+                Ylabs,
+                SIMPLIFY=FALSE)
+  
+  names(Tables)=Funcs
+  # Tables$nrow=length(Funcs)
   
   # output
   output=c()
   output$survfit_output=survfit_output
   output$ggsurv_plot=ggsurv_plot
   output$pairwise_test=pairwise_test
+  output$summ_tables=Tables
   
+  # return output
   return(output)
 }
 
@@ -3098,11 +3166,11 @@ GLMM_Multivariable=function(Data,
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table,
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table,
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
