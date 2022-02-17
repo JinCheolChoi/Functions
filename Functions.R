@@ -1063,6 +1063,9 @@ KM_Plot=function(Data,
                  Res_Var,
                  Pred_Vars="1",
                  ...){
+  # check out packages
+  lapply(c("ggplot2", "survminer"), checkpackages)
+  
   #**************
   # temp function
   # .set_font
@@ -3529,30 +3532,44 @@ GLMM_Confounder_Model=function(Data,
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
-# pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
-# res_var="outcome"
+# Pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# Res_var="outcome"
 # rand_var="id"
 # which.family="gaussian(link=identity)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, pred_vars], class))=="integer", "num", "fact")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(pred_vars=="treat")]="P"
-# levels.of.fact[which(pred_vars=="sex")]="F"
+# levels.of.fact[which(Pred_vars=="treat")]="P"
+# levels.of.fact[which(Pred_vars=="sex")]="F"
 # 
-# Data=Format_Columns(Data=Data_to_use,
-#                     Res_Var="outcome",
-#                     Pred_Vars=pred_vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+# Data_to_use=Format_Columns(Data=Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars=Pred_vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # 
-# Data$sex=as.character(Data$sex)
-# Data[sample(nrow(Data), 150), "sex"]="N"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 150), "sex"]="N"
 # lambda=seq(0, 5, by=0.5)
+# 
+# # exclude missing obsevations
+# Data_to_use=as.data.table(Data_to_use)
+# Data_to_use=na.omit(Data_to_use[,
+#                                 .SD,
+#                                 .SDcols=c(Res_var, Pred_vars, rand_var)])
+# 
+# # grouping variable
+# Data_to_use[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+# 
+# # speicfy GLMM model
+# form.fixed=as.formula(outcome ~ center + as.factor(treat) + as.factor(sex) + age + baseline + visit)
+# # random effect
+# form.rnd=list(id=~1)
+# 
 # # GLMM_LASSO_CV_Out
 # GLMM_LASSO_CV_Out=GLMM_LASSO_CV(Data=Data_to_use,
-#                                 pred_vars,
-#                                 res_var,
-#                                 rand_var,
-#                                 which.family,
+#                                 form.fixed=form.fixed,
+#                                 form.rnd=form.rnd,
+#                                 which.family=which.family,
 #                                 k=6,
 #                                 lambda=lambda)
 # 
@@ -3561,24 +3578,29 @@ GLMM_Confounder_Model=function(Data,
 # # cv error
 # GLMM_LASSO_CV_Out$CV_Error
 # # plot
-# GLMM_LASSO_CV_Out$CV_plot
+# GLMM_LASSO_CV_Out$CV_Error_plot
 # # optimal lambda
-# GLMM_LASSO_CV_Out$Optimal_Lambda
-
+# GLMM_LASSO_CV_Out$Optimal_Lambda_by_CV_Error
+# # IC_Matrix
+# GLMM_LASSO_CV_Out$IC_matrix
+# 
 # # There's a function that performs a CV for GLMM, called cv.glmmLasso, in lmmen package.
 # # However, there appears to be some issues when the function is excuted (fun a code below). I googled to find how to troubleshoot, but there's even not
 # # a single example that shows the use of the function.
 # # https://raw.githubusercontent.com/cran/glmmLasso/master/demo/glmmLasso-soccer.r
-# library(lmmen)
-# cv.glmmLasso(dat=Data_to_use,
-#              form.fixed=outcome~center + as.factor(treat) + as.factor(sex) + age + baseline + visit,
-#              form.rnd=list(id=~1),
-#              family=binomial(link=logit),
-#              lambda=seq(0, 5, by=0.5))
+# # (Edit) The function seems to work fine now, so some parts from the original script of the function are integrated into GLMM_LASSO_CV to obtain AIC and BIC.
+# # lapply(c("lmmen"), checkpackages)
+# # Package 'lmmen' was removed from the CRAN repository. (https://CRAN.R-project.org/package=lmmen)
+# Origianl_cv.glmmLasso=cv.glmmLasso(dat=Data_to_use,
+#                                    form.fixed=form.fixed,
+#                                    form.rnd=form.rnd,
+#                                    family=which.family,
+#                                    lambda=seq(0, 5, by=0.5))
+# # compare BICs
+# GLMM_LASSO_CV_Out$IC_matrix$BIC==Origianl_cv.glmmLasso$BIC_path
 GLMM_LASSO_CV=function(Data,
-                       pred_vars,
-                       res_var,
-                       rand_var,
+                       form.fixed,
+                       form.rnd,
                        which.family,
                        k=4,
                        lambda=seq(0, 10, by=1)){
@@ -3589,16 +3611,20 @@ GLMM_LASSO_CV=function(Data,
   # convert data to data frame
   Data=as.data.table(Data)
   
-  #****************************
-  # exclude missing obsevations
-  #****************************
-  CV_data=na.omit(Data[, 
-                       .SD, 
-                       .SDcols=c(res_var, pred_vars, rand_var)])
+  # res_var
+  res_var=gsub("as.factor", "", as.character(form.fixed)[2])
   
-  # grouping variable
-  CV_data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+  # pred_vars
+  pred_vars=unlist(strsplit(
+    gsub("[() ]",
+         "",
+         gsub("as.factor", "", as.character(form.fixed)[3])),
+    "\\+"
+  ))
   
+  # remove missing data
+  group_Var=names(form.rnd)
+  Data=na.omit(Data[, .SD, .SDcols=c(res_var, pred_vars, group_Var)])
   
   #***
   # CV
@@ -3606,20 +3632,20 @@ GLMM_LASSO_CV=function(Data,
   # generate array containing fold-number for each sample (row)
   pass.ind=1
   while(sum(pass.ind)>0){
-    folds=sample(rep_len(1:k, nrow(CV_data)), nrow(CV_data))
+    folds=sample(rep_len(1:k, nrow(Data)), nrow(Data))
     for(k.ind in 1:k){
       #k.ind=1
-      # actual split of the CV_data
+      # actual split of the Data
       fold=which(folds == k.ind)
       
       # divide data into training and test sets
-      CV_data_train=CV_data[-fold, ]
-      CV_data_test=CV_data[fold, ]
+      Data_train=Data[-fold, ]
+      Data_test=Data[fold, ]
       
-      if(sum((CV_data_train[, .SD, .SDcols=pred_vars] %>% 
+      if(sum((Data_train[, .SD, .SDcols=pred_vars] %>% 
               lapply(function(x) length(unique(x))) %>% 
               unlist)==1)>0){
-        print(which((CV_data_train[, .SD, .SDcols=pred_vars] %>% 
+        print(which((Data_train[, .SD, .SDcols=pred_vars] %>% 
                        lapply(function(x) length(unique(x))) %>% 
                        unlist)==1))
         #print(paste0("Re-diving data"))
@@ -3630,8 +3656,6 @@ GLMM_LASSO_CV=function(Data,
       }
     }  
   }
-  # speicfy GLMM model (with dummies)
-  CV.model=as.formula(paste(res_var, "~", paste(ifelse(!unlist(Data[, lapply(.SD, is.numeric), .SDcols=pred_vars]), paste0("as.factor(", pred_vars, ")"), pred_vars), collapse="+"), sep=""))
   
   # generate empty matrix to save Train_Error
   Train_Error=matrix(NA, length(lambda), k)
@@ -3641,65 +3665,90 @@ GLMM_LASSO_CV=function(Data,
   CV_Error=matrix(NA, length(lambda), k)
   rownames(CV_Error)=c(paste0("lambda=", lambda))
   colnames(CV_Error)=c(paste0(1:k, "nd sub"))
-  # generate empty matrix to save CV_AIC
-  CV_AIC=matrix(NA, length(lambda), k)
-  rownames(CV_AIC)=c(paste0("lambda=", lambda))
-  colnames(CV_AIC)=c(paste0(1:k, "nd sub"))
-  # generate empty matrix to save CV_BIC
-  CV_BIC=matrix(NA, length(lambda), k)
-  rownames(CV_BIC)=c(paste0("lambda=", lambda))
-  colnames(CV_BIC)=c(paste0(1:k, "nd sub"))
+  # generate empty matrix to save IC_matrix
+  IC_matrix=matrix(NA, length(lambda), ncol=2)
+  rownames(IC_matrix)=c(paste0("lambda=", lambda))
+  colnames(IC_matrix)=c("AIC", "BIC")
+  
+  # specify starting values for the very first fit; pay attention that Delta.start has suitable length! 
+  d.size=(max(as.numeric(row.names(Data)))*(sum(grepl('^Z',names(Data)))+1))+(sum(grepl('^X',names(Data)))+1)
+  Delta.start.base=Delta.start=as.matrix(t(rep(0,d.size)))
+  Q.start.base=Q.start=0.1  
   
   # run algorithm
   for(lambda.ind in 1:length(lambda)){
     #lambda.ind=1
+    
     # actual cross validation
     for(k.ind in 1:k) {
       #k.ind=2
-      # actual split of the CV_data
+      # actual split of the Data
       fold=which(folds == k.ind)
       
       # divide data into training and test sets
-      CV_data_train=CV_data[-fold, ]
-      CV_data_test=CV_data[fold, ]
+      Data_train=Data[-fold, ]
+      Data_test=Data[fold, ]
       
-      # random effect
-      random_effect=list(id=~1)
-      names(random_effect)=rand_var
       ## fit adjacent category model
-      glmmLasso.fit=glmmLasso(CV.model, 
-                              rnd=random_effect, 
-                              family=eval(parse(text=which.family)), 
-                              data=CV_data_train, 
-                              lambda=lambda[lambda.ind])
+      glmmLasso.cv.fit=glmmLasso(form.fixed, 
+                                 rnd=form.rnd, 
+                                 family=eval(parse(text=which.family)), 
+                                 data=Data_train, 
+                                 lambda=lambda[lambda.ind])
       
       # Make predictions and compute the R2, RMSE and MAE
-      predictions_train=glmmLasso.fit %>% predict(CV_data_train)
-      predictions_test=glmmLasso.fit %>% predict(CV_data_test)
+      predictions_train=glmmLasso.cv.fit %>% predict(Data_train)
+      predictions_test=glmmLasso.cv.fit %>% predict(Data_test)
       
       # Train_Error and CV_Error
-      Train_Error[lambda.ind, k.ind]=mean(unlist(predictions_train - CV_data_train[, .SD, .SDcol=res_var])^2)
-      CV_Error[lambda.ind, k.ind]=mean(unlist(predictions_test - CV_data_test[, .SD, .SDcol=res_var])^2)
-      
-      CV_AIC[lambda.ind, k.ind]=glmmLasso.fit$aic
-      CV_BIC[lambda.ind, k.ind]=glmmLasso.fit$bic
+      Train_Error[lambda.ind, k.ind]=mean(unlist(predictions_train - Data_train[, .SD, .SDcol=res_var])^2)
+      CV_Error[lambda.ind, k.ind]=mean(unlist(predictions_test - Data_test[, .SD, .SDcol=res_var])^2)
       
       if(k.ind == k){
         # print process
         print(paste0("k : ", k.ind, ", lambda : ", lambda[lambda.ind]))
       }
     }
+    
+    # obtain AIC & BIC
+    suppressMessages({
+      suppressWarnings({
+        glmmLasso.fit=try(glmmLasso::glmmLasso(fix=stats::as.formula(form.fixed),
+                                               rnd=form.rnd,
+                                               data=Data,lambda=lambda[lambda.ind],
+                                               switch.NR=FALSE,final.re=TRUE,
+                                               control=list(start=Delta.start[lambda.ind,],q.start=Q.start[lambda.ind]))
+        )
+      })      
+    })
+    
+    if(class(glmmLasso.fit)!="try-error")
+    {  
+      IC_matrix[lambda.ind, "AIC"]=glmmLasso.fit$aic
+      IC_matrix[lambda.ind, "BIC"]=glmmLasso.fit$bic
+      Delta.start=rbind(Delta.start,glmmLasso.fit$Deltamatrix[glmmLasso.fit$conv.step,])
+      Q.start=c(Q.start,glmmLasso.fit$Q_long[[glmmLasso.fit$conv.step+1]])
+    }else{
+      Delta.start=rbind(Delta.start,Delta.start.base)
+      Q.start=c(Q.start,Q.start.base)
+    }
+    # 
+    # glmmLasso.fit=glmmLasso(form.fixed, 
+    #                         rnd=form.rnd, 
+    #                         family=eval(parse(text=which.family)), 
+    #                         data=Data, 
+    #                         lambda=lambda[lambda.ind])
+    # IC_matrix[lambda.ind, "AIC"]=glmmLasso.fit$aic
+    # IC_matrix[lambda.ind, "BIC"]=glmmLasso.fit$bic
   }
-  
   # combine Train_Error and CV_Error
   out=list()
   out$Train_Error=Train_Error
   out$CV_Error=CV_Error
-  out$CV_AIC=CV_AIC
-  out$CV_BIC=CV_BIC
+  out$IC_matrix=as.data.table(IC_matrix, keep.rownames=TRUE)
   
-  # optimal lambda
-  out$Optimal_Lambda=lambda[which.min(apply(CV_Error, 1, mean))]
+  # optimal lambda by CV Error
+  out$Optimal_Lambda_by_CV_Error=lambda[which.min(apply(CV_Error, 1, mean))]
   
   # plot
   Error_by_Lambda=data.frame(
@@ -3707,7 +3756,7 @@ GLMM_LASSO_CV=function(Data,
     Error=c(apply(out$Train_Error, 1, mean), apply(out$CV_Error, 1, mean)),
     Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
   )
-  out$CV_plot=Error_by_Lambda %>%
+  out$CV_Error_plot=Error_by_Lambda %>%
     ggplot(aes(x=lambda, y=Error, group=Label)) +
     geom_line(aes(color=Label)) +
     geom_point(aes(color=Label)) +
@@ -3725,39 +3774,58 @@ GLMM_LASSO_CV=function(Data,
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
-# pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
-# res_var="outcome"
+# Pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# Res_var="outcome"
 # rand_var="id"
 # which.family="gaussian(link=identity)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, pred_vars], class))=="integer", "num", "fact")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(pred_vars=="treat")]="P"
-# levels.of.fact[which(pred_vars=="sex")]="F"
+# levels.of.fact[which(Pred_vars=="treat")]="P"
+# levels.of.fact[which(Pred_vars=="sex")]="F"
 # 
-# Data_to_use=rbind(Data_to_use)
-# Data_to_use=Format_Columns(Data_to_use,
-#                     Res_Var="outcome",
-#                     Pred_Vars=pred_vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+# Data_to_use=Format_Columns(Data=Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars=Pred_vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # 
-# # lambda
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 150), "sex"]="N"
 # lambda=seq(0, 5, by=0.5)
+# 
+# # exclude missing obsevations
+# Data_to_use=as.data.table(Data_to_use)
+# Data_to_use=na.omit(Data_to_use[,
+#                                 .SD,
+#                                 .SDcols=c(Res_var, Pred_vars, rand_var)])
+# 
+# # grouping variable
+# Data_to_use[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+# 
+# # speicfy GLMM model
+# form.fixed=as.formula(outcome ~ center + as.factor(treat) + as.factor(sex) + age + baseline + visit)
+# # random effect
+# form.rnd=list(id=~1)
+# 
 # # GLMM_LASSO_CV_Out
 # GLMM_LASSO_CV_Out=GLMM_LASSO_CV(Data=Data_to_use,
-#                                 pred_vars,
-#                                 res_var,
-#                                 rand_var,
-#                                 which.family,
+#                                 form.fixed=form.fixed,
+#                                 form.rnd=form.rnd,
+#                                 which.family=which.family,
 #                                 k=6,
 #                                 lambda=lambda)
 # 
+# # optimal lambda by CV error
+# GLMM_LASSO_CV_Out$Optimal_Lambda_by_CV_Error
+# # optimal labmda by AIC
+# lambda[which.min(GLMM_LASSO_CV_Out$IC_matrix$AIC)]
+# # optimal labmda by BIC
+# lambda[which.min(GLMM_LASSO_CV_Out$IC_matrix$BIC)]
 # 
-# GLMM_LASSO_CV_Out$Optimal_Lambda
-# 
+# # fit model
 # GLMM.LASSO.fit=GLMM_LASSO(Data=Data_to_use,
-#                           pred_vars,
-#                           res_var,
+#                           Pred_vars,
+#                           Res_var,
 #                           rand_var,
 #                           which.family,
 #                           lambda=0) # optimal lambda
@@ -3796,6 +3864,91 @@ GLMM_LASSO=function(Data, pred_vars, res_var, rand_var, which.family="binomial(l
                           switch.NR=TRUE)
   return(glmmLasso.fit)
 }
+
+#*************
+# cv.glmmLasso
+#*************
+# This function comes from the package 'lmmen' that was removed from the CRAN repository. (https://CRAN.R-project.org/package=lmmen)
+#' @title Cross Validation for glmmLasso package
+#' @description Cross Validation for glmmLasso package as shown in example xxx
+#' @param dat data.frame, containing y,X,Z and subject variables
+#' @param form.fixed formaula, fixed param formula, Default: NULL
+#' @param form.rnd list, named list containing random effect formula, Default: NULL
+#' @param lambda numeric, vector containing lasso penalty levels, Default: seq(500, 0, by = -5)
+#' @param family family, family function that defines the distribution link of the glmm, Default: gaussian(link = "identity")
+#' @return list of a fitted glmmLasso object and the cv BIC path
+#' @examples
+#' \dontrun{cv.glmmLasso(initialize_example(seed=1))}
+#' @references A. Groll and G. Tutz. Variable selection for generalized linear mixed models by L1-penalized estimation. 
+#'  Statistics and Computing, pages 1–18, 2014.
+#'  
+#'  \href{https://raw.githubusercontent.com/cran/glmmLasso/master/demo/glmmLasso-soccer.r}{cv function is the generalized form of last example glmmLasso package demo file}
+#'  
+#' @seealso 
+#'  \code{\link[glmmLasso]{glmmLasso}}
+#' @rdname cv.glmmLasso
+#' @export 
+#' @importFrom glmmLasso glmmLasso
+#' @importFrom stats gaussian as.formula
+cv.glmmLasso=function(dat,
+                      form.fixed=NULL,
+                      form.rnd=NULL,
+                      lambda=seq(500,0,by=-5),
+                      family=stats::gaussian(link = "identity")
+){
+  
+  if(inherits(dat,'matrix')) dat <- as.data.frame(dat)
+  
+  d.size=(max(as.numeric(row.names(dat)))*(sum(grepl('^Z',names(dat)))+1))+(sum(grepl('^X',names(dat)))+1)
+  
+  dat<-data.frame(subject=as.factor(row.names(dat)),dat,check.names = FALSE,row.names = NULL)
+  
+  if(is.null(form.fixed)) form.fixed<-sprintf('y~%s',paste(grep('^X',names(dat),value = TRUE),collapse = '+'))
+  if(is.null(form.rnd)) form.rnd<-eval(parse(text=sprintf('form.rnd<-list(subject=~1+%s)',paste(grep('^Z',names(dat),value = TRUE),collapse = '+'))))
+  
+  BIC_vec<-rep(Inf,length(lambda))
+  
+  # specify starting values for the very first fit; pay attention that Delta.start has suitable length! 
+  
+  Delta.start.base<-Delta.start<-as.matrix(t(rep(0,d.size)))
+  Q.start.base<-Q.start<-0.1  
+  
+  for(j in 1:length(lambda))
+  {
+    suppressMessages({
+      suppressWarnings({
+        fn <- try(glmmLasso::glmmLasso(fix = stats::as.formula(form.fixed),
+                                       rnd = form.rnd,
+                                       data = dat,lambda = lambda[j],
+                                       switch.NR = FALSE,final.re=TRUE,
+                                       control = list(start=Delta.start[j,],q.start=Q.start[j]))      
+        )
+      })      
+    })
+    
+    if(class(fn)!="try-error")
+    {  
+      BIC_vec[j]<-fn$bic
+      Delta.start<-rbind(Delta.start,fn$Deltamatrix[fn$conv.step,])
+      Q.start<-c(Q.start,fn$Q_long[[fn$conv.step+1]])
+    }else{
+      Delta.start<-rbind(Delta.start,Delta.start.base)
+      Q.start<-c(Q.start,Q.start.base)
+    }
+  }
+  
+  opt<-which.min(BIC_vec)
+  
+  suppressWarnings({
+    final <- glmmLasso::glmmLasso(fix = as.formula(form.fixed), rnd = form.rnd,
+                                  data = dat, lambda=lambda[opt],switch.NR=FALSE,final.re=TRUE,
+                                  control = list(start=Delta.start[opt,],q_start=Q.start.base))
+    
+    final
+  })
+  
+  list(fit.opt=final,BIC_path=BIC_vec)
+}  
 
 
 #********************
