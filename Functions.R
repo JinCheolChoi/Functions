@@ -3622,9 +3622,12 @@ GLMM_LASSO_CV=function(Data,
     "\\+"
   ))
   
+  # grouping variable
+  group_var=names(form.rnd)
+  Data[, (group_var):=lapply(.SD, as.factor), .SDcols=group_var]
+  
   # remove missing data
-  group_Var=names(form.rnd)
-  Data=na.omit(Data[, .SD, .SDcols=c(res_var, pred_vars, group_Var)])
+  Data=na.omit(Data[, .SD, .SDcols=c(res_var, pred_vars, group_var)])
   
   #***
   # CV
@@ -3681,7 +3684,7 @@ GLMM_LASSO_CV=function(Data,
     
     # actual cross validation
     for(k.ind in 1:k) {
-      #k.ind=2
+      #k.ind=1
       # actual split of the Data
       fold=which(folds == k.ind)
       
