@@ -6259,7 +6259,7 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="F",
 #                             Missing="Include",
-#                             Ind_P_Value=F)
+#                             Ind_P_Value=T)
 Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include", Ind_P_Value=F){
   # library
   library(epitools)
@@ -6324,8 +6324,8 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   Out=Merged
   
   # calculate OR given a response variable of two levels
-  if(sum(rownames(Contingency_Table)!="NA")==2 &
-     sum(colnames(Contingency_Table)!="NA")>=2){
+  if(sum(rownames(Contingency_Table)!="NA")>=2 &
+     sum(colnames(Contingency_Table)!="NA")==2){
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
       oddsratio(method="wald")
