@@ -253,9 +253,9 @@ SURVEY_Number_Updater=function(Data,
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
            "2019-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
          paste0(Survey_Var, "_NEW"):=28]
-    
-    
   }
+  
+  return(as.data.table(Data))
 }
 
 
