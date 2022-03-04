@@ -806,15 +806,18 @@ COX_Multivariable=function(Data,
   
   # print a note
   if(Message=="Yes"){
+    # The proportional hazards assumption is no longer satisfied when using the extended Cox model. (That is, the assumption check is not necessary!)
+    # If time-dependent variables are considered, the Cox model form may still be used, but such a model no longer satisfies the PH assumption, and is called the extended Cox model.
+    # (p.109, Survival Analysis: A Self-Learning Text, Third Edition (Statistics for Biology and Health))
     print("Note : PH Assumption is not necessary for the extended Cox model that includes time-variant variables (so, the data is formatted in the counting process layout).")
   }
   return(Output)
 }
 
 
-#**************************
+#*************************
 # COX_Confounder_Selection
-#**************************
+#*************************
 # Example
 #********
 # for now, algorithm works with no interaction term
