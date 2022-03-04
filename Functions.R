@@ -780,7 +780,7 @@ COX_Multivariable=function(Data,
   Output$cox.zph$table[, "p"]=ifelse(Output$cox.zph$table[, "p"]<0.001, "<0.001", 
                                      Output$cox.zph$table[, "p"])
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   Fit.Summary=summary(model_fit)
   HR.Coefficients=Fit.Summary$coefficients
   HR.Conf.int=Fit.Summary$conf.int
@@ -1422,7 +1422,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   # Output
   if(grepl("gaussian", which.family)){
-    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    # Individual Wald test and confidence interval for each parameter
     Est.CI=cbind(OR=coef(model_fit), confint(model_fit, level=0.95))
     colnames(Est.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model_fit)$coefficients, Est.CI)
@@ -1440,7 +1440,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
   }else if(grepl("binomial", which.family)){ # default with the logit link function
-    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    # Individual Wald test and confidence interval for each parameter
     OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
     est=cbind.fill(summary(model_fit)$coefficients, OR.CI)
@@ -1458,7 +1458,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
     # }else if(which.family=="binomial (link='log')"){ # log-binomial regression with the log link function
-    #   # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    #   # Individual Wald test and confidence interval for each parameter
     #   RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     #   colnames(RR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
     #   est=cbind(summary(model_fit)$coefficients, RR.CI)
@@ -1476,7 +1476,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
     #                           )
     #   )
   }else if(grepl("poisson", which.family)){
-    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    # Individual Wald test and confidence interval for each parameter
     RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model_fit)$coefficients, RR.CI)
@@ -1852,7 +1852,7 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   RR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
   colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(model_fit)$coefficients, RR.CI)
@@ -2079,7 +2079,7 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
                    family=eval(parse(text=which.family)),
                    corstr="exchangeable")
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
   
   # Output
@@ -2198,7 +2198,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
   
   # Output
@@ -6900,7 +6900,7 @@ Stepwise_AIC=function(Full_Model, ...){ # names of people should be numeric
   # run model
   AIC_Results=stepAIC(Full_Model, ...)
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   est=esticon(AIC_Results, diag(length(coef(AIC_Results))))[-1, ]
   
   # Output
