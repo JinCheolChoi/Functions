@@ -695,6 +695,9 @@ COX_Bivariate=function(Data,
                        PH_assumption_P.value=Temp$cox.zph$table[1, "p"],
                        N_non_missing_data=Temp$N_non_missing_data))
   }
+  
+  # print a note
+  print("The PH assumption is better to be considered at the multivariable analysis level.")
   return(Output)
 }
 
