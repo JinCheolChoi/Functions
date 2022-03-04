@@ -280,7 +280,7 @@ align_plots1=function(...){
 # [ --- Marginal Effect --- ] ----
 #
 #*********************************
-# Marginal_Effect_2
+# Marginal_Effect
 #
 # (based on 'margins')
 #*********************
