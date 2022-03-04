@@ -4929,11 +4929,11 @@ GLMM_Multinomial_Multivariate=function(Data,
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
-#
+# 
 # Data_to_use$sex=as.character(Data_to_use$sex) # make sex categorical
 # Data_to_use$sex[sample(1:length(Data_to_use$sex), 100)]="N"
 # Data_to_use$sex=factor(Data_to_use$sex)
-#
+# 
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
 # Data_to_use$outcome[sample(1:length(Data_to_use$outcome), 150)]=2 # make the outcome multinomial (categorical)
 # Data_to_use=Format_Columns(Data_to_use,
@@ -4958,7 +4958,7 @@ GLMM_Multinomial_Multivariate=function(Data,
 #                        Res_Var<-"outcome",
 #                        Group_Var<-"id",
 #                        NAGQ=3)
-#********************************
+#***********************
 # CLMM_Ordinal_Bivariate
 CLMM_Ordinal_Bivariate=function(Data,
                                 Pred_Vars,
