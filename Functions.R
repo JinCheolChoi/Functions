@@ -455,7 +455,7 @@ Marginal_Effect_2=function(Model_Fit,
   # (ignore) If there is no value matched the same in the global environment, an error is entailed.
   if(Model=="GEE"){
     Non_Missing_Data<<-Model_Fit$data
-    print("Model : GEE")
+    print("Marginal_Effect_2 / Model : GEE")
   }
   
   #**********************************************
@@ -540,6 +540,359 @@ Marginal_Effect_2=function(Model_Fit,
   
   # return
   return(as.data.table(Out[, c(1, 5, 4)]))
+}
+
+
+#*******************************************
+#
+# [ --- Marginal Structural Model --- ] ----
+#
+#*******************************************
+# IP_Weights_Calculator
+#**********************
+# Example
+#********
+# # (source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# #set seed to replicate results
+# set.seed(12345)
+# 
+# #define sample size
+# n=2000
+# #define confounder c1 (gender, male==1)
+# male=rbinom(n,1,0.55)
+# #define confounder c2 (age)
+# age=exp(rnorm(n, 3, 0.5))
+# #define treatment at time 1
+# t_1=rbinom(n,1,0.20)
+# #define treatment at time 2
+# t_2=rbinom(n,1,0.20)
+# #define treatment at time 3
+# t_3=rbinom(n,1,0.20)
+# #define depression at time 1 (prevalence=number per 100000 population)
+# d_1=exp(rnorm(n, 0.001, 0.5))
+# #define depression at time 2 (prevalence=number per 100000 population)
+# d_2=exp(rnorm(n, 0.002, 0.5))
+# #define depression at time 3 (prevalence=number per 100000 population)
+# d_3=exp(rnorm(n, 0.004, 0.5))
+# #define time-varying confounder v1 as a function of t1 and d1
+# v_1=(0.4*t_1 + 0.80*d_1 + rnorm(n, 0, sqrt(0.99))) + 5
+# #define time-varying confounder v2 as a function of t1 and d1
+# v_2=(0.4*t_2 + 0.80*d_2 + rnorm(n, 0, sqrt(0.55))) + 5
+# #define time-varying confounder v3 as a function of t1 and d1
+# v_3=(0.4*t_3 + 0.80*d_3 + rnorm(n, 0, sqrt(0.33))) + 5
+# #put all in a dataframe and write data to harddrive to use later in e.g. SPSS
+# df1=data.frame(male, age, v_1, v_2, v_3, t_1, t_2, t_3, d_1, d_2, d_3)
+# 
+# #required packages
+# lapply(c("geepack",
+#          "survey",
+#          "ipw",
+#          "reshape",
+#          "dplyr"), checkpackages)
+# 
+# # Data is readin long format
+# data1=df1
+# # Convert from wide to long format
+# data_long<-reshape(data1, varying=c("v_1", "v_2", "v_3", "t_1","t_2","t_3", "d_1", "d_2", "d_3"), direction="long", idvar="id", sep="_")
+# # Reshape from wide to long format
+# data_long_sort=arrange(data_long, id, time)
+# # Rearrange the dataset so that id is first
+# data_long_sort=data_long_sort[c("id", "time", "age", "male", "t", "v", "d")]
+# head(data_long_sort)
+# 
+# # male as factor
+# data_long_sort$male=as.factor(data_long_sort$male)
+# w=ipwtm(exposure=t,
+#         family="binomial",
+#         link="logit",
+#         numerator=~ male + age,
+#         denominator=~ v + male + age,
+#         id=id,
+#         timevar=time,
+#         type="all",
+#         data=data_long_sort)
+# w2=IP_Weights_Calculator(Exposure="t",
+#                          Effect_Modifiers=c("male", "age"),
+#                          Covariates="v",
+#                          which.family="binomial",
+#                          ID_Var="id",
+#                          Data=data_long_sort)
+# 
+# # compare calculated weights
+# head(w$ipw.weights, 10)
+# head(w2$Time_Varying_Treatment_IP_weights, 10)
+# # looks the same but weirdly R regards them as different numbers
+# head(w$ipw.weights, 10)==head(w2$Time_Varying_Treatment_IP_weights, 10)
+# # iptw
+# iptw=w$ipw.weights
+# iptw2=w2$Time_Varying_Treatment_IP_weights
+# # Add the iptw variable onto a new dataframe = data2.
+# data2=cbind(data_long_sort, iptw)
+# # fit a weighted gee
+# geeglm(d~t + time + factor(male) + age + cluster(id),
+#        id=id,
+#        data=data2,
+#        family=gaussian("identity"),
+#        corstr="ar1",
+#        weights=iptw)
+# geeglm(d~t + time + factor(male) + age + cluster(id),
+#        id=id,
+#        data=data2,
+#        family=gaussian("identity"),
+#        corstr="ar1",
+#        weights=iptw2)
+IP_Weights_Calculator=function(Exposure,
+                               Effect_Modifiers=NULL, # usually time-invariant
+                               Covariates, # usually time-varying
+                               Censoring_Var=NULL,
+                               which.family, # distribution of Exposure (currently only binomial with logit link)
+                               # Timevar, # this is equivalent to timevar in ipwtm, but not applicable yet
+                               ID_Var,
+                               # Type, # currently, the algorithm runs as Type="all
+                               Data,
+                               Stabilized=TRUE,
+                               Effect_Modification=TRUE){
+  #*****
+  # Note
+  #*****
+  # Effect_Modification=TRUE allows the weights to take into account modifiers when calculating the numerator
+  # Whether Effect_Modification is TRUE, specify Effect_Modifiers that are considered a part of covariates that go into the denominator
+  
+  # Exposure="qsmk"
+  # Effect_Modifiers=c("as.factor(sex)")
+  # Covariates=c("as.factor(race)",
+  #                     "age",
+  #                     "I(age^2)",
+  #                     "as.factor(education)",
+  #                     "smokeintensity",
+  #                     "I(smokeintensity^2)",
+  #                     "smokeyrs",
+  #                     "I(smokeyrs^2)",
+  #                     "as.factor(exercise)",
+  #                     "as.factor(active)",
+  #                     "wt71",
+  #                     "I(wt71^2)")
+  # Censoring_Var="cens"
+  # # Censoring_Var=NULL
+  # which.family="binomial"
+  # # Timevar="Time"
+  # ID_Var="seqn"
+  # # Type="all"
+  # Data=nhefs
+  # Stabilized=TRUE
+  # Effect_Modification=TRUE
+  
+  # check out packages
+  lapply(c("data.table", "magrittr", "dplyr"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  # Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+  # Data=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data)
+  
+  # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
+  Data[, ID_Var]=as.factor(Data[, ID_Var])
+  
+  # as data table
+  Data=as.data.table(Data)
+  
+  if(Stabilized==FALSE){
+    #*************
+    #
+    # unstabilized
+    #
+    #*****************
+    # treatment weight
+    #*****************
+    # denominator
+    unstabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
+                                                    paste0(Effect_Modifiers, collapse="+"),
+                                                    "+",
+                                                    paste0(Covariates, collapse="+")))
+    
+    unstabilized_trt_dnom_fit=glm(unstabilized_trt_dnom_fullmod, 
+                                  family=eval(parse(text=which.family)),
+                                  data=Data)
+    
+    unstab.pd.qsmk=predict(unstabilized_trt_dnom_fit, type = "response")
+    
+    #**********
+    # numerator
+    unstab.pn.qsmk=rep(1, nrow(Data))
+    
+    #*********************************
+    # unstabilized IP treatment weight
+    usw_trt_weights=ifelse(Data[[Exposure]]==0,
+                           unstab.pn.qsmk/(1-unstab.pd.qsmk),
+                           unstab.pn.qsmk/unstab.pd.qsmk)
+    
+    #*****************
+    # censoring weight
+    #*****************
+    if(!is.null(Censoring_Var)){
+      #************
+      # denominator
+      unstabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
+                                                         paste0(Exposure),
+                                                         "+",
+                                                         paste0(Effect_Modifiers, collapse="+"),
+                                                         "+",
+                                                         paste0(Covariates, collapse="+")))
+      unstabilized_censor_dnom_fit=glm(unstabilized_censor_dnom_fullmod, 
+                                       family="binomial", # censoring variable is always binary
+                                       data=Data)
+      
+      unstab.pd.cens=1-predict(unstabilized_censor_dnom_fit, type = "response")
+      
+      #**********
+      # numerator
+      unstab.pn.cens=rep(1, nrow(Data))
+      
+      #*********************************
+      # unstabilized IP censoring weight
+      # Unstabilized IP censoring weights for the censored individuals are 0.
+      # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+      usw_censor_weights=ifelse(Data[[Censoring_Var]]==1,
+                                0,
+                                unstab.pn.cens/unstab.pd.cens)
+    }else{
+      usw_censor_weights=rep(1, nrow(Data))
+    }
+    
+    #*****************************
+    # final unstabilized IP weight
+    #*****************************
+    usw_IP_weights=usw_censor_weights*usw_trt_weights
+    
+    # compute Time_Varying_Treatment_Weights
+    Data[, Point_Treatment_Weights:=usw_IP_weights]
+    Data %<>% 
+      group_by(eval(parse(text=ID_Var))) %>% 
+      mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
+      ungroup() %>% 
+      as.data.table
+  }else{
+    #***********
+    #
+    # stabilized
+    #
+    #*****************
+    # treatment weight
+    #*****************
+    # denominator
+    stabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
+                                                  paste0(Effect_Modifiers, collapse="+"),
+                                                  "+",
+                                                  paste0(Covariates, collapse="+")))
+    
+    stabilized_trt_dnom_fit=glm(stabilized_trt_dnom_fullmod, 
+                                family=eval(parse(text=which.family)),
+                                data=Data)
+    
+    stab.pd.qsmk=predict(stabilized_trt_dnom_fit, type = "response")
+    
+    #**********
+    # numerator
+    if(Effect_Modification==TRUE){
+      stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~",
+                                                   paste0(Effect_Modifiers, collapse="+")))
+    }else{
+      stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~1"))
+    }
+    stabilized_trt_num_fit=glm(stabilized_trt_num_fullmod, 
+                               family=eval(parse(text=which.family)),
+                               data=Data)
+    
+    stab.pn.qsmk=predict(stabilized_trt_num_fit, type = "response")
+    
+    #*******************************
+    # stabilized IP treatment weight
+    sw_trt_weights=ifelse(Data[[Exposure]]==0,
+                          (1-stab.pn.qsmk)/(1-stab.pd.qsmk),
+                          stab.pn.qsmk/stab.pd.qsmk)
+    
+    #*****************
+    # censoring weight
+    #*****************
+    if(!is.null(Censoring_Var)){
+      #************
+      # denominator
+      stabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
+                                                       paste0(Exposure),
+                                                       "+",
+                                                       paste0(Effect_Modifiers, collapse="+"),
+                                                       "+",
+                                                       paste0(Covariates, collapse="+")))
+      stabilized_censor_dnom_fit=glm(stabilized_censor_dnom_fullmod, 
+                                     family="binomial", # censoring variable is always binary
+                                     data=Data)
+      
+      stab.pd.cens=1-predict(stabilized_censor_dnom_fit, type = "response")
+      
+      #**********
+      # numerator
+      if(Effect_Modification==TRUE){
+        stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
+                                                        paste0(Exposure),
+                                                        "+",
+                                                        paste0(Effect_Modifiers, collapse="+")))
+      }else{
+        stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
+                                                        paste0(Exposure)))
+      }
+      
+      stabilized_censor_num_fit=glm(stabilized_censor_num_fullmod, 
+                                    family="binomial", # censoring variable is always binary
+                                    data=Data)
+      
+      stab.pn.cens=1-predict(stabilized_censor_num_fit, type = "response")
+      
+      #*******************************
+      # stabilized IP censoring weight
+      # Stabilized IP censoring weights are not 0 regardless of censoring of individuals.
+      # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+      sw_censor_weights=stab.pn.cens/stab.pd.cens
+    }else{
+      sw_censor_weights=rep(1, nrow(Data))
+    }
+    
+    #***************************
+    # final stabilized IP weight
+    #***************************
+    sw_IP_weights=sw_censor_weights*sw_trt_weights
+    
+    # compute Time_Varying_Treatment_Weights
+    # The general form of the (un)stabilized PI weights can be found on p.263 (Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+    Data[, Point_Treatment_Weights:=sw_IP_weights]
+    Data %<>% 
+      group_by(eval(parse(text=ID_Var))) %>% 
+      mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
+      ungroup() %>% 
+      as.data.table
+  }
+  
+  # export weights
+  if(Stabilized==FALSE){
+    Data[, `:=`(Index=.I,
+                censor_weights=usw_censor_weights,
+                trt_weights=usw_trt_weights,
+                Point_Treatment_IP_weights=usw_IP_weights,
+                Time_Varying_Treatment_IP_weights=Data$Time_Varying_Treatment_Weights)]
+  }else{
+    Data[, `:=`(Index=.I,
+                censor_weights=sw_censor_weights,
+                trt_weights=sw_trt_weights,
+                Point_Treatment_IP_weights=sw_IP_weights,
+                Time_Varying_Treatment_IP_weights=Time_Varying_Treatment_Weights)]
+    
+  }
+  return(Data[, .SD, .SDcols=c(ID_Var,
+                               "Index",
+                               "censor_weights",
+                               "trt_weights",
+                               "Point_Treatment_IP_weights",
+                               "Time_Varying_Treatment_IP_weights")])
 }
 
 
@@ -2164,7 +2517,11 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 #                            Group_Var<-Group_Var,
 #                            which.family<-"binomial (link='logit')")
 # Data_original=as.data.table(Data_original)
-GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
+GEE_Multivariable_with_vif=function(Data,
+                                    Pred_Vars,
+                                    Res_Var,
+                                    Group_Var,
+                                    which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH", "data.table"), checkpackages)
   
@@ -7156,5 +7513,10 @@ mclapply.hack=function(...){
 # 
 # # When you're done, clean up the cluster
 # stopImplicitCluster()
+
+
+
+
+
 
 
