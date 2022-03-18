@@ -907,6 +907,9 @@ IPW=function(Exposure,
              ID_Var,
              Type="first",
              Data){
+  # check out packages
+  lapply(c("data.table", "ipw", "dplyr"), checkpackages)
+  
   # #
   # Exposure="PRIMARY_CARE_Bi"
   # Time_Invariant_Covs="ETHNIC_WHITE"
@@ -1020,6 +1023,7 @@ IPW=function(Exposure,
   Out$unstab.IP.weights=unstab.IP.weights
   Out$stab.IP.weights=stab.IP.weights
   Out$basic.stab.IP.weights=basic.stab.IP.weights
+  
   return(Out)
 }
 
