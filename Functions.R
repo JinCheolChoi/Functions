@@ -895,6 +895,134 @@ IP_Weights_Calculator=function(Exposure,
                                "Time_Varying_Treatment_IP_weights")])
 }
 
+# Keep this function just in case
+IPW=function(Exposure,
+             Time_Invariant_Covs,
+             Time_Varying_Covs,
+             # Censoring_Var,
+             which.family,
+             Link=NULL,
+             Tstart=NULL,
+             Timevar=NULL,
+             ID_Var,
+             Type="first",
+             Data){
+  # #
+  # Exposure="PRIMARY_CARE_Bi"
+  # Time_Invariant_Covs="ETHNIC_WHITE"
+  # Time_Varying_Covs="AGE"
+  # # Censoring_Var="Censor"
+  # which.family="survival"
+  # Link=NULL
+  # # Link="logit" # for family="survival" this argument is ignored
+  # Tstart="START_TIME"
+  # Timevar="STOP_TIME"
+  # ID_Var="CODE"
+  # Type="first"
+  # Data="Data_to_use"
+  
+  # remove observations with missing data
+  Data_to_use_No_Missing=na.omit(eval(parse(text=Data)))
+  if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+    print("missing data removed.")
+  }
+  
+  #*********************************
+  # unstabilized IP treatment weight
+  # define the function
+  Usw_num=NULL
+  Usw_den=paste0("~",
+                 paste0(Time_Invariant_Covs, collapse="+"),
+                 "+",
+                 paste0(Time_Varying_Covs, collapse="+"))
+  
+  
+  unstab.ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           tstart=', Tstart,',
+           timevar=', Timevar, ',
+           numerator=', Usw_num,',
+           denominator=', Usw_den, ',
+           id=', ID_Var, ',
+           type="', Type, '",
+           data=Data_to_use_No_Missing)')
+  
+  # ipwtm_function=paste0(
+  #   'ipwtm(exposure=PRIMARY_CARE_Bi,
+  #          family="survival",
+  #          link=NULL,
+  #          tstart=START_TIME,
+  #          timevar=STOP_TIME,
+  #          numerator=NULL,
+  #          denominator=~ETHNIC_WHITE,
+  #          id=CODE,
+  #          type="first",
+  #          data=Data_to_use_No_Missing)')
+  
+  # obtain unstabilized weight
+  unstab.IP.weights=eval(parse(text=unstab.ipwtm_function))
+  
+  
+  #*******************************
+  # stabilized IP treatment weight
+  # define the function
+  Sw_num=paste0("~",
+                paste0(Time_Invariant_Covs, collapse="+"))
+  Sw_den=paste0("~",
+                paste0(Time_Invariant_Covs, collapse="+"),
+                "+",
+                paste0(Time_Varying_Covs, collapse="+"))
+  
+  stab.ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           tstart=', Tstart,',
+           timevar=', Timevar, ',
+           numerator=', Sw_num,',
+           denominator=', Sw_den, ',
+           id=', ID_Var, ',
+           type="', Type, '",
+           data=Data_to_use_No_Missing)')
+  
+  # obtain stabilized weight
+  stab.IP.weights=eval(parse(text=stab.ipwtm_function))
+  
+  
+  #*************************************
+  # basic stabilized IP treatment weight
+  # define the function
+  Bsw_num=paste0("~ 1")
+  Bsw_den=paste0("~",
+                 paste0(Time_Invariant_Covs, collapse="+"),
+                 "+",
+                 paste0(Time_Varying_Covs, collapse="+"))
+  
+  basic.stab.ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           tstart=', Tstart,',
+           timevar=', Timevar, ',
+           numerator=', Bsw_num,',
+           denominator=', Bsw_den, ',
+           id=', ID_Var, ',
+           type="', Type, '",
+           data=Data_to_use_No_Missing)')
+  
+  # obtain stabilized weight
+  basic.stab.IP.weights=eval(parse(text=basic.stab.ipwtm_function))
+  
+  # export
+  Out=c()
+  Out$unstab.IP.weights=unstab.IP.weights
+  Out$stab.IP.weights=stab.IP.weights
+  Out$basic.stab.IP.weights=basic.stab.IP.weights
+  return(Out)
+}
+
 
 #*************************************************
 #
