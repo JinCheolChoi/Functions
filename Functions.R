@@ -899,7 +899,6 @@ IP_Weights_Calculator=function(Exposure,
 IPW=function(Exposure,
              Time_Invariant_Covs,
              Time_Varying_Covs,
-             # Censoring_Var,
              which.family,
              Link=NULL,
              Tstart=NULL,
@@ -908,7 +907,10 @@ IPW=function(Exposure,
              Type="first",
              Data){
   # check out packages
-  lapply(c("data.table", "ipw", "dplyr"), checkpackages)
+  lapply(c("data.table",
+           "ipw",
+            "dplyr"),
+         checkpackages)
   
   # #
   # Exposure="PRIMARY_CARE_Bi"
@@ -938,7 +940,6 @@ IPW=function(Exposure,
                  paste0(Time_Invariant_Covs, collapse="+"),
                  "+",
                  paste0(Time_Varying_Covs, collapse="+"))
-  
   
   unstab.ipwtm_function=paste0(
     'ipwtm(exposure=', Exposure,',
@@ -6755,9 +6756,14 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 #                             Ref_of_Row_Var="F",
 #                             Missing="Include",
 #                             Ind_P_Value=T)
-Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include", Ind_P_Value=F){
+Contingency_Table_Generator=function(Data,
+                                     Row_Var,
+                                     Col_Var,
+                                     Ref_of_Row_Var,
+                                     Missing="Not_Include",
+                                     Ind_P_Value=F){
   # library
-  library(epitools)
+  lapply(c("epitools"), checkpackages)
   
   # Data as data table
   Data=as.data.frame(Data)
@@ -6906,9 +6912,13 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #                                     Row_Var="age",
 #                                     Col_Var="outcome",
 #                                     Missing="Not_Include")
-Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+Contingency_Table_Generator_Conti_X=function(Data,
+                                             Row_Var,
+                                             Col_Var,
+                                             Ref_of_Row_Var,
+                                             Missing="Not_Include"){
   # library
-  library(doBy)
+  lapply(c("doBy"), checkpackages)
   
   # Data as data table
   Data=as.data.frame(Data)
@@ -7110,7 +7120,7 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 #
 # Contingency_Table_Univariable_Conti_X
 #
-#************************************
+#**************************************
 # Generate summary (contingency) table that outlines characteristics from dataset
 # Var : Continuous variable
 #********
@@ -7194,7 +7204,9 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
 
 
 #********************************
+#
 # Raw_Contingency_Table_Generator
+#
 #********************************
 # lapply(c("dplyr",
 #          "data.table",
@@ -7305,7 +7317,9 @@ Raw_Contingency_Table_Generator=function(Data,
 }
 
 #*********************
+#
 # Line_Graph_Generator
+#
 #*********************
 Line_Graph_Generator=function(Table_Data, 
                               Y_lab="Y",
@@ -7330,6 +7344,352 @@ Line_Graph_Generator=function(Table_Data,
   Line_Chart+theme(axis.text=element_text(size=20),
                    axis.title=element_text(size=20),
                    legend.text=element_text(size=15))
+}
+
+#*************************************
+#
+# Weighted_Contingency_Table_Generator
+#
+#*************************************
+Weighted_Contingency_Table_Generator=function(Data,
+                                              Row_Var,
+                                              Col_Var,
+                                              # Missing,
+                                              Weight_Var){
+  # check packages
+  lapply(c("data.table",
+           "tableone",
+           "jstable",
+           
+           "smd", # calculate smd
+           "MBESS"), # for smd confidence interval
+         checkpackages)
+  
+  # Data to data.frame
+  Data=as.data.frame(Data)
+  
+  # apply weights to data
+  weighteddata=svydesign(ids=~1,
+                         data=Data,
+                         weights=formula(paste0("~", Weight_Var)))
+  
+  #***********************
+  # weighted table overall
+  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
+                                          data=weighteddata,
+                                          test=TRUE,
+                                          smd=TRUE,
+                                          factorVars=Row_Var)
+  weightedtable_overall_result=print(weightedtable_overall,
+                                     showAllLevels=TRUE,
+                                     formatOptions=list(big.mark=","),
+                                     noSpaces=TRUE,
+                                     printToggle=FALSE)
+  
+  # # detailed information including missingness (this is for continuous)
+  # summary(weightedtable_overall)
+  # 
+  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
+  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+  
+  #*************************************
+  # weighted table stratified by Col_Var
+  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
+                                             strata=Col_Var,
+                                             data=weighteddata,
+                                             test=TRUE,
+                                             smd=TRUE,
+                                             factorVars=Row_Var)
+  weightedtable_stratified_result=print(weightedtable_stratified,
+                                        showAllLevels=TRUE,
+                                        formatOptions=list(big.mark=","),
+                                        noSpaces=TRUE,
+                                        smd=TRUE,
+                                        printToggle=FALSE)
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # smd.output=smd::smd(x=Data[, Row_Var],
+  #                     g=Data[, Col_Var],
+  #                     w=Data[, Weight_Var],
+  #                     std.error=TRUE)
+  # 
+  # smd.conf=c()
+  # for(i in 1:length(smd.output$estimate)){
+  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
+  #                        n.1=table(Data[[Col_Var]])[1],
+  #                        n.2=table(Data[[Col_Var]])[2])
+  #   point.smd=ci.smd.output$smd
+  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
+  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
+  #   smd.conf[i]=c(paste0(round(point.smd, 2),
+  #                        " (",
+  #                        round(lower.smd, 2),
+  #                        " - ",
+  #                        round(upper.smd, 2),
+  #                        ")"))
+  # }
+  
+  # check if Row_Var is factor or numeric
+  Check_Factor=ifelse(is.null(levels(Data[, Row_Var])), 0, 1)
+  if(Check_Factor==1){
+    X3_Text=as.character(levels(Data[, Row_Var]))
+  }else{
+    stop("Row_Var is not a factor. Please double-check.")
+  }
+  
+  # Col_Var levels
+  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
+  if(Check_Factor==1){
+    X4_Text=as.character(levels(Data[, Col_Var]))
+  }else{
+    X4_Text=sort(unique(Data[, Col_Var]))
+  }
+  
+  # Out
+  Out=matrix(NA, nrow=length(X3_Text), ncol=5+length(X4_Text))
+  Out[, 1]=Row_Var
+  Out[, 2]=weightedtable_stratified_result[-1, "level"]
+  for(i in 1:length(X4_Text)){
+    Out[, i+2]=weightedtable_stratified_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_result))]
+  }
+  Out[, i+3]=weightedtable_overall_result[-1, "Overall"]
+  Out[, i+4]=weightedtable_stratified_result[-1, "p"] # P-value (Chi-square)
+  # Out[, i+5]=c("", smd.conf)
+  Out[, i+5]=weightedtable_stratified_result[-1, "SMD"] # P-value (t-test)
+  
+  colnames(Out)=c("Variable",
+                  "Value",
+                  paste0(Col_Var,
+                         "=",
+                         X4_Text,
+                         " (n=",
+                         round(as.numeric(weightedtable_stratified_result["n", c(2:(1+length(X4_Text)))]), 1),
+                         ")"),
+                  paste0("Total (n=",
+                         round(as.numeric(weightedtable_overall_result["n", 2]), 1),
+                         ")"),
+                  "P-value (Chi-square)", # default : chisq.test()
+                  # fisher.test() is not available 
+                  # "SMD (95% CI)",
+                  "SMD") # t-test
+  
+  return(as.data.table(Out))
+}
+
+
+#*********************************************
+#
+# Weighted_Contingency_Table_Generator_Conti_X
+#
+#*********************************************
+Weighted_Contingency_Table_Generator_Conti_X=function(Data,
+                                                      Row_Var,
+                                                      Col_Var,
+                                                      Weight_Var,
+                                                      Form=1){
+  # check packages
+  lapply(c("data.table",
+           "tableone",
+           "jstable",
+           
+           "smd", # calculate smd
+           "MBESS"), # for smd confidence interval
+         checkpackages)
+  
+  # Data to data.frame
+  Data=as.data.frame(Data)
+  
+  # apply weights to data
+  weighteddata=svydesign(ids=~1,
+                         data=Data,
+                         weights=formula(paste0("~", Weight_Var)))
+  
+  #***********************
+  # weighted table overall
+  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
+                                          data=weighteddata,
+                                          test=TRUE,
+                                          smd=TRUE)
+  weightedtable_overall_median_result=print(weightedtable_overall,
+                                            showAllLevels=TRUE,
+                                            nonnormal=Row_Var, # nonnormal
+                                            formatOptions=list(big.mark=","),
+                                            noSpaces=TRUE,
+                                            printToggle=FALSE)
+  weightedtable_overall_mean_result=print(weightedtable_overall,
+                                          showAllLevels=TRUE,
+                                          formatOptions=list(big.mark=","),
+                                          noSpaces=TRUE,
+                                          printToggle=FALSE)
+  
+  # # detailed information including missingness (this is for continuous)
+  # summary(weightedtable_overall)
+  # 
+  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
+  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+  
+  #*************************************
+  # weighted table stratified by Col_Var
+  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
+                                             strata=Col_Var,
+                                             data=weighteddata,
+                                             test=TRUE,
+                                             smd=TRUE)
+  weightedtable_stratified_median_result=print(weightedtable_stratified,
+                                               showAllLevels=TRUE,
+                                               nonnormal=Row_Var, # nonnormal
+                                               formatOptions=list(big.mark=","),
+                                               noSpaces=TRUE,
+                                               smd=TRUE,
+                                               printToggle=FALSE)
+  weightedtable_stratified_mean_result=print(weightedtable_stratified,
+                                             showAllLevels=TRUE,
+                                             formatOptions=list(big.mark=","),
+                                             noSpaces=TRUE,
+                                             smd=TRUE,
+                                             printToggle=FALSE)
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # smd.output=smd::smd(x=Data[, Row_Var],
+  #                     g=Data[, Col_Var],
+  #                     w=Data[, Weight_Var],
+  #                     std.error=TRUE)
+  # 
+  # for(i in 1:length(smd.output$estimate)){
+  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
+  #                        n.1=table(Data[[Col_Var]])[1],
+  #                        n.2=table(Data[[Col_Var]])[2])
+  #   point.smd=ci.smd.output$smd
+  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
+  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
+  #   smd.conf[i]=c(paste0(round(point.smd, 2),
+  #                        " (",
+  #                        round(lower.smd, 2),
+  #                        " - ",
+  #                        round(upper.smd, 2),
+  #                        ")"))
+  # }
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # point.smd=smd::smd(x=Data[, Col_Var],
+  #                    g=Data[, Row_Var],
+  #                    w=Data[, Weight_Var],
+  #                    std.error=TRUE)
+  # 
+  # smd.conf=ci.smd(smd=point.smd$estimate,
+  #                 n.1=table(Data[[Col_Var]])[1],
+  #                 n.2=table(Data[[Col_Var]])[2])
+  
+  # check if Row_Var is numeric
+  Num_Factor=is.numeric(Data[, Row_Var])
+  if(Num_Factor==1 & Form==1){
+    Out_Rows=7
+  }else if(Num_Factor==1 & Form==2){
+    Out_Rows=2
+  }else{
+    stop("Row_Var is not a numerical variable. Please double-check.")
+  }
+  
+  # Col_Var levels
+  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
+  if(Check_Factor==1){
+    X4_Text=as.character(levels(Data[, Col_Var]))
+  }else{
+    X4_Text=sort(unique(Data[, Col_Var]))
+  }
+  # p-value test
+  if(length(X4_Text)==2){
+    p_value_name="P-value (T-test)"
+  }else if(length(X4_Text)>2){
+    p_value_name="P-value (ANOVE)"
+  }
+  # Out
+  Out=matrix(NA, nrow=Out_Rows, ncol=6+length(X4_Text))
+  
+  if(Form==1){
+    Out[, 1]=Row_Var
+    Out[, 2]=c("Min", "Q1", "Median", "Mean", "SD", "Q3", "Max")
+    for(i in 1:length(X4_Text)){
+      Out[, i+2]=c(round(c(weightedtable_stratified$ContTable[[X4_Text[i]]][, "min"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p25"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "median"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "mean"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "sd"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p75"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "max"]), 2))
+    }
+    Out[, i+3]=c(round(c(weightedtable_overall$ContTable$Overall[, "min"],
+                         weightedtable_overall$ContTable$Overall[, "p25"],
+                         weightedtable_overall$ContTable$Overall[, "median"],
+                         weightedtable_overall$ContTable$Overall[, "mean"],
+                         weightedtable_overall$ContTable$Overall[, "sd"],
+                         weightedtable_overall$ContTable$Overall[, "p75"],
+                         weightedtable_overall$ContTable$Overall[, "max"]), 2))
+    
+    # The hypothesis test functions used by default are chisq.test() for categorical variables (with continuity correction) and oneway.test() for continous variables (with equal variance assumption, i.e., regular ANOVA).
+    # Two-group ANOVA is equivalent of t-test.
+    # You may be worried about the nonnormal variables and small cell counts in the stage variable. In such a situation, you can use the nonnormal argument like before as well as the exact (test) argument in the print() method.
+    # Now kruskal.test() is used for the nonnormal continous variables and fisher.test() is used for categorical variables specified in the exact argument. kruskal.test() is equivalent to wilcox.test() in the two-group case.
+    Out[3, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
+    Out[4, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
+    # Out[, i+6]=smd.conf
+    Out[4, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
+    colnames(Out)=c("Variable",
+                    "Value",
+                    paste0(Col_Var,
+                           "=",
+                           X4_Text,
+                           " (n=",
+                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
+                           ")"),
+                    paste0("Total (n=",
+                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
+                           ")"),
+                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
+                    p_value_name, # default : oneway.test()
+                    # "SMD (95% CI)",
+                    "SMD") # t-test
+  }else if(Form==2){
+    Out[1, 1]=paste0(Row_Var, " (median [IQR])")
+    Out[2, 1]=paste0(Row_Var, " (mean (SD))")
+    Out[, 2]=weightedtable_stratified_mean_result[-1, "level"]
+    for(i in 1:length(X4_Text)){
+      Out[1, i+2]=weightedtable_stratified_median_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_median_result))]
+      Out[2, i+2]=weightedtable_stratified_mean_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_mean_result))]
+    }
+    Out[1, i+3]=weightedtable_overall_median_result[-1, "Overall"]
+    Out[2, i+3]=weightedtable_overall_mean_result[-1, "Overall"]
+    
+    Out[1, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
+    Out[2, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
+    
+    # Out[, i+5]=smd.conf
+    Out[2, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
+    
+    colnames(Out)=c("Variable",
+                    "Value",
+                    paste0(Col_Var,
+                           "=",
+                           X4_Text,
+                           " (n=",
+                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
+                           ")"),
+                    paste0("Total (n=",
+                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
+                           ")"),
+                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
+                    p_value_name, # default : oneway.test()
+                    # "SMD (95% CI)",
+                    "SMD") # t-test
+  }
+  
+  return(as.data.table(Out))
 }
 
 
