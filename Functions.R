@@ -30,6 +30,20 @@ round2=function(x, n){
   z*posneg
 }
 
+#**********
+# floor_dec
+#**********
+floor_dec=function(x, level=1){
+  round(x-5*10^(-level-1), level) 
+}
+
+#************
+# ceiling_dec
+#************
+ceiling_dec=function(x, level=1){
+  round(x+5*10^(-level-1), level)
+}
+
 #***************
 # elapsed_months
 #***************
@@ -548,11 +562,256 @@ Marginal_Effect_2=function(Model_Fit,
 # [ --- Marginal Structural Model --- ] ----
 #
 #*******************************************
+# IPW
+#****
+# Example
+#********
+# # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# #set seed to replicate results
+# set.seed(12345)
+# 
+# #define sample size
+# n=2000
+# #define confounder c1 (gender, male==1)
+# male=rbinom(n,1,0.55)
+# #define confounder c2 (age)
+# age=exp(rnorm(n, 3, 0.5))
+# #define treatment at time 1
+# t_1=rbinom(n,1,0.20)
+# #define treatment at time 2
+# t_2=rbinom(n,1,0.20)
+# #define treatment at time 3
+# t_3=rbinom(n,1,0.20)
+# #define depression at time 1 (prevalence=number per 100000 population)
+# d_1=exp(rnorm(n, 0.001, 0.5))
+# #define depression at time 2 (prevalence=number per 100000 population)
+# d_2=exp(rnorm(n, 0.002, 0.5))
+# #define depression at time 3 (prevalence=number per 100000 population)
+# d_3=exp(rnorm(n, 0.004, 0.5))
+# #define time-varying confounder v1 as a function of t1 and d1
+# v_1=(0.4*t_1 + 0.80*d_1 + rnorm(n, 0, sqrt(0.99))) + 5
+# #define time-varying confounder v2 as a function of t1 and d1
+# v_2=(0.4*t_2 + 0.80*d_2 + rnorm(n, 0, sqrt(0.55))) + 5
+# #define time-varying confounder v3 as a function of t1 and d1
+# v_3=(0.4*t_3 + 0.80*d_3 + rnorm(n, 0, sqrt(0.33))) + 5
+# #put all in a dataframe and write data to harddrive to use later in e.g. SPSS
+# df1=data.frame(male, age, v_1, v_2, v_3, t_1, t_2, t_3, d_1, d_2, d_3)
+# 
+# #required packages
+# lapply(c("geepack",
+#          "survey",
+#          "ipw",
+#          "reshape",
+#          "dplyr"), checkpackages)
+# 
+# # Data is readin long format
+# data1=df1
+# # Convert from wide to long format
+# data_long<-reshape(data1, varying=c("v_1", "v_2", "v_3", "t_1","t_2","t_3", "d_1", "d_2", "d_3"), direction="long", idvar="id", sep="_")
+# # Reshape from wide to long format
+# data_long_sort=arrange(data_long, id, time)
+# # Rearrange the dataset so that id is first
+# data_long_sort=data_long_sort[c("id", "time", "age", "male", "t", "v", "d")]
+# head(data_long_sort)
+# 
+# # male as factor
+# data_long_sort$male=as.factor(data_long_sort$male)
+# w=IPW(Exposure="t",
+#       Time_Invariant_Covs=c("male", "age"),
+#       Time_Varying_Covs=c("v"),
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="data_long_sort")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+IPW=function(Exposure,
+             Time_Invariant_Covs,
+             Time_Varying_Covs,
+             which.family="binomial",
+             Link="logit",
+             # Timevar,
+             ID_Var,
+             Data){
+  # check out packages
+  lapply(c("data.table",
+           "ipw",
+           "dplyr"),
+         checkpackages)
+  # For binary exposure, the inverse probability of treatment weights for patients are estimated using a (pooled) logistic regression
+  # defined in a similar structure as the example in the book, Leite, W. L. (2016). Practical propensity score methods using R.
+  
+  # remove observations with missing data
+  Data_to_use_No_Missing=as.data.table(na.omit(eval(parse(text=Data))))
+  if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+    print("missing data removed.")
+  }
+  
+  # Time_Point
+  Data_to_use_No_Missing[, Time_Point:=0:(.N-1), by=ID_Var]
+  
+  # convert Exposure to numeric
+  Data_to_use_No_Missing[, (Exposure):=as.numeric(as.character(eval(parse(text=Exposure))))]
+  
+  # generate lagged exposure with a lag of one period
+  Data_to_use_No_Missing[,
+                         (paste0("Lagged_", Exposure)):=lapply(.SD, function(x) lag(x, n=1)),
+                         .SDcol=Exposure,
+                         by=ID_Var]
+  Data_to_use_No_Missing[is.na(eval(parse(text=paste0("Lagged_", Exposure)))), (paste0("Lagged_", Exposure)):=0]
+  
+  # cumsum lagged exposure (total number of previous measurement waves)
+  Data_to_use_No_Missing[,
+                         (paste0("Cumsum_Lagged_", Exposure)):=cumsum(eval(parse(text=paste0("Lagged_", Exposure)))),
+                         by=ID_Var]
+  
+  # # generate lagged time-varying covariates with a lag of one period
+  # Data_to_use_No_Missing[,
+  #                        (paste0("Lagged_", Time_Varying_Covs)):=lapply(.SD, function(x) lag(x, n=1)),
+  #                        .SDcol=Time_Varying_Covs,
+  #                        by=ID_Var]
+  
+  #*****************
+  # define numerator
+  # 1. unstabilized
+  unstab_numerator_formula=NULL
+  
+  # 2. basic stabilized
+  basic_stab_numerator_formula=paste0("~ 1 + ",
+                                      paste0("Cumsum_Lagged_", Exposure))
+  
+  # 3. adjusted stabilized by time-invariant covariates
+  adjusted_stab_numerator_formula=paste0("~ 1 + ",
+                                         paste0("Cumsum_Lagged_", Exposure),
+                                         " + ",
+                                         paste0(Time_Invariant_Covs, collapse=" + "))
+  
+  # #*****************
+  # # define numerator
+  # # 1. unstabilized
+  # unstab_numerator_formula=NULL
+  # 
+  # # 2. basic stabilized
+  # basic_stab_numerator_formula_t0=1
+  # basic_stab_numerator_formula_t=paste0("~ ",
+  #                                       "Lagged_",
+  #                                       Exposure)
+  # 
+  # # 3. adjusted stabilized by time-invariant covariates
+  # adjusted_stab_numerator_formula_t0=paste0("~ ",
+  #                                           paste0(Time_Invariant_Covs, collapse=" + "))
+  # adjusted_stab_numerator_formula_t=paste0("~ ",
+  #                                          "Lagged_",
+  #                                          Exposure,
+  #                                          " + ",
+  #                                          paste0(Time_Invariant_Covs, collapse=" + "))
+  # 
+  #*******************
+  # define denominator
+  denominator_formula=paste0("~ ",
+                             paste0("Cumsum_Lagged_", Exposure),
+                             " + ",
+                             paste0(Time_Invariant_Covs, collapse=" + "),
+                             " + ",
+                             paste0(Time_Varying_Covs, collapse=" + "))
+  
+  
+  # #*****************
+  # # define numerator
+  # # 1. unstabilized
+  # unstab_numerator_formula=NULL
+  # 
+  # # 2. basic stabilized
+  # basic_stab_numerator_formula_t0=1
+  # basic_stab_numerator_formula_t=paste0("~ ",
+  #                                       "Lagged_",
+  #                                       Exposure)
+  # 
+  # # 3. adjusted stabilized by time-invariant covariates
+  # adjusted_stab_numerator_formula_t0=paste0("~ ",
+  #                                           paste0(Time_Invariant_Covs, collapse=" + "))
+  # adjusted_stab_numerator_formula_t=paste0("~ ",
+  #                                          "Lagged_",
+  #                                          Exposure,
+  #                                          " + ",
+  #                                          paste0(Time_Invariant_Covs, collapse=" + "))
+  # 
+  # #*******************
+  # # define denominator
+  # denominator_formula_t0=paste0("~ ",
+  #                               paste0(Time_Invariant_Covs, collapse=" + "),
+  #                               " + ",
+  #                               paste0(Time_Varying_Covs, collapse=" + "))
+  # 
+  # denominator_formula_t=paste0("~ ",
+  #                              "Lagged_",
+  #                              Exposure,
+  #                              " + ",
+  #                              paste0(Time_Invariant_Covs, collapse=" + "),
+  #                              " + ",
+  #                              paste0(Time_Varying_Covs, collapse=" + "))
+  
+  #*********************
+  # calculate IP weights
+  # 1. unstabilized
+  unstab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', unstab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="first",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  unstab_IP_weights=eval(parse(text=unstab_ipwtm_function))
+  
+  # 2. basic stabilized
+  basic_stab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', basic_stab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="all",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  basic_stab_IP_weights=eval(parse(text=basic_stab_ipwtm_function))
+  
+  # 3. adjusted stabilized by time-invariant covariates
+  adjusted_stab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', adjusted_stab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="all",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  adjusted_stab_IP_weights=eval(parse(text=adjusted_stab_ipwtm_function))
+  
+  # export
+  Out=c()
+  Out$unstab_IP_weights=unstab_IP_weights
+  Out$basic_stab_IP_weights=basic_stab_IP_weights
+  Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
+  
+  return(Out)
+}
+
+
+#**********************
 # IP_Weights_Calculator
 #**********************
 # Example
 #********
-# # (source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
 # #set seed to replicate results
 # set.seed(12345)
 # 
@@ -641,392 +900,511 @@ Marginal_Effect_2=function(Model_Fit,
 #        family=gaussian("identity"),
 #        corstr="ar1",
 #        weights=iptw2)
-IP_Weights_Calculator=function(Exposure,
-                               Effect_Modifiers=NULL, # usually time-invariant
-                               Covariates, # usually time-varying
-                               Censoring_Var=NULL,
-                               which.family, # distribution of Exposure (currently only binomial with logit link)
-                               # Timevar, # this is equivalent to timevar in ipwtm, but not applicable yet
-                               ID_Var,
-                               # Type, # currently, the algorithm runs as Type="all
-                               Data,
-                               Stabilized=TRUE,
-                               Effect_Modification=TRUE){
-  #*****
-  # Note
-  #*****
-  # Effect_Modification=TRUE allows the weights to take into account modifiers when calculating the numerator
-  # Whether Effect_Modification is TRUE, specify Effect_Modifiers that are considered a part of covariates that go into the denominator
-  
-  # Exposure="qsmk"
-  # Effect_Modifiers=c("as.factor(sex)")
-  # Covariates=c("as.factor(race)",
-  #                     "age",
-  #                     "I(age^2)",
-  #                     "as.factor(education)",
-  #                     "smokeintensity",
-  #                     "I(smokeintensity^2)",
-  #                     "smokeyrs",
-  #                     "I(smokeyrs^2)",
-  #                     "as.factor(exercise)",
-  #                     "as.factor(active)",
-  #                     "wt71",
-  #                     "I(wt71^2)")
-  # Censoring_Var="cens"
-  # # Censoring_Var=NULL
-  # which.family="binomial"
-  # # Timevar="Time"
-  # ID_Var="seqn"
-  # # Type="all"
-  # Data=nhefs
-  # Stabilized=TRUE
-  # Effect_Modification=TRUE
-  
-  # check out packages
-  lapply(c("data.table", "magrittr", "dplyr"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  # Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
-  # Data=Data[Non_Missing_Outcome_Obs, ]
-  Origin_N_Rows=nrow(Data)
-  
-  # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
-  Data[, ID_Var]=as.factor(Data[, ID_Var])
-  
-  # as data table
-  Data=as.data.table(Data)
-  
-  if(Stabilized==FALSE){
-    #*************
-    #
-    # unstabilized
-    #
-    #*****************
-    # treatment weight
-    #*****************
-    # denominator
-    unstabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
-                                                    paste0(Effect_Modifiers, collapse="+"),
-                                                    "+",
-                                                    paste0(Covariates, collapse="+")))
-    
-    unstabilized_trt_dnom_fit=glm(unstabilized_trt_dnom_fullmod, 
-                                  family=eval(parse(text=which.family)),
-                                  data=Data)
-    
-    unstab.pd.qsmk=predict(unstabilized_trt_dnom_fit, type = "response")
-    
-    #**********
-    # numerator
-    unstab.pn.qsmk=rep(1, nrow(Data))
-    
-    #*********************************
-    # unstabilized IP treatment weight
-    usw_trt_weights=ifelse(Data[[Exposure]]==0,
-                           unstab.pn.qsmk/(1-unstab.pd.qsmk),
-                           unstab.pn.qsmk/unstab.pd.qsmk)
-    
-    #*****************
-    # censoring weight
-    #*****************
-    if(!is.null(Censoring_Var)){
-      #************
-      # denominator
-      unstabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
-                                                         paste0(Exposure),
-                                                         "+",
-                                                         paste0(Effect_Modifiers, collapse="+"),
-                                                         "+",
-                                                         paste0(Covariates, collapse="+")))
-      unstabilized_censor_dnom_fit=glm(unstabilized_censor_dnom_fullmod, 
-                                       family="binomial", # censoring variable is always binary
-                                       data=Data)
-      
-      unstab.pd.cens=1-predict(unstabilized_censor_dnom_fit, type = "response")
-      
-      #**********
-      # numerator
-      unstab.pn.cens=rep(1, nrow(Data))
-      
-      #*********************************
-      # unstabilized IP censoring weight
-      # Unstabilized IP censoring weights for the censored individuals are 0.
-      # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
-      usw_censor_weights=ifelse(Data[[Censoring_Var]]==1,
-                                0,
-                                unstab.pn.cens/unstab.pd.cens)
-    }else{
-      usw_censor_weights=rep(1, nrow(Data))
-    }
-    
-    #*****************************
-    # final unstabilized IP weight
-    #*****************************
-    usw_IP_weights=usw_censor_weights*usw_trt_weights
-    
-    # compute Time_Varying_Treatment_Weights
-    Data[, Point_Treatment_Weights:=usw_IP_weights]
-    Data %<>% 
-      group_by(eval(parse(text=ID_Var))) %>% 
-      mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
-      ungroup() %>% 
-      as.data.table
-  }else{
-    #***********
-    #
-    # stabilized
-    #
-    #*****************
-    # treatment weight
-    #*****************
-    # denominator
-    stabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
-                                                  paste0(Effect_Modifiers, collapse="+"),
-                                                  "+",
-                                                  paste0(Covariates, collapse="+")))
-    
-    stabilized_trt_dnom_fit=glm(stabilized_trt_dnom_fullmod, 
-                                family=eval(parse(text=which.family)),
-                                data=Data)
-    
-    stab.pd.qsmk=predict(stabilized_trt_dnom_fit, type = "response")
-    
-    #**********
-    # numerator
-    if(Effect_Modification==TRUE){
-      stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~",
-                                                   paste0(Effect_Modifiers, collapse="+")))
-    }else{
-      stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~1"))
-    }
-    stabilized_trt_num_fit=glm(stabilized_trt_num_fullmod, 
-                               family=eval(parse(text=which.family)),
-                               data=Data)
-    
-    stab.pn.qsmk=predict(stabilized_trt_num_fit, type = "response")
-    
-    #*******************************
-    # stabilized IP treatment weight
-    sw_trt_weights=ifelse(Data[[Exposure]]==0,
-                          (1-stab.pn.qsmk)/(1-stab.pd.qsmk),
-                          stab.pn.qsmk/stab.pd.qsmk)
-    
-    #*****************
-    # censoring weight
-    #*****************
-    if(!is.null(Censoring_Var)){
-      #************
-      # denominator
-      stabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
-                                                       paste0(Exposure),
-                                                       "+",
-                                                       paste0(Effect_Modifiers, collapse="+"),
-                                                       "+",
-                                                       paste0(Covariates, collapse="+")))
-      stabilized_censor_dnom_fit=glm(stabilized_censor_dnom_fullmod, 
-                                     family="binomial", # censoring variable is always binary
-                                     data=Data)
-      
-      stab.pd.cens=1-predict(stabilized_censor_dnom_fit, type = "response")
-      
-      #**********
-      # numerator
-      if(Effect_Modification==TRUE){
-        stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
-                                                        paste0(Exposure),
-                                                        "+",
-                                                        paste0(Effect_Modifiers, collapse="+")))
-      }else{
-        stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
-                                                        paste0(Exposure)))
-      }
-      
-      stabilized_censor_num_fit=glm(stabilized_censor_num_fullmod, 
-                                    family="binomial", # censoring variable is always binary
-                                    data=Data)
-      
-      stab.pn.cens=1-predict(stabilized_censor_num_fit, type = "response")
-      
-      #*******************************
-      # stabilized IP censoring weight
-      # Stabilized IP censoring weights are not 0 regardless of censoring of individuals.
-      # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
-      sw_censor_weights=stab.pn.cens/stab.pd.cens
-    }else{
-      sw_censor_weights=rep(1, nrow(Data))
-    }
-    
-    #***************************
-    # final stabilized IP weight
-    #***************************
-    sw_IP_weights=sw_censor_weights*sw_trt_weights
-    
-    # compute Time_Varying_Treatment_Weights
-    # The general form of the (un)stabilized PI weights can be found on p.263 (Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
-    Data[, Point_Treatment_Weights:=sw_IP_weights]
-    Data %<>% 
-      group_by(eval(parse(text=ID_Var))) %>% 
-      mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
-      ungroup() %>% 
-      as.data.table
-  }
-  
-  # export weights
-  if(Stabilized==FALSE){
-    Data[, `:=`(Index=.I,
-                censor_weights=usw_censor_weights,
-                trt_weights=usw_trt_weights,
-                Point_Treatment_IP_weights=usw_IP_weights,
-                Time_Varying_Treatment_IP_weights=Data$Time_Varying_Treatment_Weights)]
-  }else{
-    Data[, `:=`(Index=.I,
-                censor_weights=sw_censor_weights,
-                trt_weights=sw_trt_weights,
-                Point_Treatment_IP_weights=sw_IP_weights,
-                Time_Varying_Treatment_IP_weights=Time_Varying_Treatment_Weights)]
-    
-  }
-  return(Data[, .SD, .SDcols=c(ID_Var,
-                               "Index",
-                               "censor_weights",
-                               "trt_weights",
-                               "Point_Treatment_IP_weights",
-                               "Time_Varying_Treatment_IP_weights")])
-}
+# IP_Weights_Calculator=function(Exposure,
+#                                Effect_Modifiers=NULL, # usually time-invariant
+#                                Covariates, # usually time-varying
+#                                Censoring_Var=NULL,
+#                                which.family, # distribution of Exposure (currently only binomial with logit link)
+#                                # Timevar, # this is equivalent to timevar in ipwtm, but not applicable yet
+#                                ID_Var,
+#                                # Type, # currently, the algorithm runs as Type="all
+#                                Data,
+#                                Stabilized=TRUE,
+#                                Effect_Modification=TRUE){
+#   #*****
+#   # Note
+#   #*****
+#   # Effect_Modification=TRUE allows the weights to take into account modifiers when calculating the numerator
+#   # Whether Effect_Modification is TRUE, specify Effect_Modifiers that are considered a part of covariates that go into the denominator
+#   
+#   # Exposure="PRIMARY_CARE_Bi"
+#   # Effect_Modifiers=Time_Invariant_Covs
+#   # Covariates=Time_Varying_Covs
+#   # Censoring_Var=Censor_Var
+#   # # Censoring_Var=NULL
+#   # which.family="binomial"
+#   # # Timevar="Time"
+#   # ID_Var="CODE"
+#   # # Type="all"
+#   # Data=Data_to_use_ER_L6M
+#   # Stabilized=TRUE
+#   # Effect_Modification=TRUE
+#   
+#   # check out packages
+#   lapply(c("data.table", "magrittr", "dplyr"), checkpackages)
+#   
+#   # as data frame
+#   Data=as.data.frame(Data)
+#   # Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+#   # Data=Data[Non_Missing_Outcome_Obs, ]
+#   Origin_N_Rows=nrow(Data)
+#   
+#   # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
+#   Data[, ID_Var]=as.factor(Data[, ID_Var])
+#   
+#   # as data table
+#   Data=as.data.table(Data)
+#   
+#   if(Stabilized==FALSE){
+#     #*************
+#     #
+#     # unstabilized
+#     #
+#     #*****************
+#     # treatment weight
+#     #*****************
+#     # denominator
+#     unstabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
+#                                                     paste0(Effect_Modifiers, collapse="+"),
+#                                                     "+",
+#                                                     paste0(Covariates, collapse="+")))
+#     
+#     unstabilized_trt_dnom_fit=glm(unstabilized_trt_dnom_fullmod, 
+#                                   family=eval(parse(text=which.family)),
+#                                   data=Data)
+#     
+#     unstab.pd.qsmk=predict(unstabilized_trt_dnom_fit, type = "response")
+#     
+#     #**********
+#     # numerator
+#     unstab.pn.qsmk=rep(1, nrow(Data))
+#     
+#     #*********************************
+#     # unstabilized IP treatment weight
+#     usw_trt_weights=ifelse(Data[[Exposure]]==0,
+#                            unstab.pn.qsmk/(1-unstab.pd.qsmk),
+#                            unstab.pn.qsmk/unstab.pd.qsmk)
+#     
+#     #*****************
+#     # censoring weight
+#     #*****************
+#     if(!is.null(Censoring_Var)){
+#       #************
+#       # denominator
+#       unstabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                          paste0(Exposure),
+#                                                          "+",
+#                                                          paste0(Effect_Modifiers, collapse="+"),
+#                                                          "+",
+#                                                          paste0(Covariates, collapse="+")))
+#       unstabilized_censor_dnom_fit=glm(unstabilized_censor_dnom_fullmod, 
+#                                        family="binomial", # censoring variable is always binary
+#                                        data=Data)
+#       
+#       unstab.pd.cens=1-predict(unstabilized_censor_dnom_fit, type = "response")
+#       
+#       #**********
+#       # numerator
+#       unstab.pn.cens=rep(1, nrow(Data))
+#       
+#       #*********************************
+#       # unstabilized IP censoring weight
+#       # Unstabilized IP censoring weights for the censored individuals are 0.
+#       # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#       usw_censor_weights=ifelse(Data[[Censoring_Var]]==1,
+#                                 0,
+#                                 unstab.pn.cens/unstab.pd.cens)
+#     }else{
+#       usw_censor_weights=rep(1, nrow(Data))
+#     }
+#     
+#     #*****************************
+#     # final unstabilized IP weight
+#     #*****************************
+#     usw_IP_weights=usw_censor_weights*usw_trt_weights
+#     
+#     # compute Time_Varying_Treatment_Weights
+#     Data[, Point_Treatment_Weights:=usw_IP_weights]
+#     Data %<>% 
+#       group_by(eval(parse(text=ID_Var))) %>% 
+#       mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
+#       ungroup() %>% 
+#       as.data.table
+#   }else{
+#     #***********
+#     #
+#     # stabilized
+#     #
+#     #*****************
+#     # treatment weight
+#     #*****************
+#     # denominator
+#     stabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
+#                                                   paste0(Effect_Modifiers, collapse="+"),
+#                                                   "+",
+#                                                   paste0(Covariates, collapse="+")))
+#     
+#     stabilized_trt_dnom_fit=glm(stabilized_trt_dnom_fullmod, 
+#                                 family=eval(parse(text=which.family)),
+#                                 data=Data)
+#     
+#     stab.pd.qsmk=predict(stabilized_trt_dnom_fit, type = "response")
+#     
+#     #**********
+#     # numerator
+#     if(Effect_Modification==TRUE){
+#       stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~",
+#                                                    paste0(Effect_Modifiers, collapse="+")))
+#     }else{
+#       stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~1"))
+#     }
+#     stabilized_trt_num_fit=glm(stabilized_trt_num_fullmod, 
+#                                family=eval(parse(text=which.family)),
+#                                data=Data)
+#     
+#     stab.pn.qsmk=predict(stabilized_trt_num_fit, type = "response")
+#     
+#     #*******************************
+#     # stabilized IP treatment weight
+#     sw_trt_weights=ifelse(Data[[Exposure]]==0,
+#                           (1-stab.pn.qsmk)/(1-stab.pd.qsmk),
+#                           stab.pn.qsmk/stab.pd.qsmk)
+#     
+#     #*****************
+#     # censoring weight
+#     #*****************
+#     if(!is.null(Censoring_Var)){
+#       #************
+#       # denominator
+#       stabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                        paste0(Exposure),
+#                                                        "+",
+#                                                        paste0(Effect_Modifiers, collapse="+"),
+#                                                        "+",
+#                                                        paste0(Covariates, collapse="+")))
+#       stabilized_censor_dnom_fit=glm(stabilized_censor_dnom_fullmod, 
+#                                      family="binomial", # censoring variable is always binary
+#                                      data=Data)
+#       
+#       stab.pd.cens=1-predict(stabilized_censor_dnom_fit, type = "response")
+#       
+#       #**********
+#       # numerator
+#       if(Effect_Modification==TRUE){
+#         stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                         paste0(Exposure),
+#                                                         "+",
+#                                                         paste0(Effect_Modifiers, collapse="+")))
+#       }else{
+#         stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                         paste0(Exposure)))
+#       }
+#       
+#       stabilized_censor_num_fit=glm(stabilized_censor_num_fullmod, 
+#                                     family="binomial", # censoring variable is always binary
+#                                     data=Data)
+#       
+#       stab.pn.cens=1-predict(stabilized_censor_num_fit, type = "response")
+#       
+#       #*******************************
+#       # stabilized IP censoring weight
+#       # Stabilized IP censoring weights are not 0 regardless of censoring of individuals.
+#       # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#       sw_censor_weights=stab.pn.cens/stab.pd.cens
+#     }else{
+#       sw_censor_weights=rep(1, nrow(Data))
+#     }
+#     
+#     #***************************
+#     # final stabilized IP weight
+#     #***************************
+#     sw_IP_weights=sw_censor_weights*sw_trt_weights
+#     
+#     # compute Time_Varying_Treatment_Weights
+#     # The general form of the (un)stabilized PI weights can be found on p.263 (Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#     Data[, Point_Treatment_Weights:=sw_IP_weights]
+#     Data %<>% 
+#       group_by(eval(parse(text=ID_Var))) %>% 
+#       mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
+#       ungroup() %>% 
+#       as.data.table
+#   }
+#   
+#   # export weights
+#   if(Stabilized==FALSE){
+#     Data[, `:=`(Index=.I,
+#                 censor_weights=usw_censor_weights,
+#                 trt_weights=usw_trt_weights,
+#                 Point_Treatment_IP_weights=usw_IP_weights,
+#                 Time_Varying_Treatment_IP_weights=Data$Time_Varying_Treatment_Weights)]
+#   }else{
+#     Data[, `:=`(Index=.I,
+#                 censor_weights=sw_censor_weights,
+#                 trt_weights=sw_trt_weights,
+#                 Point_Treatment_IP_weights=sw_IP_weights,
+#                 Time_Varying_Treatment_IP_weights=Time_Varying_Treatment_Weights)]
+#     
+#   }
+#   return(Data[, .SD, .SDcols=c(ID_Var,
+#                                "Index",
+#                                "censor_weights",
+#                                "trt_weights",
+#                                "Point_Treatment_IP_weights",
+#                                "Time_Varying_Treatment_IP_weights")])
+# }
 
-# Keep this function just in case
-IPW=function(Exposure,
-             Time_Invariant_Covs,
-             Time_Varying_Covs,
-             which.family,
-             Link=NULL,
-             Tstart=NULL,
-             Timevar=NULL,
-             ID_Var,
-             Type="first",
-             Data){
-  # check out packages
-  lapply(c("data.table",
-           "ipw",
-            "dplyr"),
-         checkpackages)
-  
-  # #
-  # Exposure="PRIMARY_CARE_Bi"
-  # Time_Invariant_Covs="ETHNIC_WHITE"
-  # Time_Varying_Covs="AGE"
-  # # Censoring_Var="Censor"
-  # which.family="survival"
-  # Link=NULL
-  # # Link="logit" # for family="survival" this argument is ignored
-  # Tstart="START_TIME"
-  # Timevar="STOP_TIME"
-  # ID_Var="CODE"
-  # Type="first"
-  # Data="Data_to_use"
-  
-  # remove observations with missing data
-  Data_to_use_No_Missing=na.omit(eval(parse(text=Data)))
-  if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
-    print("missing data removed.")
-  }
-  
-  #*********************************
-  # unstabilized IP treatment weight
-  # define the function
-  Usw_num=NULL
-  Usw_den=paste0("~",
-                 paste0(Time_Invariant_Covs, collapse="+"),
-                 "+",
-                 paste0(Time_Varying_Covs, collapse="+"))
-  
-  unstab.ipwtm_function=paste0(
-    'ipwtm(exposure=', Exposure,',
-           family="', which.family, '",
-           link="', Link, '",
-           tstart=', Tstart,',
-           timevar=', Timevar, ',
-           numerator=', Usw_num,',
-           denominator=', Usw_den, ',
-           id=', ID_Var, ',
-           type="', Type, '",
-           data=Data_to_use_No_Missing)')
-  
-  # ipwtm_function=paste0(
-  #   'ipwtm(exposure=PRIMARY_CARE_Bi,
-  #          family="survival",
-  #          link=NULL,
-  #          tstart=START_TIME,
-  #          timevar=STOP_TIME,
-  #          numerator=NULL,
-  #          denominator=~ETHNIC_WHITE,
-  #          id=CODE,
-  #          type="first",
-  #          data=Data_to_use_No_Missing)')
-  
-  # obtain unstabilized weight
-  unstab.IP.weights=eval(parse(text=unstab.ipwtm_function))
-  
-  
-  #*******************************
-  # stabilized IP treatment weight
-  # define the function
-  Sw_num=paste0("~",
-                paste0(Time_Invariant_Covs, collapse="+"))
-  Sw_den=paste0("~",
-                paste0(Time_Invariant_Covs, collapse="+"),
-                "+",
-                paste0(Time_Varying_Covs, collapse="+"))
-  
-  stab.ipwtm_function=paste0(
-    'ipwtm(exposure=', Exposure,',
-           family="', which.family, '",
-           link="', Link, '",
-           tstart=', Tstart,',
-           timevar=', Timevar, ',
-           numerator=', Sw_num,',
-           denominator=', Sw_den, ',
-           id=', ID_Var, ',
-           type="', Type, '",
-           data=Data_to_use_No_Missing)')
-  
-  # obtain stabilized weight
-  stab.IP.weights=eval(parse(text=stab.ipwtm_function))
-  
-  
-  #*************************************
-  # basic stabilized IP treatment weight
-  # define the function
-  Bsw_num=paste0("~ 1")
-  Bsw_den=paste0("~",
-                 paste0(Time_Invariant_Covs, collapse="+"),
-                 "+",
-                 paste0(Time_Varying_Covs, collapse="+"))
-  
-  basic.stab.ipwtm_function=paste0(
-    'ipwtm(exposure=', Exposure,',
-           family="', which.family, '",
-           link="', Link, '",
-           tstart=', Tstart,',
-           timevar=', Timevar, ',
-           numerator=', Bsw_num,',
-           denominator=', Bsw_den, ',
-           id=', ID_Var, ',
-           type="', Type, '",
-           data=Data_to_use_No_Missing)')
-  
-  # obtain stabilized weight
-  basic.stab.IP.weights=eval(parse(text=basic.stab.ipwtm_function))
-  
-  # export
-  Out=c()
-  Out$unstab.IP.weights=unstab.IP.weights
-  Out$stab.IP.weights=stab.IP.weights
-  Out$basic.stab.IP.weights=basic.stab.IP.weights
-  
-  return(Out)
-}
+# # Keep this function just in case
+# IPW=function(Exposure,
+#              Time_Invariant_Covs,
+#              Time_Varying_Covs,
+#              which.family,
+#              Link=NULL,
+#              Tstart=NULL,
+#              Timevar=NULL,
+#              ID_Var,
+#              Type="first",
+#              Data){
+#   # check out packages
+#   lapply(c("data.table",
+#            "ipw",
+#            "dplyr"),
+#          checkpackages)
+#   
+#   # #
+#   # Exposure="PRIMARY_CARE_Bi"
+#   # Time_Invariant_Covs="ETHNIC_WHITE"
+#   # Time_Varying_Covs="AGE"
+#   # # Censoring_Var="Censor"
+#   # which.family="survival"
+#   # Link=NULL
+#   # # Link="logit" # for family="survival" this argument is ignored
+#   # Tstart="START_TIME"
+#   # Timevar="STOP_TIME"
+#   # ID_Var="CODE"
+#   # Type="first"
+#   # Data="Data_to_use"
+#   
+#   # remove observations with missing data
+#   Data_to_use_No_Missing=na.omit(eval(parse(text=Data)))
+#   if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+#     print("missing data removed.")
+#   }
+#   
+#   #*********************************
+#   # unstabilized IP treatment weight
+#   # define the function
+#   Usw_num=NULL
+#   Usw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   unstab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Usw_num,',
+#            denominator=', Usw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # ipwtm_function=paste0(
+#   #   'ipwtm(exposure=PRIMARY_CARE_Bi,
+#   #          family="survival",
+#   #          link=NULL,
+#   #          tstart=START_TIME,
+#   #          timevar=STOP_TIME,
+#   #          numerator=NULL,
+#   #          denominator=~ETHNIC_WHITE,
+#   #          id=CODE,
+#   #          type="first",
+#   #          data=Data_to_use_No_Missing)')
+#   
+#   # obtain unstabilized weight
+#   unstab_IP_weights=eval(parse(text=unstab.ipwtm_function))
+#   
+#   
+#   #*******************************
+#   # stabilized IP treatment weight
+#   # define the function
+#   Sw_num=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"))
+#   Sw_den=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"),
+#                 "+",
+#                 paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Sw_num,',
+#            denominator=', Sw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   adjusted_stab_IP_weights=eval(parse(text=stab.ipwtm_function))
+#   
+#   
+#   #*************************************
+#   # basic stabilized IP treatment weight
+#   # define the function
+#   Bsw_num=paste0("~ 1")
+#   Bsw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   basic.stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Bsw_num,',
+#            denominator=', Bsw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   basic_stab_IP_weights=eval(parse(text=basic.stab.ipwtm_function))
+#   
+#   # export
+#   Out=c()
+#   Out$unstab_IP_weights=unstab_IP_weights
+#   Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
+#   Out$basic_stab_IP_weights=basic_stab_IP_weights
+#   
+#   return(Out)
+# }
+
+# # Keep this function just in case
+# IPW_2=function(Exposure,
+#                Time_Invariant_Covs,
+#                Time_Varying_Covs,
+#                which.family="binomial",
+#                Link="logit",
+#                ID_Var,
+#                Data){
+#   # check out packages
+#   lapply(c("data.table",
+#            "ipw",
+#            "dplyr"),
+#          checkpackages)
+#   
+#   #
+#   Exposure="PRIMARY_CARE_Bi"
+#   Time_Invariant_Covs="ETHNIC_WHITE"
+#   Time_Varying_Covs="AGE"
+#   # Censoring_Var="Censor"
+#   which.family="survival"
+#   Link=NULL
+#   # Link="logit" # for family="survival" this argument is ignored
+#   Tstart="START_TIME"
+#   Timevar="STOP_TIME"
+#   ID_Var="CODE"
+#   Type="first"
+#   Data="Data_to_use"
+#   
+#   # remove observations with missing data
+#   Data_to_use_No_Missing=na.omit(eval(parse(text=Data)))
+#   if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+#     print("missing data removed.")
+#   }
+#   
+#   #*********************************
+#   # unstabilized IP treatment weight
+#   # define the function
+#   Usw_num=NULL
+#   Usw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   unstab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Usw_num,',
+#            denominator=', Usw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # ipwtm_function=paste0(
+#   #   'ipwtm(exposure=PRIMARY_CARE_Bi,
+#   #          family="survival",
+#   #          link=NULL,
+#   #          tstart=START_TIME,
+#   #          timevar=STOP_TIME,
+#   #          numerator=NULL,
+#   #          denominator=~ETHNIC_WHITE,
+#   #          id=CODE,
+#   #          type="first",
+#   #          data=Data_to_use_No_Missing)')
+#   
+#   # obtain unstabilized weight
+#   unstab_IP_weights=eval(parse(text=unstab.ipwtm_function))
+#   
+#   
+#   #*******************************
+#   # stabilized IP treatment weight
+#   # define the function
+#   Sw_num=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"))
+#   Sw_den=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"),
+#                 "+",
+#                 paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Sw_num,',
+#            denominator=', Sw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   adjusted_stab_IP_weights=eval(parse(text=stab.ipwtm_function))
+#   
+#   
+#   #*************************************
+#   # basic stabilized IP treatment weight
+#   # define the function
+#   Bsw_num=paste0("~ 1")
+#   Bsw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   basic.stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Bsw_num,',
+#            denominator=', Bsw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   basic_stab_IP_weights=eval(parse(text=basic.stab.ipwtm_function))
+#   
+#   # export
+#   Out=c()
+#   Out$unstab_IP_weights=unstab_IP_weights
+#   Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
+#   Out$basic_stab_IP_weights=basic_stab_IP_weights
+#   
+#   return(Out)
+# }
 
 
 #*************************************************
@@ -6891,7 +7269,7 @@ Contingency_Table_Generator=function(Data,
 # checkpackages)
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
-# Data_to_use=respiratory
+# Data_to_use=as.data.table(respiratory)
 # 
 # # randomly generate NAs in some variables
 # Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
@@ -7061,6 +7439,494 @@ Contingency_Table_Generator_Conti_X=function(Data,
 }
 
 
+#*************************************
+#
+# Weighted_Contingency_Table_Generator
+#
+#*************************************
+# lapply(c("dplyr",
+#          "data.table",
+#          
+#          "lme4",
+#          "epitools"
+# ),
+# checkpackages)
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 30)]=NA
+# Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
+# Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=NA
+# #Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=2
+# 
+# # Work on predictor with more than 2 levels
+# Data_to_use=as.data.table(Data_to_use)
+# Data_to_use[sample(nrow(Data_to_use), 50), sex:="N"]
+# 
+# Data_to_use[age<20, age_cat:="<20"]
+# Data_to_use[20<=age & age<30, age_cat:="20<=age<30"]
+# Data_to_use[30<=age & age<40, age_cat:="30<=age<40"]
+# Data_to_use[40<=age & age<50, age_cat:="40<=age<50"]
+# Data_to_use[50<=age & age<60, age_cat:="50<=age<60"]
+# Data_to_use[60<=age, age_cat:="60<=age"]
+# Data_to_use[, age_cat:=as.factor(age_cat)]
+# 
+# # Data at baseline
+# BL_Data=Data_to_use %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# 
+# # CT_1 using Contingency_Table_Generator()
+# CT_1=Contingency_Table_Generator(Data=na.omit(Data_to_use),
+#                                  Row_Var="sex",
+#                                  Col_Var="outcome",
+#                                  Ref_of_Row_Var="F",
+#                                  Missing="Include",
+#                                  Ind_P_Value=T)
+# # A table made from CT_2 is identical to CT_1 above given Weight_Var=1 and no missing data.
+# CT_2=Weighted_Contingency_Table_Generator(Data=na.omit(Data_to_use),
+#                                           Row_Var="sex",
+#                                           Col_Var="outcome",
+#                                           Weight_Var=1)
+# # for now, Treat should be numeric
+# Data_to_use[treat=="A", Treat:=1]
+# Data_to_use[treat=="P", Treat:=0]
+# 
+# # estimate inverse probability (IP) weights
+# # distinguish time-invariant and -variant covariates
+# Time_Invariant_Covs=c("baseline", "center")
+# Time_Varying_Covs=c("sex", "age")
+# Data_to_use=na.omit(Data_to_use)
+# w=IPW(Exposure="Treat",
+#       Time_Invariant_Covs=Time_Invariant_Covs,
+#       Time_Varying_Covs=Time_Varying_Covs,
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="Data_to_use")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# Data_to_use[, Weights:=w$adjusted_stab_IP_weights$ipw.weights]
+# # apply weights
+# CT_3=Weighted_Contingency_Table_Generator(Data=na.omit(Data_to_use),
+#                                           Row_Var="sex",
+#                                           Col_Var="outcome",
+#                                           Weight_Var="Weights")
+Weighted_Contingency_Table_Generator=function(Data,
+                                              Row_Var,
+                                              Col_Var,
+                                              # Missing,
+                                              Weight_Var){
+  # check packages
+  lapply(c("data.table",
+           "tableone",
+           "jstable",
+           
+           "survey",
+           "stringr", # for str_replace()
+           
+           "smd", # calculate smd
+           "MBESS"), # for smd confidence interval
+         checkpackages)
+  
+  # Data to data.frame
+  Data=as.data.frame(Data)
+  
+  # apply weights to data
+  weighteddata=svydesign(ids=~1,
+                         data=Data,
+                         weights=formula(paste0("~", Weight_Var)))
+  
+  #***********************
+  # weighted table overall
+  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
+                                          data=weighteddata,
+                                          test=TRUE,
+                                          smd=TRUE,
+                                          factorVars=Row_Var)
+  weightedtable_overall_result=print(weightedtable_overall,
+                                     showAllLevels=TRUE,
+                                     formatOptions=list(big.mark=","),
+                                     noSpaces=TRUE,
+                                     printToggle=FALSE)
+  
+  # # detailed information including missingness (this is for continuous)
+  # summary(weightedtable_overall)
+  # 
+  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
+  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+  
+  #*************************************
+  # weighted table stratified by Col_Var
+  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
+                                             strata=Col_Var,
+                                             data=weighteddata,
+                                             test=TRUE,
+                                             smd=TRUE,
+                                             factorVars=Row_Var)
+  weightedtable_stratified_result=print(weightedtable_stratified,
+                                        showAllLevels=TRUE,
+                                        formatOptions=list(big.mark=","),
+                                        noSpaces=TRUE,
+                                        smd=TRUE,
+                                        printToggle=FALSE)
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # smd.output=smd::smd(x=Data[, Row_Var],
+  #                     g=Data[, Col_Var],
+  #                     w=Data[, Weight_Var],
+  #                     std.error=TRUE)
+  # 
+  # smd.conf=c()
+  # for(i in 1:length(smd.output$estimate)){
+  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
+  #                        n.1=table(Data[[Col_Var]])[1],
+  #                        n.2=table(Data[[Col_Var]])[2])
+  #   point.smd=ci.smd.output$smd
+  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
+  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
+  #   smd.conf[i]=c(paste0(round(point.smd, 2),
+  #                        " (",
+  #                        round(lower.smd, 2),
+  #                        " - ",
+  #                        round(upper.smd, 2),
+  #                        ")"))
+  # }
+  
+  # check if Row_Var is factor or numeric
+  Check_Factor=ifelse(is.null(levels(Data[, Row_Var])), 0, 1)
+  if(Check_Factor==1){
+    X3_Text=as.character(levels(Data[, Row_Var]))
+  }else{
+    stop("Row_Var is not a factor. Please double-check.")
+  }
+  
+  # Col_Var levels
+  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
+  if(Check_Factor==1){
+    X4_Text=as.character(levels(Data[, Col_Var]))
+  }else{
+    X4_Text=sort(unique(Data[, Col_Var]))
+  }
+  
+  # Out
+  Out=matrix(NA, nrow=length(X3_Text), ncol=5+length(X4_Text))
+  Out[, 1]=Row_Var
+  Out[, 2]=weightedtable_stratified_result[-1, "level"]
+  for(i in 1:length(X4_Text)){
+    Out[, i+2]=str_replace(weightedtable_stratified_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_result))], "[)]", "%)")
+  }
+  Out[, i+3]=str_replace(weightedtable_overall_result[-1, "Overall"], "[)]", "%)")
+  
+  # The hypothesis test functions used by default are chisq.test() for categorical variables (with continuity correction) and oneway.test() for continous variables (with equal variance assumption, i.e., regular ANOVA).
+  # Two-group ANOVA is equivalent of t-test.
+  # You may be worried about the nonnormal variables and small cell counts in the stage variable. In such a situation, you can use the nonnormal argument like before as well as the exact (test) argument in the print() method.
+  # Now kruskal.test() is used for the nonnormal continous variables and fisher.test() is used for categorical variables specified in the exact argument. kruskal.test() is equivalent to wilcox.test() in the two-group case.
+  Out[, i+4]=weightedtable_stratified_result[-1, "p"] # P-value (Chi-square)
+  # Out[, i+5]=c("", smd.conf)
+  Out[, i+5]=weightedtable_stratified_result[-1, "SMD"]
+  
+  colnames(Out)=c("Variable",
+                  "Value",
+                  paste0(Col_Var,
+                         "=",
+                         X4_Text,
+                         " (n=",
+                         round(as.numeric(weightedtable_stratified_result["n", c(2:(1+length(X4_Text)))]), 1),
+                         ")"),
+                  paste0("Total (n=",
+                         round(as.numeric(weightedtable_overall_result["n", 2]), 1),
+                         ")"),
+                  "P-value (Chi-square)", # default : chisq.test()
+                  # fisher.test() is not available 
+                  # "SMD (95% CI)",
+                  "SMD") # t-test
+  
+  return(as.data.table(Out))
+}
+
+
+#*********************************************
+#
+# Weighted_Contingency_Table_Generator_Conti_X
+#
+#*********************************************
+# Example
+#********
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools",
+#          "doBy" # for esticon function
+# ),
+# checkpackages)
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=as.data.table(respiratory)
+# 
+# # randomly generate NAs in some variables
+# Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
+# Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=NA
+# #Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]="2"
+# 
+# # Data at baseline
+# BL_Data=Data_to_use %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# #
+# Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                                     Row_Var="age",
+#                                     Col_Var="outcome",
+#                                     Missing="Not_Include")
+# Weighted_Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                                              Row_Var="age",
+#                                              Col_Var="outcome",
+#                                              Weight_Var=1)
+# 
+# # for now, Treat should be numeric
+# Data_to_use[treat=="A", Treat:=1]
+# Data_to_use[treat=="P", Treat:=0]
+# 
+# # estimate inverse probability (IP) weights
+# # distinguish time-invariant and -variant covariates
+# Time_Invariant_Covs=c("baseline", "center")
+# Time_Varying_Covs=c("sex", "age")
+# Data_to_use=na.omit(Data_to_use)
+# w=IPW(Exposure="Treat",
+#       Time_Invariant_Covs=Time_Invariant_Covs,
+#       Time_Varying_Covs=Time_Varying_Covs,
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="Data_to_use")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# Data_to_use[, Weights:=w$adjusted_stab_IP_weights$ipw.weights]
+# # apply weights
+# Weighted_Contingency_Table_Generator_Conti_X(Data=na.omit(Data_to_use),
+#                                              Row_Var="age",
+#                                              Col_Var="outcome",
+#                                              Weight_Var="Weights")
+Weighted_Contingency_Table_Generator_Conti_X=function(Data,
+                                                      Row_Var,
+                                                      Col_Var,
+                                                      Weight_Var=1,
+                                                      Form=1){
+  # check packages
+  lapply(c("data.table",
+           "tableone",
+           "jstable",
+           
+           "survey",
+           
+           "smd", # calculate smd
+           "MBESS"), # for smd confidence interval
+         checkpackages)
+  
+  # Data to data.frame
+  Data=as.data.frame(Data)
+  
+  # apply weights to data
+  weighteddata=svydesign(ids=~1,
+                         data=Data,
+                         weights=formula(paste0("~", Weight_Var)))
+  
+  #***********************
+  # weighted table overall
+  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
+                                          data=weighteddata,
+                                          test=TRUE,
+                                          smd=TRUE)
+  weightedtable_overall_median_result=print(weightedtable_overall,
+                                            showAllLevels=TRUE,
+                                            nonnormal=Row_Var, # nonnormal
+                                            formatOptions=list(big.mark=","),
+                                            noSpaces=TRUE,
+                                            printToggle=FALSE)
+  weightedtable_overall_mean_result=print(weightedtable_overall,
+                                          showAllLevels=TRUE,
+                                          formatOptions=list(big.mark=","),
+                                          noSpaces=TRUE,
+                                          printToggle=FALSE)
+  
+  # # detailed information including missingness (this is for continuous)
+  # summary(weightedtable_overall)
+  # 
+  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
+  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+  
+  #*************************************
+  # weighted table stratified by Col_Var
+  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
+                                             strata=Col_Var,
+                                             data=weighteddata,
+                                             test=TRUE,
+                                             smd=TRUE)
+  weightedtable_stratified_median_result=print(weightedtable_stratified,
+                                               showAllLevels=TRUE,
+                                               nonnormal=Row_Var, # nonnormal
+                                               formatOptions=list(big.mark=","),
+                                               noSpaces=TRUE,
+                                               smd=TRUE,
+                                               printToggle=FALSE)
+  weightedtable_stratified_mean_result=print(weightedtable_stratified,
+                                             showAllLevels=TRUE,
+                                             formatOptions=list(big.mark=","),
+                                             noSpaces=TRUE,
+                                             smd=TRUE,
+                                             printToggle=FALSE)
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # smd.output=smd::smd(x=Data[, Row_Var],
+  #                     g=Data[, Col_Var],
+  #                     w=Data[, Weight_Var],
+  #                     std.error=TRUE)
+  # 
+  # for(i in 1:length(smd.output$estimate)){
+  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
+  #                        n.1=table(Data[[Col_Var]])[1],
+  #                        n.2=table(Data[[Col_Var]])[2])
+  #   point.smd=ci.smd.output$smd
+  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
+  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
+  #   smd.conf[i]=c(paste0(round(point.smd, 2),
+  #                        " (",
+  #                        round(lower.smd, 2),
+  #                        " - ",
+  #                        round(upper.smd, 2),
+  #                        ")"))
+  # }
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # point.smd=smd::smd(x=Data[, Col_Var],
+  #                    g=Data[, Row_Var],
+  #                    w=Data[, Weight_Var],
+  #                    std.error=TRUE)
+  # 
+  # smd.conf=ci.smd(smd=point.smd$estimate,
+  #                 n.1=table(Data[[Col_Var]])[1],
+  #                 n.2=table(Data[[Col_Var]])[2])
+  
+  # check if Row_Var is numeric
+  Num_Factor=is.numeric(Data[, Row_Var])
+  if(Num_Factor==1 & Form==1){
+    Out_Rows=7
+  }else if(Num_Factor==1 & Form==2){
+    Out_Rows=2
+  }else{
+    stop("Row_Var is not a numerical variable. Please double-check.")
+  }
+  
+  # Col_Var levels
+  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
+  if(Check_Factor==1){
+    X4_Text=as.character(levels(Data[, Col_Var]))
+  }else{
+    X4_Text=as.character(sort(unique(Data[, Col_Var])))
+  }
+  # p-value test
+  if(length(X4_Text)==2){
+    p_value_name="P-value (T-test)"
+  }else if(length(X4_Text)>2){
+    p_value_name="P-value (ANOVE)"
+  }
+  # Out
+  Out=matrix(NA, nrow=Out_Rows, ncol=6+length(X4_Text))
+  
+  if(Form==1){
+    Out[, 1]=Row_Var
+    Out[, 2]=c("Min", "Q1", "Median", "Mean", "SD", "Q3", "Max")
+    for(i in 1:length(X4_Text)){
+      Out[, i+2]=c(round(c(weightedtable_stratified$ContTable[[X4_Text[i]]][, "min"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p25"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "median"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "mean"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "sd"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p75"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "max"]), 2))
+    }
+    Out[, i+3]=c(round(c(weightedtable_overall$ContTable$Overall[, "min"],
+                         weightedtable_overall$ContTable$Overall[, "p25"],
+                         weightedtable_overall$ContTable$Overall[, "median"],
+                         weightedtable_overall$ContTable$Overall[, "mean"],
+                         weightedtable_overall$ContTable$Overall[, "sd"],
+                         weightedtable_overall$ContTable$Overall[, "p75"],
+                         weightedtable_overall$ContTable$Overall[, "max"]), 2))
+    
+    # The hypothesis test functions used by default are chisq.test() for categorical variables (with continuity correction) and oneway.test() for continous variables (with equal variance assumption, i.e., regular ANOVA).
+    # Two-group ANOVA is equivalent of t-test.
+    # You may be worried about the nonnormal variables and small cell counts in the stage variable. In such a situation, you can use the nonnormal argument like before as well as the exact (test) argument in the print() method.
+    # Now kruskal.test() is used for the nonnormal continous variables and fisher.test() is used for categorical variables specified in the exact argument. kruskal.test() is equivalent to wilcox.test() in the two-group case.
+    Out[3, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
+    Out[4, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
+    # Out[, i+6]=smd.conf
+    Out[4, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
+    colnames(Out)=c("Variable",
+                    "Value",
+                    paste0(Col_Var,
+                           "=",
+                           X4_Text,
+                           " (n=",
+                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
+                           ")"),
+                    paste0("Total (n=",
+                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
+                           ")"),
+                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
+                    p_value_name, # default : oneway.test()
+                    # "SMD (95% CI)",
+                    "SMD") # t-test
+  }else if(Form==2){
+    Out[1, 1]=paste0(Row_Var, " (median [IQR])")
+    Out[2, 1]=paste0(Row_Var, " (mean (SD))")
+    Out[, 2]=weightedtable_stratified_mean_result[-1, "level"]
+    for(i in 1:length(X4_Text)){
+      Out[1, i+2]=weightedtable_stratified_median_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_median_result))]
+      Out[2, i+2]=weightedtable_stratified_mean_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_mean_result))]
+    }
+    Out[1, i+3]=weightedtable_overall_median_result[-1, "Overall"]
+    Out[2, i+3]=weightedtable_overall_mean_result[-1, "Overall"]
+    
+    Out[1, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
+    Out[2, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
+    
+    # Out[, i+5]=smd.conf
+    Out[2, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
+    
+    colnames(Out)=c("Variable",
+                    "Value",
+                    paste0(Col_Var,
+                           "=",
+                           X4_Text,
+                           " (n=",
+                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
+                           ")"),
+                    paste0("Total (n=",
+                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
+                           ")"),
+                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
+                    p_value_name, # default : oneway.test()
+                    # "SMD (95% CI)",
+                    "SMD") # t-test
+  }
+  
+  return(as.data.table(Out))
+}
+
+
 #******************************
 #
 # Contingency_Table_Univariable
@@ -7156,14 +8022,13 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
   Table=round(summary(Data[, Var]), 2)
   
   if(Form==1){
-    Out=cbind(Var, 
-              Value="Median (IQR)", 
-              paste0(Table[3], " (", Table[5]-Table[2], ")"))
-    
-  }else if(Form==2){
     Out=cbind(Var,
               Value=c(names(Table)),
               data.table(unclass(Table)))
+  }else if(Form==2){
+    Out=cbind(Var, 
+              Value="Median (IQR)", 
+              paste0(Table[3], " (", Table[5]-Table[2], ")"))
   }
   colnames(Out)=c("Variable", "Value", paste0("Total (n=", nrow(Data), ")")) 
   return(as.data.table(Out))
@@ -7344,352 +8209,6 @@ Line_Graph_Generator=function(Table_Data,
   Line_Chart+theme(axis.text=element_text(size=20),
                    axis.title=element_text(size=20),
                    legend.text=element_text(size=15))
-}
-
-#*************************************
-#
-# Weighted_Contingency_Table_Generator
-#
-#*************************************
-Weighted_Contingency_Table_Generator=function(Data,
-                                              Row_Var,
-                                              Col_Var,
-                                              # Missing,
-                                              Weight_Var){
-  # check packages
-  lapply(c("data.table",
-           "tableone",
-           "jstable",
-           
-           "smd", # calculate smd
-           "MBESS"), # for smd confidence interval
-         checkpackages)
-  
-  # Data to data.frame
-  Data=as.data.frame(Data)
-  
-  # apply weights to data
-  weighteddata=svydesign(ids=~1,
-                         data=Data,
-                         weights=formula(paste0("~", Weight_Var)))
-  
-  #***********************
-  # weighted table overall
-  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
-                                          data=weighteddata,
-                                          test=TRUE,
-                                          smd=TRUE,
-                                          factorVars=Row_Var)
-  weightedtable_overall_result=print(weightedtable_overall,
-                                     showAllLevels=TRUE,
-                                     formatOptions=list(big.mark=","),
-                                     noSpaces=TRUE,
-                                     printToggle=FALSE)
-  
-  # # detailed information including missingness (this is for continuous)
-  # summary(weightedtable_overall)
-  # 
-  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
-  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
-  
-  #*************************************
-  # weighted table stratified by Col_Var
-  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
-                                             strata=Col_Var,
-                                             data=weighteddata,
-                                             test=TRUE,
-                                             smd=TRUE,
-                                             factorVars=Row_Var)
-  weightedtable_stratified_result=print(weightedtable_stratified,
-                                        showAllLevels=TRUE,
-                                        formatOptions=list(big.mark=","),
-                                        noSpaces=TRUE,
-                                        smd=TRUE,
-                                        printToggle=FALSE)
-  
-  # #*******************************
-  # # calculate confidence intervals
-  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
-  # smd.output=smd::smd(x=Data[, Row_Var],
-  #                     g=Data[, Col_Var],
-  #                     w=Data[, Weight_Var],
-  #                     std.error=TRUE)
-  # 
-  # smd.conf=c()
-  # for(i in 1:length(smd.output$estimate)){
-  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
-  #                        n.1=table(Data[[Col_Var]])[1],
-  #                        n.2=table(Data[[Col_Var]])[2])
-  #   point.smd=ci.smd.output$smd
-  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
-  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
-  #   smd.conf[i]=c(paste0(round(point.smd, 2),
-  #                        " (",
-  #                        round(lower.smd, 2),
-  #                        " - ",
-  #                        round(upper.smd, 2),
-  #                        ")"))
-  # }
-  
-  # check if Row_Var is factor or numeric
-  Check_Factor=ifelse(is.null(levels(Data[, Row_Var])), 0, 1)
-  if(Check_Factor==1){
-    X3_Text=as.character(levels(Data[, Row_Var]))
-  }else{
-    stop("Row_Var is not a factor. Please double-check.")
-  }
-  
-  # Col_Var levels
-  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
-  if(Check_Factor==1){
-    X4_Text=as.character(levels(Data[, Col_Var]))
-  }else{
-    X4_Text=sort(unique(Data[, Col_Var]))
-  }
-  
-  # Out
-  Out=matrix(NA, nrow=length(X3_Text), ncol=5+length(X4_Text))
-  Out[, 1]=Row_Var
-  Out[, 2]=weightedtable_stratified_result[-1, "level"]
-  for(i in 1:length(X4_Text)){
-    Out[, i+2]=weightedtable_stratified_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_result))]
-  }
-  Out[, i+3]=weightedtable_overall_result[-1, "Overall"]
-  Out[, i+4]=weightedtable_stratified_result[-1, "p"] # P-value (Chi-square)
-  # Out[, i+5]=c("", smd.conf)
-  Out[, i+5]=weightedtable_stratified_result[-1, "SMD"] # P-value (t-test)
-  
-  colnames(Out)=c("Variable",
-                  "Value",
-                  paste0(Col_Var,
-                         "=",
-                         X4_Text,
-                         " (n=",
-                         round(as.numeric(weightedtable_stratified_result["n", c(2:(1+length(X4_Text)))]), 1),
-                         ")"),
-                  paste0("Total (n=",
-                         round(as.numeric(weightedtable_overall_result["n", 2]), 1),
-                         ")"),
-                  "P-value (Chi-square)", # default : chisq.test()
-                  # fisher.test() is not available 
-                  # "SMD (95% CI)",
-                  "SMD") # t-test
-  
-  return(as.data.table(Out))
-}
-
-
-#*********************************************
-#
-# Weighted_Contingency_Table_Generator_Conti_X
-#
-#*********************************************
-Weighted_Contingency_Table_Generator_Conti_X=function(Data,
-                                                      Row_Var,
-                                                      Col_Var,
-                                                      Weight_Var,
-                                                      Form=1){
-  # check packages
-  lapply(c("data.table",
-           "tableone",
-           "jstable",
-           
-           "smd", # calculate smd
-           "MBESS"), # for smd confidence interval
-         checkpackages)
-  
-  # Data to data.frame
-  Data=as.data.frame(Data)
-  
-  # apply weights to data
-  weighteddata=svydesign(ids=~1,
-                         data=Data,
-                         weights=formula(paste0("~", Weight_Var)))
-  
-  #***********************
-  # weighted table overall
-  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
-                                          data=weighteddata,
-                                          test=TRUE,
-                                          smd=TRUE)
-  weightedtable_overall_median_result=print(weightedtable_overall,
-                                            showAllLevels=TRUE,
-                                            nonnormal=Row_Var, # nonnormal
-                                            formatOptions=list(big.mark=","),
-                                            noSpaces=TRUE,
-                                            printToggle=FALSE)
-  weightedtable_overall_mean_result=print(weightedtable_overall,
-                                          showAllLevels=TRUE,
-                                          formatOptions=list(big.mark=","),
-                                          noSpaces=TRUE,
-                                          printToggle=FALSE)
-  
-  # # detailed information including missingness (this is for continuous)
-  # summary(weightedtable_overall)
-  # 
-  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
-  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
-  
-  #*************************************
-  # weighted table stratified by Col_Var
-  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
-                                             strata=Col_Var,
-                                             data=weighteddata,
-                                             test=TRUE,
-                                             smd=TRUE)
-  weightedtable_stratified_median_result=print(weightedtable_stratified,
-                                               showAllLevels=TRUE,
-                                               nonnormal=Row_Var, # nonnormal
-                                               formatOptions=list(big.mark=","),
-                                               noSpaces=TRUE,
-                                               smd=TRUE,
-                                               printToggle=FALSE)
-  weightedtable_stratified_mean_result=print(weightedtable_stratified,
-                                             showAllLevels=TRUE,
-                                             formatOptions=list(big.mark=","),
-                                             noSpaces=TRUE,
-                                             smd=TRUE,
-                                             printToggle=FALSE)
-  
-  # #*******************************
-  # # calculate confidence intervals
-  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
-  # smd.output=smd::smd(x=Data[, Row_Var],
-  #                     g=Data[, Col_Var],
-  #                     w=Data[, Weight_Var],
-  #                     std.error=TRUE)
-  # 
-  # for(i in 1:length(smd.output$estimate)){
-  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
-  #                        n.1=table(Data[[Col_Var]])[1],
-  #                        n.2=table(Data[[Col_Var]])[2])
-  #   point.smd=ci.smd.output$smd
-  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
-  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
-  #   smd.conf[i]=c(paste0(round(point.smd, 2),
-  #                        " (",
-  #                        round(lower.smd, 2),
-  #                        " - ",
-  #                        round(upper.smd, 2),
-  #                        ")"))
-  # }
-  
-  # #*******************************
-  # # calculate confidence intervals
-  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
-  # point.smd=smd::smd(x=Data[, Col_Var],
-  #                    g=Data[, Row_Var],
-  #                    w=Data[, Weight_Var],
-  #                    std.error=TRUE)
-  # 
-  # smd.conf=ci.smd(smd=point.smd$estimate,
-  #                 n.1=table(Data[[Col_Var]])[1],
-  #                 n.2=table(Data[[Col_Var]])[2])
-  
-  # check if Row_Var is numeric
-  Num_Factor=is.numeric(Data[, Row_Var])
-  if(Num_Factor==1 & Form==1){
-    Out_Rows=7
-  }else if(Num_Factor==1 & Form==2){
-    Out_Rows=2
-  }else{
-    stop("Row_Var is not a numerical variable. Please double-check.")
-  }
-  
-  # Col_Var levels
-  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
-  if(Check_Factor==1){
-    X4_Text=as.character(levels(Data[, Col_Var]))
-  }else{
-    X4_Text=sort(unique(Data[, Col_Var]))
-  }
-  # p-value test
-  if(length(X4_Text)==2){
-    p_value_name="P-value (T-test)"
-  }else if(length(X4_Text)>2){
-    p_value_name="P-value (ANOVE)"
-  }
-  # Out
-  Out=matrix(NA, nrow=Out_Rows, ncol=6+length(X4_Text))
-  
-  if(Form==1){
-    Out[, 1]=Row_Var
-    Out[, 2]=c("Min", "Q1", "Median", "Mean", "SD", "Q3", "Max")
-    for(i in 1:length(X4_Text)){
-      Out[, i+2]=c(round(c(weightedtable_stratified$ContTable[[X4_Text[i]]][, "min"],
-                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p25"],
-                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "median"],
-                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "mean"],
-                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "sd"],
-                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p75"],
-                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "max"]), 2))
-    }
-    Out[, i+3]=c(round(c(weightedtable_overall$ContTable$Overall[, "min"],
-                         weightedtable_overall$ContTable$Overall[, "p25"],
-                         weightedtable_overall$ContTable$Overall[, "median"],
-                         weightedtable_overall$ContTable$Overall[, "mean"],
-                         weightedtable_overall$ContTable$Overall[, "sd"],
-                         weightedtable_overall$ContTable$Overall[, "p75"],
-                         weightedtable_overall$ContTable$Overall[, "max"]), 2))
-    
-    # The hypothesis test functions used by default are chisq.test() for categorical variables (with continuity correction) and oneway.test() for continous variables (with equal variance assumption, i.e., regular ANOVA).
-    # Two-group ANOVA is equivalent of t-test.
-    # You may be worried about the nonnormal variables and small cell counts in the stage variable. In such a situation, you can use the nonnormal argument like before as well as the exact (test) argument in the print() method.
-    # Now kruskal.test() is used for the nonnormal continous variables and fisher.test() is used for categorical variables specified in the exact argument. kruskal.test() is equivalent to wilcox.test() in the two-group case.
-    Out[3, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
-    Out[4, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
-    # Out[, i+6]=smd.conf
-    Out[4, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
-    colnames(Out)=c("Variable",
-                    "Value",
-                    paste0(Col_Var,
-                           "=",
-                           X4_Text,
-                           " (n=",
-                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
-                           ")"),
-                    paste0("Total (n=",
-                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
-                           ")"),
-                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
-                    p_value_name, # default : oneway.test()
-                    # "SMD (95% CI)",
-                    "SMD") # t-test
-  }else if(Form==2){
-    Out[1, 1]=paste0(Row_Var, " (median [IQR])")
-    Out[2, 1]=paste0(Row_Var, " (mean (SD))")
-    Out[, 2]=weightedtable_stratified_mean_result[-1, "level"]
-    for(i in 1:length(X4_Text)){
-      Out[1, i+2]=weightedtable_stratified_median_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_median_result))]
-      Out[2, i+2]=weightedtable_stratified_mean_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_mean_result))]
-    }
-    Out[1, i+3]=weightedtable_overall_median_result[-1, "Overall"]
-    Out[2, i+3]=weightedtable_overall_mean_result[-1, "Overall"]
-    
-    Out[1, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
-    Out[2, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
-    
-    # Out[, i+5]=smd.conf
-    Out[2, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
-    
-    colnames(Out)=c("Variable",
-                    "Value",
-                    paste0(Col_Var,
-                           "=",
-                           X4_Text,
-                           " (n=",
-                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
-                           ")"),
-                    paste0("Total (n=",
-                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
-                           ")"),
-                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
-                    p_value_name, # default : oneway.test()
-                    # "SMD (95% CI)",
-                    "SMD") # t-test
-  }
-  
-  return(as.data.table(Out))
 }
 
 
