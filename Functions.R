@@ -2370,7 +2370,9 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            GVIF_Threshold=sqrt(10), # threshold is sqrt(10) for now
                             N_data_used=N_data_used)
+    
   }else{
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             VIF=Output_vif,
@@ -3008,6 +3010,9 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 # Data_original$outcome[1:5]=NA
 # Data_original$treat[c(3, 7, 35, 74)]=NA
 # Data_original$id[c(6, 25, 45, 98)]=NA
+# Data_original$sex=as.character(Data_original$sex)
+# Data_original$sex[c(2, 15, 35, 58, 93)]="N"
+# Data_original$sex=factor(Data_original$sex)
 # Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_original[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
@@ -3129,6 +3134,7 @@ GEE_Multivariable_with_vif=function(Data,
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            GVIF_Threshold=sqrt(10), # threshold is sqrt(10) for now
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
@@ -3880,6 +3886,9 @@ GLMM_Bivariate=function(Data,
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[c(2, 15, 35, 58, 93)]="N"
+# Data_to_use$sex=factor(Data_to_use$sex)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # Data_to_use=Format_Columns(Data_to_use,
 #                            Res_Var="outcome",
@@ -4045,6 +4054,7 @@ GLMM_Multivariable=function(Data,
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table,
                             GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            GVIF_Threshold=sqrt(10), # threshold is sqrt(10) for now
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table,
