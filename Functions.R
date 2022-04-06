@@ -1644,8 +1644,42 @@ COX_Multivariable=function(Data,
   # Rejecting 'age' means that there is strong evidence of non-proportional hazards for age.
   # cox.zph : Test the assumption based on Schoenfeld residuals
   Output$cox.zph=cox.zph(model_fit)
-  Output$cox.zph$table[, "p"]=ifelse(Output$cox.zph$table[, "p"]<0.001, "<0.001", 
-                                     Output$cox.zph$table[, "p"])
+  Assumption_Table_Temp=Output$cox.zph$table
+  Assumption_Table_Temp[, "p"]=ifelse(Assumption_Table_Temp[, "p"]<0.001, "<0.001", 
+                                      Assumption_Table_Temp[, "p"])
+  Output$cox.zph$table=rbind(cbind(rep(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "chisq"],
+                                       Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"]),
+                                   rep(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"],
+                                       Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"]),
+                                   rep(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "p"],
+                                       Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"]))
+                             # GLOBAL=Assumption_Table_Temp[nrow(Assumption_Table_Temp), ]
+  )
+  colnames(Output$cox.zph$table)=c("chisq", "df", "p")
+  Output$cox.zph$Vars_with_PH_assumption_violated=names(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "p"][Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "p"]<0.05])
+  
+  # Scaled schoenfeld residual plot
+  # cutoff time points : look at the residual plot and visually check where the lines change angle
+  # source(https://stats.stackexchange.com/questions/144923/extended-cox-model-and-cox-zph/238964#238964)
+  Vars=Output$cox.zph$Vars_with_PH_assumption_violated
+  Schoenfeld_Plot=function(Var){
+    plot(Output$cox.zph[which(names(Assumption_Table_Temp[, "p"])==Var)],
+         main="Scaled schoenfeld residual plot",
+         lwd=2,
+         cex.lab=1.5,
+         cex.axis=2,
+         cex.main=2,
+         cex.sub=2)
+    abline(0, 0, col=1, lty=3, lwd=2)
+    abline(h=Output$model_fit$coef[which(names(Assumption_Table_Temp[, "p"])==Var)], col=3, lwd=2, lty=2)
+    legend("bottomright",
+           legend=c('Reference line for null effect',
+                    "Average hazard over time",
+                    "Time-varying hazard"),
+           lty=c(3, 2, 1), col=c(1, 3, 1), lwd=2,
+           cex=1.5)
+  }
+  Output$cox.zph$plots=function(Var){Schoenfeld_Plot(Var)}
   
   # Individual Wald test and confidence interval for each parameter
   Fit.Summary=summary(model_fit)
