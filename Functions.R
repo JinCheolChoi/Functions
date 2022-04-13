@@ -463,7 +463,7 @@ Marginal_Effect_2=function(Model_Fit,
   # check out packages
   lapply(c("marginaleffects", "data.table"), checkpackages)
   
-  # If GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
+  # If Model==GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
   # (ignore) It seems that this part doesn't matter as the actual data stored in the model object is used.
   # (ignore) Still (and weirdly), the name of data used when fitted by geeglm is checked if a value named the same exists in the global environment.
   # (ignore) If there is no value matched the same in the global environment, an error is entailed.
