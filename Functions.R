@@ -2403,8 +2403,10 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
-                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
-                            GVIF_Threshold=sqrt(10), # threshold is sqrt(10) for now
+                            `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
+                                                                  # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                                                                  # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
     
   }else{
@@ -3167,8 +3169,10 @@ GEE_Multivariable_with_vif=function(Data,
   
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
-                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
-                            GVIF_Threshold=sqrt(10), # threshold is sqrt(10) for now
+                            `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
+                                                                  # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                                                                  # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
@@ -4087,8 +4091,10 @@ GLMM_Multivariable=function(Data,
   
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table,
-                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
-                            GVIF_Threshold=sqrt(10), # threshold is sqrt(10) for now
+                            `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
+                                                                  # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                                                                  # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table,
