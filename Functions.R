@@ -562,8 +562,8 @@ Marginal_Effect_2=function(Model_Fit,
 # [ --- Marginal Structural Model --- ] ----
 #
 #*******************************************
-# IPW
-#****
+# Inverse Probability Weighting (IPW)
+#************************************
 # Example
 #********
 # # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
