@@ -1407,6 +1407,227 @@ IPW=function(Exposure,
 # }
 
 
+
+#********
+# GEE_MSM
+#********
+# estimate the causal effect of exposure on the outcome using GEE
+#****************************************************************
+# Example
+#********
+# # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# #set seed to replicate results
+# set.seed(12345)
+# 
+# #define sample size
+# n=2000
+# #define confounder c1 (gender, male==1)
+# male=rbinom(n,1,0.55)
+# #define confounder c2 (age)
+# age=exp(rnorm(n, 3, 0.5))
+# #define treatment at time 1
+# t_1=rbinom(n,1,0.20)
+# #define treatment at time 2
+# t_2=rbinom(n,1,0.20)
+# #define treatment at time 3
+# t_3=rbinom(n,1,0.20)
+# #define depression at time 1 (prevalence=number per 100000 population)
+# d_1=exp(rnorm(n, 0.001, 0.5))
+# #define depression at time 2 (prevalence=number per 100000 population)
+# d_2=exp(rnorm(n, 0.002, 0.5))
+# #define depression at time 3 (prevalence=number per 100000 population)
+# d_3=exp(rnorm(n, 0.004, 0.5))
+# #define time-varying confounder v1 as a function of t1 and d1
+# v_1=(0.4*t_1 + 0.80*d_1 + rnorm(n, 0, sqrt(0.99))) + 5
+# #define time-varying confounder v2 as a function of t1 and d1
+# v_2=(0.4*t_2 + 0.80*d_2 + rnorm(n, 0, sqrt(0.55))) + 5
+# #define time-varying confounder v3 as a function of t1 and d1
+# v_3=(0.4*t_3 + 0.80*d_3 + rnorm(n, 0, sqrt(0.33))) + 5
+# #put all in a dataframe and write data to harddrive to use later in e.g. SPSS
+# df1=data.frame(male, age, v_1, v_2, v_3, t_1, t_2, t_3, d_1, d_2, d_3)
+# 
+# #required packages
+# lapply(c("geepack",
+#          "survey",
+#          "ipw",
+#          "reshape",
+#          "dplyr"), checkpackages)
+# 
+# # Data is readin long format
+# data1=df1
+# # Convert from wide to long format
+# data_long<-reshape(data1, varying=c("v_1", "v_2", "v_3", "t_1","t_2","t_3", "d_1", "d_2", "d_3"), direction="long", idvar="id", sep="_")
+# # Reshape from wide to long format
+# data_long_sort=arrange(data_long, id, time)
+# # Rearrange the dataset so that id is first
+# data_long_sort=data_long_sort[c("id", "time", "age", "male", "t", "v", "d")]
+# head(data_long_sort)
+# 
+# # male as factor
+# data_long_sort$male=as.factor(data_long_sort$male)
+# w=IPW(Exposure="t",
+#       Time_Invariant_Covs=c("male", "age"),
+#       Time_Varying_Covs=c("v"),
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="data_long_sort")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# data_long_sort$weights=w$adjusted_stab_IP_weights$ipw.weights
+# GEE_MSM(Outcome="d",
+#         Exposure="t",
+#         which.family="gaussian",
+#         ID_Var="id",
+#         Weight_Var="weights",
+#         Data=data_long_sort)
+GEE_MSM=function(Outcome,
+                 Exposure,
+                 which.family="binomial",
+                 ID_Var,
+                 Weight_Var,
+                 Data){
+  # check out packages
+  lapply(c("data.table",
+           "dplyr",
+           "doBy"),
+         checkpackages)
+  
+  # remove observations with missing data
+  Data_to_use_No_Missing=as.data.table(na.omit(Data))
+  if(nrow(Data)!=nrow(Data_to_use_No_Missing)){
+    print("missing data removed.")
+  }
+  
+  # Time_Point
+  Data_to_use_No_Missing[, Time_Point:=0:(.N-1), by=ID_Var]
+  
+  # convert Exposure to numeric
+  Data_to_use_No_Missing[, (Exposure):=as.numeric(as.character(eval(parse(text=Exposure))))]
+  
+  # generate lagged exposure with a lag of one period
+  Data_to_use_No_Missing[,
+                         (paste0("Lagged_", Exposure)):=lapply(.SD, function(x) lag(x, n=1)),
+                         .SDcol=Exposure,
+                         by=ID_Var]
+  Data_to_use_No_Missing[is.na(eval(parse(text=paste0("Lagged_", Exposure)))), (paste0("Lagged_", Exposure)):=0]
+  
+  # cumsum lagged exposure (total number of previous measurement waves)
+  Data_to_use_No_Missing[,
+                         (paste0("Cumsum_Lagged_", Exposure)):=cumsum(eval(parse(text=paste0("Lagged_", Exposure)))),
+                         by=ID_Var]
+  
+  # as data frame
+  Data_to_use_No_Missing=as.data.frame(Data_to_use_No_Missing)
+  
+  model_formula=as.formula(paste(Outcome, "~", paste(c(Exposure, paste0("Cumsum_Lagged_", Exposure), "Time_Point"), collapse="+")))
+  model_fit=geeglm(model_formula,
+                   data=Data_to_use_No_Missing,
+                   weights=Data_to_use_No_Missing[, Weight_Var],
+                   id=Data_to_use_No_Missing[, ID_Var],
+                   family=which.family,
+                   waves=Data_to_use_No_Missing[, "Time_Point"],
+                   corstr="ar1")
+  
+  # Individual Wald test and confidence interval for each parameter
+  est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
+  
+  # Output
+  Output=c()
+  Origin_N_Rows=nrow(Data)
+  Used_N_Rows=nrow(Data_to_use_No_Missing)
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  Output$model_fit=model_fit
+  Output$model_formula=model_formula
+  #Output$vif=HH::vif(model_fit)
+  
+  if(grepl("gaussian", which.family)){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
+                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
+                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
+                                 row.names=names(coef(model_fit))[-1]
+    )
+  }else if(grepl("binomial", which.family)){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 row.names=names(coef(model_fit))[-1]
+    )
+    
+  }else if(grepl("poisson", which.family)){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 row.names=names(coef(model_fit))[-1]
+    )
+  }
+  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  return(Output)
+}
+
+
+
+#*************************
+# SMD difference Plot ----
+#*************************
+# visualization of standardized mean difference comparison
+# Example
+#********
+# SMD_Data=data.frame(
+#   variable=c("AGE",
+#              "GENDER_SELF",
+#              "ETHNIC_WHITE",
+#              "MOBILITY",
+#              "SELFCARE",
+#              "PAIN",
+#              "ANXIETY"),
+#   Unweighted=abs(rnorm(7))+0.2,
+#   Weighted=abs(rnorm(7))
+# )
+# ## Create long-format data for ggplot2
+# SMD_DataMelt=melt(data=SMD_Data,
+#                   id.vars=c("variable"),
+#                   variable.name="Method",
+#                   value.name="SMD")
+# colnames(SMD_DataMelt)=c("variable", "Method", "SMD")
+# 
+# ## Order variable names by magnitude of SMD
+# varNames=as.character(SMD_Data$variable)[order(SMD_Data$Unweighted)]
+# 
+# ## Order factor levels in the same order
+# SMD_DataMelt$variable=factor(SMD_DataMelt$variable,
+#                              levels=varNames)
+# 
+# ## Plot using ggplot2
+# ggplot(data=SMD_DataMelt, mapping=aes(x=variable, y=SMD,
+#                                       group=Method, color=Method)) +
+#   ggtitle("Title")+
+#   # geom_line() +
+#   scale_colour_manual("", values=c("chocolate3","cyan4")) +
+#   # scale_fill_manual(values=c("chocolate3", "cyan4")) +
+#   geom_point(shape=21, size=5, stroke=2,) +
+#   geom_hline(yintercept=0.5, color=4, size=1.2, linetype=2) +
+#   geom_vline(xintercept=c(1:19), color=8, linetype=5)+
+#   coord_flip() +
+#   theme_bw() +
+#   theme(legend.key=element_blank(), text=element_text(size=30), legend.position=c(0.8, 0.2)) +
+#   labs(y="Standardized mean difference", x="")
+
+
+
 #*************************************************
 #
 # [ --- ITS ( Interrupted Time Series ) --- ] ----
@@ -2405,8 +2626,8 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
-                                                                  # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
-                                                                  # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
+                            # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                            # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
     
   }else{
@@ -3171,8 +3392,8 @@ GEE_Multivariable_with_vif=function(Data,
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
-                                                                  # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
-                                                                  # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
+                            # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                            # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
@@ -4093,8 +4314,8 @@ GLMM_Multivariable=function(Data,
     Output$summ_table=cbind(Output$summ_table,
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
-                                                                  # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
-                                                                  # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
+                            # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                            # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table,
@@ -7624,6 +7845,7 @@ Weighted_Contingency_Table_Generator=function(Data,
                                         noSpaces=TRUE,
                                         smd=TRUE,
                                         printToggle=FALSE)
+  weightedtable_stratified_result[weightedtable_stratified_result==""]=NA
   
   # #*******************************
   # # calculate confidence intervals
