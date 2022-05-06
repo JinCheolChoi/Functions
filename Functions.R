@@ -678,10 +678,15 @@ IPW=function(Exposure,
   unstab_numerator_formula=NULL
   
   # 2. basic stabilized
-  basic_stab_numerator_formula=paste0("~ 1 + ",
-                                      paste0("Cumsum_Lagged_", Exposure))
+  basic_stab_numerator_formula=paste0("~ 1")
   
-  # 3. adjusted stabilized by time-invariant covariates
+  # 3. stabilized
+  # For the censoring weights, stabilized produces the same values as basic stabilized because Cumsum_Lagged_* variable has only 0 as its value.
+  # This might be something to further ponder upon later.
+  stab_numerator_formula=paste0("~ 1 + ",
+                                paste0("Cumsum_Lagged_", Exposure))
+  
+  # 4. adjusted stabilized by time-invariant covariates
   adjusted_stab_numerator_formula=paste0("~ 1 + ",
                                          paste0("Cumsum_Lagged_", Exposure),
                                          " + ",
@@ -782,7 +787,21 @@ IPW=function(Exposure,
   # obtain unstabilized weight
   basic_stab_IP_weights=eval(parse(text=basic_stab_ipwtm_function))
   
-  # 3. adjusted stabilized by time-invariant covariates
+  # 3. stabilized
+  stab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', stab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="all",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  stab_IP_weights=eval(parse(text=stab_ipwtm_function))
+  
+  # 4. adjusted stabilized by time-invariant covariates
   adjusted_stab_ipwtm_function=paste0(
     'ipwtm(exposure=', Exposure,',
            family="', which.family, '",
@@ -800,6 +819,7 @@ IPW=function(Exposure,
   Out=c()
   Out$unstab_IP_weights=unstab_IP_weights
   Out$basic_stab_IP_weights=basic_stab_IP_weights
+  Out$stab_IP_weights=stab_IP_weights
   Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
   
   return(Out)
