@@ -1491,7 +1491,9 @@ GEE_MSM=function(Outcome,
   # check out packages
   lapply(c("data.table",
            "dplyr",
-           "doBy"),
+           "doBy",
+           
+           "geepack"),
          checkpackages)
   
   # remove observations with missing data
@@ -2635,6 +2637,14 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
+  
+  # likelihood ratio test
+  LRT_results=anova(model_fit, test="LRT") # synonymous with test="Chisq" (https://stat.ethz.ch/R-manual/R-devel/library/stats/html/anova.glm.html)
+  LRT_pvalues=LRT_results$`Pr(>Chi)`
+  LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
+                     format(round2(LRT_pvalues, 7), nsmall=3))
+  Output$summ_table$`P.value(LRT)`=rep(LRT_pvalues[-1], LRT_results$Df[-1])
+  Output$summ_table$`P.value(LRT)`[duplicated(rep(rownames(LRT_results)[-1], LRT_results$Df[-1]))]=""
   
   return(Output)
 }
@@ -4322,6 +4332,14 @@ GLMM_Multivariable=function(Data,
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
+  
+  # likelihood ratio test
+  LRT_results=anova(myfit)
+  LRT_pvalues=LRT_results$`Pr(>F)`
+  LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
+                     format(round2(LRT_pvalues, 7), nsmall=3))
+  Output$summ_table$`P.value(F-test)`=rep(LRT_pvalues, LRT_results$NumDF)
+  Output$summ_table$`P.value(F-test)`[duplicated(rep(rownames(LRT_results), LRT_results$NumDF))]=""
   
   # power
   if(Compute.Power==T){
