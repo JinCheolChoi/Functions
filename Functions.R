@@ -1675,6 +1675,281 @@ GEE_MSM=function(Outcome,
 # df[, intv_trend:=c(rep(0, (int - 1)), 1:(length(unique(time)) - (int - 1)))]
 # # Add a grouping variable manually
 # df[, group:=ifelse(intv==1, "Intervention", "Control")]
+# # time
+# df[, time:=as.Date(time)]
+# ITS=Segmented_Regression_Model(Data=df,
+#                                Res_Var="count",
+#                                Time_Var="time",
+#                                Int_Var="intv",
+#                                ylim=c(min(df[["count"]], na.rm=T)-5,
+#                                       max(df[["count"]], na.rm=T)+5),
+#                                # main=Sub,
+#                                ylab=paste0("Count"),
+#                                xlab="Time",
+#                                AR_Order=1, # p
+#                                MA_Order=0)
+# ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+Segmented_Regression_Model=function(Data,
+                                    Res_Var,
+                                    Time_Var,
+                                    Int_Var,
+                                    Period=12,
+                                    AR_Order=1, # p
+                                    MA_Order=1, # q
+                                    ...){
+  # check out packages
+  lapply(c("data.table",
+           "car", # for durbinWatsonTest
+           "seastests", # for combined_test
+           
+           "nlme",
+           "forecast"), # to test autocorrelation
+         checkpackages)
+  
+  # # as data frame
+  # Data=as.data.frame(Data)
+  Data=as.data.table(Data)
+  Data[[Res_Var]]=as.numeric(as.character(Data[[Res_Var]]))
+  
+  #***************************************************************************************************
+  # overall seasonality check (Webel-Ollech's test that combines the QS-test and the Kruskall-Wallis test)
+  # 
+  # Intervention=ts(Data[[Int_Var]],
+  #                 start=c(year(min(Data[[Time_Var]])),
+  #                         1), frequency=12)
+  y=ts(Data[[Res_Var]],
+       start=c(year(min(Data[[Time_Var]])),
+               month(min(Data[[Time_Var]]))),
+       frequency=Period)
+  
+  WO_Test=c()
+  WO_Test$Result=combined_test(y)
+  
+  # message generated based on https://search.r-project.org/CRAN/refmans/seastests/html/combined_test.html
+  # look at p-values of 'QS-R p-value' and 'KW-R p-value'
+  if(WO_Test$Result$Pval[2]<0.01 | WO_Test$Result$Pval[3]<0.002){
+    WO_Test$Message="The WO - test identifies seasonality"
+    print(WO_Test$Message)
+  }else{
+    WO_Test$Message="The WO - test does not identify seasonality"
+  }
+  
+  #*****************
+  # define variables
+  # Month
+  Data$Month=month(Data[[Time_Var]])
+  
+  # Time
+  Data[[Time_Var]]=as.factor(Data[[Time_Var]])
+  Data$Time=as.numeric(Data[[Time_Var]])
+  
+  # Level
+  Data$Level=as.numeric(Data[[Int_Var]])
+  
+  # Trend
+  Data=as.data.table(Data)
+  Data[, Trend:=0]
+  Data[eval(parse(text=Int_Var))==1, Trend:=1:.N]
+  
+  #*********************************************
+  # autocorrelation check (Breusch-Godfrey test)
+  # examined if autocorrelation resides in the outcome by conducting the Breusch-Godfrey test up to 12-time points
+  # The null hypothesis is that there is no serial correlation of any order up to 12
+  # fit model (lm)
+  if(WO_Test$Message=="The WO - test identifies seasonality"){
+    # If there exists significant evidence of existence of seasonality from the Webel-Ollech test,
+    # the seasonally adjusted model is fitted with Fourier terms (pairs of sine and cosine functions) with 12 months as the underlying period reflecting the full seasonal cycle
+    # (reference : Interrupted time series regression for the evaluation of public health interventions - A tutorial)
+    model_formula=as.formula(paste(Res_Var, "~ Time + Level + Trend + harmonic(Month, 2, ", Period, ")"))
+  }else{
+    model_formula=as.formula(paste(Res_Var, "~ Time + Level + Trend"))
+  }
+  
+  # handle missing data
+  Non_Missing_Outcome_Obs=which(!is.na(Data[[Res_Var]]))
+  Data_to_fit=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data_to_fit)
+  
+  # fit lm
+  lm_model_fit=lm(model_formula,
+                  data=Data_to_fit)
+  
+  # Breusch-Godfrey test
+  BG_Test=c()
+  BG_Test$Result=checkresiduals(lm_model_fit,
+                                lag=Period,
+                                plot=FALSE)
+  
+  # Durbin-Watson test up to 12 time periods (for monthly data)
+  # this test is additional
+  DW_Test=car::durbinWatsonTest(lm_model_fit,
+                                max.lag=Period,
+                                alternative="two.sided")
+  
+  # acf
+  Acf=acf(Data[, .SD, .SDcols=Res_Var],
+          plot=FALSE,
+          na.action=na.pass)
+  
+  # pacf
+  Pacf=pacf(Data[, .SD, .SDcols=Res_Var],
+            plot=FALSE,
+            na.action=na.pass)
+  
+  if(BG_Test$Result$p.value<0.05){
+    BG_Test$Message=list("Breusch-Godfrey test identifies autocorrelation",
+                         "To adjust for autocorrelation in the model, autoregressive and moving average processes need to be taken into account.",
+                         "This can be done by fitting a model using generalized least squares (gls) with an autocorrelation-moving average correlation structure of order (p, q).",
+                         "Look at the acf and pacf function plots to determine the autoregressive (p) and moving average orders (q) in accordance with the instruction in the table shown at 7:10 in the following link.",
+                         "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238")
+    print(BG_Test$Message)
+    Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
+                           q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
+                           form=~Time)
+  }else{
+    BG_Test$Message="Breusch-Godfrey test does not identify autocorrelation"
+    Corr_Structure=NULL
+  }
+  
+  #**************************
+  # fit the final model (gls)
+  gls_model_fit=gls(model_formula,
+                    data=Data_to_fit,
+                    correlation=Corr_Structure)
+  
+  # number of observations from a model fit
+  Used_N_Rows=nobs(gls_model_fit)
+  
+  # Output
+  Output=c()
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
+  Output$gls_model_fit=gls_model_fit
+  Output$WO_Test=WO_Test
+  Output$BG_Test=BG_Test
+  Output$DW_Test=DW_Test
+  Output$Acf=function(){plot(Acf, main=Res_Var)}
+  Output$Pacf=function(){plot(Pacf, main=Res_Var)}
+  Output$summ_table=as.data.frame(summary(gls_model_fit)$tTable)
+  colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+  
+  # Coefficients in summ_table represent the followings.
+  # Time : Pre-intervention slope by time
+  # Level : Immediate level change after intervention
+  # Trend : Trend (Slope) change after intervention
+  Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+  Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
+  Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
+  Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+  Output$Interpretation=paste0("The outcome changes by ", Output$summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
+                               "This time effect changes to ", Output$summ_table["Time", "Estimate"]+Output$summ_table["Trend", "Estimate"],
+                               "(=", Output$summ_table["Time", "Estimate"], "+", Output$summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
+                               "After the intervention, the outcome immediately changes by ",
+                               Output$summ_table["Level", "Estimate"],
+                               " on average.")
+  
+  # plot
+  Output$Fitted_Regression_Line_Plot=function(){
+    Data=as.data.frame(Data)
+    plot(Data$Time,
+         Data[[Res_Var]],
+         # ylim=c(0, 100),
+         ...,
+         # main=Sub,
+         # xlab="Time",
+         # ylab=Res_Var,
+         xaxt="n",
+         pch=19,
+         cex=1,
+         cex.lab=1.5,
+         cex.axis=1.5)
+    axis(1,
+         at=1:length(Data[[Time_Var]]),
+         labels=format(as.Date(Data[[Time_Var]]), "%Y-%m"),
+         cex.axis=1)
+    
+    # Pre_Period_End=length(Data[[Time_Var]][Data[[Int_Var]]==0])
+    Post_Period_Start=which.min(Data[[Int_Var]]==0) # the first time value of the post-intervention period
+    
+    abline(
+      v=Post_Period_Start,
+      lty=2,
+      col=1)
+    
+    # indices of times with non-missing outcome that are used to fit the gls model
+    Non_missing_Time=match(Data_to_fit$Time,
+                           Data$Time)
+    
+    # fitted value
+    Fitted_Values=fitted(gls_model_fit)
+    names(Fitted_Values)=Non_missing_Time
+    
+    # Pre_Period_End_No_Missing : the last time index of the pre-intervention period
+    Pre_Period_End_No_Missing=max(Non_missing_Time[Non_missing_Time<Post_Period_Start])
+    
+    # pre-intervention regression line
+    lines(Non_missing_Time[Non_missing_Time<=Pre_Period_End_No_Missing],
+          Fitted_Values[Non_missing_Time<=Pre_Period_End_No_Missing],
+          col="red", lwd=2)
+    
+    # post-intervention regression line
+    lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
+          Fitted_Values[Non_missing_Time>Pre_Period_End_No_Missing],
+          col="blue", lwd=2)
+    
+    # extrapolated regression line extended from the pre-intervention regression line
+    # !!! this one only works for non-seasonally-adjusted model !!!
+    segments(1,
+             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2],
+             nrow(Data),
+             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*nrow(Data),
+             lty=2,
+             lwd=2,
+             col="red")
+    
+    # Post_Data_prediction=Data_to_fit[Time%in%c(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing]), ]
+    # Post_Data_prediction[, Level:=0]
+    # lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
+    #       predict(gls_model_fit, newdata=Post_Data_prediction),
+    #       col="blue", lwd=2)
+    
+    # legend("topleft",
+    #        legend=c("Pre-change point estimated mean",
+    #                 "Post-change point estimated mean",
+    #                 "Projection based on pre-change point phase",
+    #                 "Intervention time"),
+    #        col=c("red",
+    #              "blue",
+    #              "red",
+    #              "blaCk"),
+    #        lty=c(1, 1, 2, 2),
+    #        cex=1,
+    #        text.font=1)
+  }
+  return(Output)
+}
+
+
+#************************************************
+# Segmented_Regression_Model (old one / obsolete)
+#************************************************
+# Example
+#********
+# lapply(c("ggplot2"), checkpackages)
+# int=85
+# set.seed(42)
+# df=data.table(
+#   count=as.integer(rpois(132, 9) + rnorm(132, 1, 1)),
+#   time=1:132,
+#   at_risk=rep(
+#     c(4305, 4251, 4478, 4535, 4758, 4843, 4893, 4673, 4522, 4454, 4351),
+#     each =12
+#   ),
+#   month=rep(factor(month.name, levels=month.name), length=132)
+# )
+# df[, intv:=ifelse(time >= int, 1, 0)]
+# df[, intv_trend:=c(rep(0, (int - 1)), 1:(length(unique(time)) - (int - 1)))]
+# # Add a grouping variable manually
+# df[, group:=ifelse(intv==1, "Intervention", "Control")]
 # Segmented_Regression_Model(Data=df,
 #                            Res_Var="count",
 #                            Time_Var="time",
@@ -1685,64 +1960,64 @@ GEE_MSM=function(Outcome,
 #                                 X_Lab="Time",
 #                                 Group_Var="group",
 #                                 Y_Lab="Frequency")
-Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
-  # as data frame
-  Data=as.data.frame(Data)
-  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
-  Data=Data[Non_Missing_Outcome_Obs, ]
-  Origin_N_Rows=nrow(Data)
-  
-  Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
-  
-  Data[, Time_Var]=as.factor(Data[, Time_Var])
-  Data$Time_Order=as.numeric(Data[, Time_Var])
-  
-  # fit model
-  model_fit=lm(as.formula(paste(Res_Var, "~", Int_Var, "*Time_Order")), data=Data)
-  
-  # number of observations from a model fit
-  Used_N_Rows=nobs(model_fit)
-  
-  # Output
-  Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-  Output$model_fit=model_fit
-  Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
-  colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
-  Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
-  Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
-  Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
-  Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3)) 
-  
-  return(Output)
-}
-
-#********************************
-# Segmented_Regression_Model_Plot
-#********************************
-Segmented_Regression_Model_Plot=function(Data,
-                                         X_Var,
-                                         Y_Var,
-                                         Group_Var,
-                                         X_Lab="Time",
-                                         Y_Lab="Frequency"){
-  
-  # plot
-  Trend_Plot=ggplot(Data, aes(x=eval(parse(text=X_Var)), y=eval(parse(text=Y_Var)))) +
-    geom_line()+
-    geom_point()+
-    geom_smooth(method="lm", se=T, aes(colour=eval(parse(text=Group_Var)))) +
-    theme_bw()+
-    xlab(X_Lab)+
-    ylab(Y_Lab)+
-    labs(colour="", size=16)+
-    theme(axis.title.x=element_text(size=rel(1.8)),
-          axis.title.y=element_text(size=rel(1.8)),
-          axis.text.x=element_text(size=rel(1.8)),
-          legend.text=element_text(size=rel(1.5)))
-  
-  Trend_Plot
-}
+# Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
+#   # as data frame
+#   Data=as.data.frame(Data)
+#   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+#   Data=Data[Non_Missing_Outcome_Obs, ]
+#   Origin_N_Rows=nrow(Data)
+# 
+#   Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
+# 
+#   Data[, Time_Var]=as.factor(Data[, Time_Var])
+#   Data$Time_Order=as.numeric(Data[, Time_Var])
+# 
+#   # fit model
+#   model_fit=lm(as.formula(paste(Res_Var, "~", Int_Var, "*Time_Order")), data=Data)
+# 
+#   # number of observations from a model fit
+#   Used_N_Rows=nobs(model_fit)
+# 
+#   # Output
+#   Output=c()
+#   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
+#   Output$model_fit=model_fit
+#   Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
+#   colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+#   Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+#   Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
+#   Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
+#   Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+# 
+#   return(Output)
+# }
+# 
+# #********************************
+# # Segmented_Regression_Model_Plot
+# #********************************
+# Segmented_Regression_Model_Plot=function(Data,
+#                                          X_Var,
+#                                          Y_Var,
+#                                          Group_Var,
+#                                          X_Lab="Time",
+#                                          Y_Lab="Frequency"){
+#   
+#   # plot
+#   Trend_Plot=ggplot(Data, aes(x=eval(parse(text=X_Var)), y=eval(parse(text=Y_Var)))) +
+#     geom_line()+
+#     geom_point()+
+#     geom_smooth(method="lm", se=T, aes(colour=eval(parse(text=Group_Var)))) +
+#     theme_bw()+
+#     xlab(X_Lab)+
+#     ylab(Y_Lab)+
+#     labs(colour="", size=16)+
+#     theme(axis.title.x=element_text(size=rel(1.8)),
+#           axis.title.y=element_text(size=rel(1.8)),
+#           axis.text.x=element_text(size=rel(1.8)),
+#           legend.text=element_text(size=rel(1.5)))
+#   
+#   Trend_Plot
+# }
 
 #************************
 #
