@@ -1703,7 +1703,8 @@ Segmented_Regression_Model=function(Data,
            "seastests", # for combined_test
            
            "nlme",
-           "forecast"), # to test autocorrelation
+           "forecast",
+           "zoo"), # to test autocorrelation
          checkpackages)
   
   # # as data frame
