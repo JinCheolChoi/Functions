@@ -1659,7 +1659,8 @@ GEE_MSM=function(Outcome,
 #***************************
 # Example
 #********
-# lapply(c("ggplot2"), checkpackages)
+# lapply(c("ggplot2",
+#          "data.table"), checkpackages)
 # int=85
 # set.seed(42)
 # df=data.table(
