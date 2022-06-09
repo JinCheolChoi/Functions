@@ -1677,7 +1677,7 @@ GEE_MSM=function(Outcome,
 # # Add a grouping variable manually
 # df[, group:=ifelse(intv==1, "Intervention", "Control")]
 # # time
-# df[, time:=as.Date(time)]
+# df[, time:=as.Date(time, origin="2020-01-01")]
 # ITS=Segmented_Regression_Model(Data=df,
 #                                Res_Var="count",
 #                                Time_Var="time",
