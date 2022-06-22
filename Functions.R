@@ -267,6 +267,30 @@ SURVEY_Number_Updater=function(Data,
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
            "2019-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
          paste0(Survey_Var, "_NEW"):=28]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2020-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=29]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2020-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=30]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2021-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=31]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2021-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=32]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2022-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=33]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2022-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=34]
   }
   
   return(as.data.table(Data))
@@ -1799,15 +1823,18 @@ Segmented_Regression_Model=function(Data,
             na.action=na.pass)
   
   if(BG_Test$Result$p.value<0.05){
-    BG_Test$Message=list("Breusch-Godfrey test identifies autocorrelation",
+    BG_Test$Message=list(paste0("Outcome : ", Res_Var),
+                         "Breusch-Godfrey test identifies autocorrelation",
                          "To adjust for autocorrelation in the model, autoregressive and moving average processes need to be taken into account.",
                          "This can be done by fitting a model using generalized least squares (gls) with an autocorrelation-moving average correlation structure of order (p, q).",
                          "Look at the acf and pacf function plots to determine the autoregressive (p) and moving average orders (q) in accordance with the instruction in the table shown at 7:10 in the following link.",
-                         "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238")
+                         "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238",
+                         "(if the link is not available, watch 1.7 Autocorrelation - Autocorrelation.mp4)")
     print(BG_Test$Message)
     Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
                            q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
                            form=~Time)
+    Corr_Structure=NULL
   }else{
     BG_Test$Message="Breusch-Godfrey test does not identify autocorrelation"
     Corr_Structure=NULL
@@ -1824,7 +1851,7 @@ Segmented_Regression_Model=function(Data,
   
   # Output
   Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
+  Output$N_Time_Points=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
   Output$gls_model_fit=gls_model_fit
   Output$WO_Test=WO_Test
   Output$BG_Test=BG_Test
@@ -3615,20 +3642,21 @@ GEE_Multivariable_with_vif=function(Data,
   
   # Non_Missing_Data for GEE_Backward_by_QIC
   if(sum(grepl(":", Pred_Vars))>0){
-    Non_Missing_Data<<-Remove_missing(Data, # remove missing data
-                                      c(Pred_Vars[!grepl(":", Pred_Vars)],
-                                        Res_Var,
-                                        Group_Var))
+    Non_Missing_Data=Remove_missing(Data, # remove missing data
+                                    c(Pred_Vars[!grepl(":", Pred_Vars)],
+                                      Res_Var,
+                                      Group_Var))
   }else{
-    Non_Missing_Data<<-Remove_missing(Data, # remove missing data
-                                      c(Pred_Vars,
-                                        Res_Var,
-                                        Group_Var))
+    Non_Missing_Data=Remove_missing(Data, # remove missing data
+                                    c(Pred_Vars,
+                                      Res_Var,
+                                      Group_Var))
   }
   
   # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
   # Non_Missing_Data[, Group_Var]=as.numeric(as.factor(Non_Missing_Data[, Group_Var]))
   Non_Missing_Data[, Group_Var]=as.factor(Non_Missing_Data[, Group_Var])
+  Non_Missing_Data<<-Non_Missing_Data
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -4007,7 +4035,6 @@ GEE_Backward_by_QIC=function(Full_Model,
   # Full_Model=GEE.fit$model_fit
   # Pred_Vars
   
-  
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
   
@@ -4051,7 +4078,7 @@ GEE_Backward_by_QIC=function(Full_Model,
     
     # QIC of multivariable model excluding each variable
     Temp_Table=data.table(
-      Inclusion="-",
+      Exclusion="-",
       Var=c("(none)", Pred_Vars[Include_Index]),
       QIC=c(Current_Full_Model_QIC, Reduced_Model_QICs))
     
@@ -4244,6 +4271,175 @@ GEE_Backward_by_P=function(Full_Model,
   return(Out)
 }
 
+#********************
+# GEE_Backward_by_P_2
+#********************
+# GEE_Backward_by_P_2 is basically the same as GEE_Backward_by_P
+GEE_Backward_by_P_2=function(Full_Model,
+                             Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GEE.fit$model_fit
+  # Pred_Vars
+
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+
+  # Full_Model=GEE.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+
+  # Out
+  Out=c()
+
+  # initial settings
+  Current_Full_Model=Full_Model
+
+  #***************
+  # main algorithm
+  #***************
+  Reduced_Model_QICs=c()
+
+  Pred_Vars_Temp=Pred_Vars
+  Summ_Table=list()
+  Temp_Table=data.table(
+    Step=1,
+    Further_Excluded_Var="(none)",
+    QIC=QIC(Current_Full_Model)["QIC"])
+
+  # run GEE excluding one variable with the highest p-valuse in the current model
+  for(Step in 1:length(Pred_Vars)){
+    #Step=2
+    Out$Model[[Step]]=Current_Full_Model
+    Current_Coefficients=coef(Current_Full_Model)
+    Current_Summ_Table=data.table(names=c("(Intercept)", Pred_Vars_Temp),
+                                  esticon(Current_Full_Model, diag(length(Current_Coefficients)))[, c("estimate", "std.error", "p.value")])
+
+    # save info of the current model
+    Summ_Table[[Step]]=Current_Summ_Table[order(p.value, decreasing=TRUE)]
+
+    # identify the variable to remove by p-value
+    Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[-1, p.value]))]
+    Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove]
+
+    # update the model
+    Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Var_To_Remove, collapse="-"))))
+    Current_Full_Model=Current_Reduced_Model
+
+    # save info
+    Temp_Table=rbind(Temp_Table,
+                     data.table(
+                       Step=Step+1,
+                       Further_Excluded_Var=Var_To_Remove,
+                       QIC=QIC(Current_Full_Model)["QIC"]))
+
+    print(paste0("Step : ", Step, "/", length(Pred_Vars)))
+  }
+  Out$Model[[Step+1]]=Current_Full_Model
+
+  # Out
+  Out$summ_table=Summ_Table
+  Out$QIC_Table=Temp_Table
+  # the final model with the lowest QIC
+  Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+
+  return(Out)
+}
+
+#*******************************
+# GEE_Backward_by_P_missing_Data
+#*******************************
+# I'm not sure for now which one to use between this one and GEE_Backward_by_P (or GEE_Backward_by_P_2).
+# However, GEE_Backward_by_P (or GEE_Backward_by_P_2) seems more appropriate because a reduced model is built and compared with the reference model based on the same sample through the 'update' function, which is used for the reference model.
+# The sample used for the reference model is likely to be smaller because of the variable that is included in the reference model, but not in the reduced model.
+# If the variable contains missing values, these missing data are removed even when the reduced model is fitted.
+GEE_Backward_by_P_missing_Data=function(Data,
+                                        Pred_Vars,
+                                        Res_Var,
+                                        Group_Var,
+                                        which.family){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GEE.fit$model_fit
+  # Pred_Vars
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GEE.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  Pred_Vars_Temp=Pred_Vars
+  Full_Model=GEE_Multivariable_with_vif(Data=Data,
+                                        Pred_Vars=Pred_Vars_Temp,
+                                        Res_Var=Res_Var,
+                                        Group_Var="CODE",
+                                        which.family="binomial")
+  
+  Current_Full_Model=Full_Model
+  
+  #***************
+  # main algorithm
+  #***************
+  Reduced_Model_QICs=c()
+  
+  Summ_Table=list()
+  Temp_Table=data.table(
+    Step=1,
+    Further_Excluded_Var="(none)",
+    QIC=QIC(Current_Full_Model$model_fit)["QIC"])
+  
+  Out$Model[[1]]=Current_Full_Model$model_fit
+  Summ_Table[[1]]=Current_Full_Model$summ_table[order(P.value, decreasing=TRUE)]
+  # run GEE excluding one variable with the highest p-valuse in the current model
+  for(Step in 1:length(Pred_Vars)){
+    #Step=1
+    est=esticon(Current_Full_Model$model_fit,
+                diag(length(coef(Current_Full_Model$model_fit))))[-1, ]
+    Current_Summ_Table=data.table(names(coef(Current_Full_Model$model_fit))[-1],
+                                  est)
+    Current_Summ_Table=Current_Summ_Table[order(p.value, decreasing=TRUE)]
+    
+    # identify the variable to remove by p-value
+    Var_To_Remove=Current_Summ_Table[, 1][which.max(Current_Summ_Table[, p.value])]
+    Var_To_Remove_Original_Name=Pred_Vars_Temp[unlist(lapply(Pred_Vars_Temp, function(x) grepl(x, Var_To_Remove)))]
+    Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove_Original_Name]
+    
+    # update the model
+    if(length(Pred_Vars_Temp)==0){
+      break
+    }else{
+      Current_Reduced_Model=GEE_Multivariable_with_vif(Data=Data,
+                                                       Pred_Vars=Pred_Vars_Temp,
+                                                       Res_Var=Res_Var,
+                                                       Group_Var="CODE",
+                                                       which.family="binomial")
+      Current_Full_Model=Current_Reduced_Model
+    }
+    
+    # save info
+    Out$Model[[Step+1]]=Current_Full_Model$model_fit
+    Summ_Table[[Step+1]]=Current_Full_Model$summ_table[order(P.value, decreasing=TRUE)]
+    Temp_Table=rbind(Temp_Table,
+                     data.table(
+                       Step=Step+1,
+                       Further_Excluded_Var=Var_To_Remove_Original_Name,
+                       QIC=QIC(Current_Reduced_Model$model_fit)["QIC"]))
+    
+    print(paste0("Step : ", Step, "/", length(Pred_Vars)))
+  }
+  Out$Model[[Step+1]]=Current_Full_Model
+  
+  # Out
+  Out$summ_table=Summ_Table
+  Out$QIC_Table=Temp_Table
+  # the final model with the lowest QIC
+  Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  
+  return(Out)
+}
+
 
 
 #************************
@@ -4339,7 +4535,6 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
     return(vars.keep)
   }
 } ## names of people should be numeric
-
 
 
 #**********************
@@ -4631,12 +4826,15 @@ GLMM_Multivariable=function(Data,
   }
   
   # likelihood ratio test
-  LRT_results=anova(myfit)
-  LRT_pvalues=LRT_results$`Pr(>F)`
-  LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
-                     format(round2(LRT_pvalues, 7), nsmall=3))
-  Output$summ_table$`P.value(F-test)`=rep(LRT_pvalues, LRT_results$NumDF)
-  Output$summ_table$`P.value(F-test)`[duplicated(rep(rownames(LRT_results), LRT_results$NumDF))]=""
+  # this works only for lmer (that is, which.family=="gaussian")
+  if(grepl("gaussian", which.family)){
+    LRT_results=anova(myfit)
+    LRT_pvalues=LRT_results$`Pr(>F)`
+    LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
+                       format(round2(LRT_pvalues, 7), nsmall=3))
+    Output$summ_table$`P.value(F-test)`=rep(LRT_pvalues, LRT_results$NumDF)
+    Output$summ_table$`P.value(F-test)`[duplicated(rep(rownames(LRT_results), LRT_results$NumDF))]=""
+  }
   
   # power
   if(Compute.Power==T){
@@ -5707,7 +5905,7 @@ GLMM_Overdispersion_Test=function(model){
 # summary(MultiLinearReg)
 #********
 # Example
-#********
+# ********
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -8190,6 +8388,7 @@ Weighted_Contingency_Table_Generator=function(Data,
   Check_Factor=ifelse(is.null(levels(Data[, Row_Var])), 0, 1)
   if(Check_Factor==1){
     X3_Text=as.character(levels(Data[, Row_Var]))
+    X3_Text=X3_Text[X3_Text%in%names(table(Data[, Row_Var])!=0)[(table(Data[, Row_Var])!=0)]]
   }else{
     stop("Row_Var is not a factor. Please double-check.")
   }
@@ -8558,6 +8757,8 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
   }else if(Missing=="Not_Include"){
     Table=table(Data[, .SD, .SDcols=Var])
   }
+  
+  names(Table)[is.na(names(Table))]="NA"
   
   CT=t(as.matrix(paste0(Table, " (", round(Table/sum(Table_with_missing)*100, 2), "%)")))
   
