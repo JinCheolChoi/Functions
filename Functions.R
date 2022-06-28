@@ -8962,7 +8962,8 @@ Raw_Contingency_Table_Generator=function(Data,
   colnames(Merged)[1:2]=c("Predictor", "Value")
   colnames(Merged)[1:2]=c("Predictor", "Value")
   colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(names(Sum_Col_Wise))
-  colnames(Merged)[3+ncol(Contingency_Table)]=paste0(sum(Sum_Col_Wise))
+  colnames(Merged)[3+ncol(Contingency_Table)]="Overall"
+  # colnames(Merged)[3+ncol(Contingency_Table)]=paste0(sum(Sum_Col_Wise))
   Out=Merged
   
   # return
