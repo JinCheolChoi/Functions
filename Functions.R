@@ -4347,10 +4347,12 @@ GEE_Backward_by_P_2=function(Full_Model,
 #*******************************
 # GEE_Backward_by_P_missing_Data
 #*******************************
-# I'm not sure for now which one to use between this one and GEE_Backward_by_P (or GEE_Backward_by_P_2).
-# However, GEE_Backward_by_P (or GEE_Backward_by_P_2) seems more appropriate because a reduced model is built and compared with the reference model based on the same sample through the 'update' function, which is used for the reference model.
-# The sample used for the reference model is likely to be smaller because of the variable that is included in the reference model, but not in the reduced model.
 # If the variable contains missing values, these missing data are removed even when the reduced model is fitted.
+# As there are one variable less in the reduced model, it is likely that a larger sample is used for the reduced model fit.
+# In other words, the sample used for the reference model is likely to be smaller because of the variable that is included in the reference model, but not in the reduced model.
+# On the contrary, GEE_Backward_by_P (or GEE_Backward_by_P_2) runs a reduced model based on the same sample that's used for the reference model through the 'update' function.
+# I'm not sure for now which one to use between this one and GEE_Backward_by_P (or GEE_Backward_by_P_2).
+# However, it might make more sense to use GEE_Backward_by_P (or GEE_Backward_by_P_2) because a reduced model is built and compared with the reference model based on the same sample.
 GEE_Backward_by_P_missing_Data=function(Data,
                                         Pred_Vars,
                                         Res_Var,
