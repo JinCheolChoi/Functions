@@ -3470,11 +3470,11 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
-    Temp=GEE_Multivariable_with_vif(Data=Data,
-                                    Pred_Vars=unlist(Pred_Vars[i]),
-                                    Res_Var=Res_Var,
-                                    Group_Var=Group_Var,
-                                    which.family=which.family)
+    Temp=GEE_Multivariable(Data=Data,
+                           Pred_Vars=unlist(Pred_Vars[i]),
+                           Res_Var=Res_Var,
+                           Group_Var=Group_Var,
+                           which.family=which.family)
     
     Output=rbind(Output,
                  cbind(Temp$summ_table,
@@ -3493,107 +3493,6 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
 #******************
 # GEE_Multivariable
 #******************
-# Example
-#************************************
-# lapply(c("geepack"), checkpackages)
-# data("respiratory")
-# Data_to_use=respiratory
-# # generate missing data
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(Pred_Vars=="treat")]="P"
-# levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data_to_use[sample(1:nrow(Data_to_use), 20), "treat"]=NA
-# Data_to_use=Format_Columns(Data_to_use,
-#                            Res_Var="outcome",
-#                            Pred_Vars,
-#                            vector.OF.classes.num.fact,
-#                            levels.of.fact)
-# # run GEE_Multivariable
-# GEE_Multivariable(Data=Data_to_use,
-#                   Pred_Vars=c("center", "treat", "sex", "age", "sex:age"),
-#                   Res_Var="outcome",
-#                   Group_Var=c("id"),
-#                   which.family="binomial (link='logit')")
-GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
-  # check out packages
-  lapply(c("geepack", "MESS", "doBy", "data.table"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
-  Data=Data[Non_Missing_Outcome_Obs, ]
-  Origin_N_Rows=nrow(Data)
-  
-  # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
-  Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
-  
-  # number of observations from a model fit
-  if(sum(grepl(":", Pred_Vars))>0){
-    Data=na.omit(Data[, c(Pred_Vars[!grepl(":", Pred_Vars)], Res_Var, Group_Var)])
-    Used_N_Rows=nrow(Data)
-  }else{
-    Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
-    Used_N_Rows=nrow(Data)
-  }
-  
-  # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  model_fit=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))),
-                   data=Data, 
-                   id=Data[, Group_Var],
-                   family=eval(parse(text=which.family)),
-                   corstr="exchangeable")
-  
-  # Individual Wald test and confidence interval for each parameter
-  est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
-  
-  # Output
-  Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-  Output$model_fit=model_fit
-  #Output$vif=HH::vif(model_fit)
-  
-  if(grepl("gaussian", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
-                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
-                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
-    )
-  }else if(grepl("binomial", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
-    )
-    
-  }else if(grepl("poisson", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
-    )
-  }
-  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
-  return(Output)
-}
-
-#***************************
-# GEE_Multivariable_with_vif
-#***************************
 # Example
 #*************************************************************************
 # Note : 1. Argument must be declared with '<-' in a function for HH::vif!
@@ -3622,17 +3521,17 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 #                              vector.OF.classes.num.fact,
 #                              levels.of.fact)
 # # run GEE_Multivariable
-# GEE_Multivariable_with_vif(Data<-Data_original,
-#                            Pred_Vars<-c("center", "sex", "age", "sex:age"),
-#                            Res_Var<-Res_Var,
-#                            Group_Var<-Group_Var,
-#                            which.family<-"binomial (link='logit')")
+# GEE_Multivariable(Data<-Data_original,
+#                   Pred_Vars<-c("center", "sex", "age", "sex:age"),
+#                   Res_Var<-Res_Var,
+#                   Group_Var<-Group_Var,
+#                   which.family<-"binomial (link='logit')")
 # Data_original=as.data.table(Data_original)
-GEE_Multivariable_with_vif=function(Data,
-                                    Pred_Vars,
-                                    Res_Var,
-                                    Group_Var,
-                                    which.family){ # names of people should be numeric
+GEE_Multivariable=function(Data,
+                           Pred_Vars,
+                           Res_Var,
+                           Group_Var,
+                           which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH", "data.table"), checkpackages)
   
@@ -3773,11 +3672,11 @@ GEE_Multivariable_with_vif=function(Data,
 # Res_Var="outcome"
 # Group_Var="id"
 # # All arguments must be declared with '<-'!
-# GEE.fit=GEE_Multivariable_with_vif(Data<-Data_to_use,
-#                                    Pred_Vars<-Pred_Vars,
-#                                    Res_Var<-Res_Var,
-#                                    Group_Var<-Group_Var,
-#                                    which.family<-"binomial (link='logit')")
+# GEE.fit=GEE_Multivariable(Data<-Data_to_use,
+#                           Pred_Vars<-Pred_Vars,
+#                           Res_Var<-Res_Var,
+#                           Group_Var<-Group_Var,
+#                           which.family<-"binomial (link='logit')")
 # Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
 #                                           Main_Pred_Var="sex",
 #                                           Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"], # for now, algorithm works with no interaction term
@@ -3785,11 +3684,11 @@ GEE_Multivariable_with_vif=function(Data,
 #                                           Min.Change.Percentage=5,
 #                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
 # Confounder_Ind=which(Pred_Vars%in%Confounder_Steps$Confounders)
-# GEE.confound.fit=GEE_Multivariable_with_vif(Data<-Data_to_use,
-#                                             Pred_Vars<-Pred_Vars[Confounder_Ind],
-#                                             Res_Var<-Res_Var,
-#                                             Group_Var<-Group_Var,
-#                                             which.family<-"binomial (link='logit')")
+# GEE.confound.fit=GEE_Multivariable(Data<-Data_to_use,
+#                                    Pred_Vars<-Pred_Vars[Confounder_Ind],
+#                                    Res_Var<-Res_Var,
+#                                    Group_Var<-Group_Var,
+#                                    which.family<-"binomial (link='logit')")
 # GEE.fit$summ_table
 # GEE.confound.fit$summ_table
 GEE_Confounder_Selection=function(Full_Model, 
@@ -3966,11 +3865,11 @@ GEE_Confounder_Model=function(Data,
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
   
-  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data<<-Data,
-                                                             Pred_Vars<<-Pred_Vars,
-                                                             Res_Var<<-Res_Var,
-                                                             Group_Var<<-Group_Var,
-                                                             which.family<<-which.family)
+  Output$Full_Multivariable_Model=GEE_Multivariable(Data<<-Data,
+                                                    Pred_Vars<<-Pred_Vars,
+                                                    Res_Var<<-Res_Var,
+                                                    Group_Var<<-Group_Var,
+                                                    which.family<<-which.family)
   
   # Confounder selection
   Confounder_Steps=GEE_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
@@ -3988,11 +3887,11 @@ GEE_Confounder_Model=function(Data,
   #                       Group_Var))
   
   # Multivariable model with confounders
-  Output$Confounder_Model=GEE_Multivariable_with_vif(Data<<-Data,
-                                                     Pred_Vars<<-Pred_Vars[Confounder_Ind],
-                                                     Res_Var<<-Res_Var,
-                                                     Group_Var<<-Group_Var,
-                                                     which.family<<-which.family)
+  Output$Confounder_Model=GEE_Multivariable(Data<<-Data,
+                                            Pred_Vars<<-Pred_Vars[Confounder_Ind],
+                                            Res_Var<<-Res_Var,
+                                            Group_Var<<-Group_Var,
+                                            which.family<<-which.family)
   
   return(Output)
 }
@@ -4027,7 +3926,7 @@ GEE_Confounder_Model=function(Data,
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GEE.fit=GEE_Multivariable_with_vif(Data=Data_to_use,
+# GEE.fit=GEE_Multivariable(Data=Data_to_use,
 #                                    Pred_Vars=Pred_Vars,
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
@@ -4151,7 +4050,7 @@ GEE_Backward_by_QIC=function(Full_Model,
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GEE.fit=GEE_Multivariable_with_vif(Data=Data_to_use,
+# GEE.fit=GEE_Multivariable(Data=Data_to_use,
 #                                    Pred_Vars=Pred_Vars,
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
@@ -4377,11 +4276,11 @@ GEE_Backward_by_P_missing_Data=function(Data,
   
   # initial settings
   Pred_Vars_Temp=Pred_Vars
-  Full_Model=GEE_Multivariable_with_vif(Data=Data,
-                                        Pred_Vars=Pred_Vars_Temp,
-                                        Res_Var=Res_Var,
-                                        Group_Var="CODE",
-                                        which.family="binomial")
+  Full_Model=GEE_Multivariable(Data=Data,
+                               Pred_Vars=Pred_Vars_Temp,
+                               Res_Var=Res_Var,
+                               Group_Var="CODE",
+                               which.family="binomial")
   
   Current_Full_Model=Full_Model
   
@@ -4416,11 +4315,11 @@ GEE_Backward_by_P_missing_Data=function(Data,
     if(length(Pred_Vars_Temp)==0){
       break
     }else{
-      Current_Reduced_Model=GEE_Multivariable_with_vif(Data=Data,
-                                                       Pred_Vars=Pred_Vars_Temp,
-                                                       Res_Var=Res_Var,
-                                                       Group_Var="CODE",
-                                                       which.family="binomial")
+      Current_Reduced_Model=GEE_Multivariable(Data=Data,
+                                              Pred_Vars=Pred_Vars_Temp,
+                                              Res_Var=Res_Var,
+                                              Group_Var="CODE",
+                                              which.family="binomial")
       Current_Full_Model=Current_Reduced_Model
     }
     
