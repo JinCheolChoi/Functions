@@ -6367,14 +6367,17 @@ GLMM_Multinomial_Bivariate=function(Data,
                                        maxit=maxit,
                                        par.update=par.update)
     
-    Output$N_data_used=rbind(Output$N_data_used, Temp$N_data_used)
-    Output$Estimate=rbind(Output$Estimate, Temp$Estimate)
-    Output$Std.Error=rbind(Output$Std.Error, Temp$Std.Error)
-    Output$`P-value`=rbind(Output$`P-value`, Temp$`P-value`)
-    Output$OR.and.CI=rbind(Output$OR.and.CI, Temp$OR.and.CI)
+    Output=rbind(Output, Temp$summ_table)
+    
+    # print out progress
+    if(sum(grepl(":", Pred_Vars[i]))>0){
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", unlist(Pred_Vars[i])[grepl(":", unlist(Pred_Vars[i]))], " (", i ," out of ", length(Pred_Vars), ")"))
+    }else{
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
+    }
   }
   
-  return(Output)
+  return(as.data.table(Output, keep.rownames=TRUE))
 }
 
 
@@ -6512,20 +6515,22 @@ GLMM_Multinomial_Multivariate=function(Data,
   
   # Output
   Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=myfit
   
   Output$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
-  Output$Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
-  Output$Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
-  Output$`P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                                   format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
-  Output$OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                                   " (",
-                                   format(round(Lower_Bound, 2), nsmall=2),
-                                   " - ",
-                                   format(round(Upper_Bound, 2), nsmall=2),
-                                   ")"), nrow=length(levels(Y))-1))
+  
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  
+  Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  `P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                            format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
+  OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                            " (",
+                            format(round(Lower_Bound, 2), nsmall=2),
+                            " - ",
+                            format(round(Upper_Bound, 2), nsmall=2),
+                            ")"), nrow=length(levels(Y))-1))
   
   # name Output rows
   row_names=c()
@@ -6538,14 +6543,30 @@ GLMM_Multinomial_Multivariate=function(Data,
       row_names=c(row_names, Pred_Vars[i])
     }
   }
-  colnames(Output$Estimate)=levels(Y)[-length(levels(Y))]
-  colnames(Output$Std.Error)=levels(Y)[-length(levels(Y))]
-  colnames(Output$`P-value`)=levels(Y)[-length(levels(Y))]
-  colnames(Output$OR.and.CI)=levels(Y)[-length(levels(Y))]
-  rownames(Output$Estimate)=row_names
-  rownames(Output$Std.Error)=row_names
-  rownames(Output$`P-value`)=row_names
-  rownames(Output$OR.and.CI)=row_names
+  
+  colnames(Estimate)=levels(Y)[-length(levels(Y))]
+  colnames(Std.Error)=levels(Y)[-length(levels(Y))]
+  colnames(`P-value`)=levels(Y)[-length(levels(Y))]
+  colnames(OR.and.CI)=levels(Y)[-length(levels(Y))]
+  rownames(Estimate)=row_names
+  rownames(Std.Error)=row_names
+  rownames(`P-value`)=row_names
+  rownames(OR.and.CI)=row_names
+  
+  # summ_table
+  summ_table=c()
+  for(ind in 1:ncol(Estimate)){
+    Temp_Summ=cbind(OR.and.CI[, ind],
+                    `P-value`[, ind])
+    colnames(Temp_Summ)=paste0(colnames(Estimate)[ind], c(" (OR.and.CI)", " (P-value)"))
+    
+    summ_table=cbind(summ_table, Temp_Summ)
+  }
+  rownames(summ_table)=rownames(OR.and.CI)
+  summ_table=cbind(summ_table, N_data_used)
+  
+  Output$summ_table=as.data.table(summ_table,
+                                  keep.rownames=TRUE)
   
   return(Output)
 }
@@ -6619,7 +6640,8 @@ CLMM_Ordinal_Bivariate=function(Data,
                                 Type_Odds,
                                 Res_Var,
                                 Group_Var,
-                                NAGQ=3){
+                                NAGQ=3,
+                                ...){
   # check out packages
   lapply(c("ordinal"), checkpackages)
   
@@ -6637,7 +6659,7 @@ CLMM_Ordinal_Bivariate=function(Data,
   Output=c()
   
   for(i in 1:length(Pred_Vars)){
-    #i=7
+    #i=5
     i<<-i
     if(Type_Odds[i]=="Prop"){
       model_fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
@@ -6646,7 +6668,10 @@ CLMM_Ordinal_Bivariate=function(Data,
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
-                      link="logistic")
+                      link="logistic",
+                      ...)
+      # adjust the value of grtol if the algorithm failed to converge
+      # control=clmm2.control(grtol=1e-1)
     }else if(Type_Odds[i]=="Non_Prop"){
       model_fit=clmm2(as.formula(paste(Res_Var, "~1")),
                       nominal=as.formula(paste("~", Pred_Vars[i])),
@@ -6654,7 +6679,8 @@ CLMM_Ordinal_Bivariate=function(Data,
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
-                      link="logistic")
+                      link="logistic",
+                      ...)
     }
     
     model_fit.summ=summary(model_fit)$coefficients
@@ -6835,7 +6861,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                                     Type_Odds,
                                     Res_Var,
                                     Group_Var,
-                                    NAGQ=3){
+                                    NAGQ=3,
+                                    ...){
   # check out packages
   lapply(c("ordinal", "data.table"), checkpackages)
   
@@ -6861,7 +6888,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
-                    link="logistic")
+                    link="logistic",
+                    ...)
   }else if(length(Nom_Vars)==0){ # if all are proportional odds
     model_fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     #nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
@@ -6869,7 +6897,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
-                    link="logistic")
+                    link="logistic",
+                    ...)
   }else if(length(Loc_Vars)!=0 & length(Nom_Vars)!=0){ # mixed
     model_fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
@@ -6877,7 +6906,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
-                    link="logistic")
+                    link="logistic",
+                    ...)
   }
   
   # number of observations from a model fit
