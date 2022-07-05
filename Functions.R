@@ -300,10 +300,10 @@ SURVEY_Number_Updater=function(Data,
 }
 
 
-#*************
-# align_plots1
-#*************
-align_plots1=function(...){
+#************
+# Align_plots
+#************
+Align_plots=function(...){
   pl=list(...)
   stopifnot(do.call(all, lapply(pl, inherits, "gg")))
   gl=lapply(pl, ggplotGrob)
@@ -4282,32 +4282,32 @@ GEE_Backward_by_P_2=function(Full_Model,
                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
   # Full_Model=GEE.fit$model_fit
   # Pred_Vars
-
+  
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
-
+  
   # Full_Model=GEE.example$model_fit
   # Main_Pred_Var="sex"
   # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
-
+  
   # Out
   Out=c()
-
+  
   # initial settings
   Current_Full_Model=Full_Model
-
+  
   #***************
   # main algorithm
   #***************
   Reduced_Model_QICs=c()
-
+  
   Pred_Vars_Temp=Pred_Vars
   Summ_Table=list()
   Temp_Table=data.table(
     Step=1,
     Further_Excluded_Var="(none)",
     QIC=QIC(Current_Full_Model)["QIC"])
-
+  
   # run GEE excluding one variable with the highest p-valuse in the current model
   for(Step in 1:length(Pred_Vars)){
     #Step=2
@@ -4315,35 +4315,35 @@ GEE_Backward_by_P_2=function(Full_Model,
     Current_Coefficients=coef(Current_Full_Model)
     Current_Summ_Table=data.table(names=c("(Intercept)", Pred_Vars_Temp),
                                   esticon(Current_Full_Model, diag(length(Current_Coefficients)))[, c("estimate", "std.error", "p.value")])
-
+    
     # save info of the current model
     Summ_Table[[Step]]=Current_Summ_Table[order(p.value, decreasing=TRUE)]
-
+    
     # identify the variable to remove by p-value
     Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[-1, p.value]))]
     Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove]
-
+    
     # update the model
     Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Var_To_Remove, collapse="-"))))
     Current_Full_Model=Current_Reduced_Model
-
+    
     # save info
     Temp_Table=rbind(Temp_Table,
                      data.table(
                        Step=Step+1,
                        Further_Excluded_Var=Var_To_Remove,
                        QIC=QIC(Current_Full_Model)["QIC"]))
-
+    
     print(paste0("Step : ", Step, "/", length(Pred_Vars)))
   }
   Out$Model[[Step+1]]=Current_Full_Model
-
+  
   # Out
   Out$summ_table=Summ_Table
   Out$QIC_Table=Temp_Table
   # the final model with the lowest QIC
   Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
-
+  
   return(Out)
 }
 
