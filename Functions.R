@@ -3439,13 +3439,13 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #
 #*********************
 # GEE_Bivariate
-#******************
+#**************
 # Example
-#******************
+#************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
@@ -3591,9 +3591,9 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 # GEE_Multivariable_with_vif
 #***************************
 # Example
-#**************************************************************************
+#*************************************************************************
 # Note : 1. Argument must be declared with '<-' in a function for HH::vif!
-#**************************************************************************
+#*************************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_original=respiratory
@@ -3743,7 +3743,7 @@ GEE_Multivariable_with_vif=function(Data,
 # GEE_Confounder_Selection
 #*************************
 # Example
-#******************
+#****************************************************
 # # for now, algorithm works with no interaction term
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
