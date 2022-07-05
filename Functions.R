@@ -59,6 +59,9 @@ elapsed_months=function(start_date, end_date){
 # convert the class of *_DATE to date
 #************************************
 convert_date=function(data){
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
   date.ind=grep('DATE', names(data))
   data[, (date.ind):=lapply(.SD, as.Date), .SDcols=date.ind]
 }
