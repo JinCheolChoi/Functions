@@ -1635,6 +1635,7 @@ GEE_MSM=function(Outcome,
 # visualization of standardized mean difference comparison
 # Example
 #********
+# lapply(c("ggplot2"), checkpackages)
 # SMD_Data=data.frame(
 #   variable=c("AGE",
 #              "GENDER_SELF",
