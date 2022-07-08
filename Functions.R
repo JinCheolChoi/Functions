@@ -1835,10 +1835,14 @@ Segmented_Regression_Model=function(Data,
                          "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238",
                          "(if the link is not available, watch 1.7 Autocorrelation - Autocorrelation.mp4)")
     print(BG_Test$Message)
-    Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
-                           q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
-                           form=~Time)
-    Corr_Structure=NULL
+    
+    if(AR_Order==0 & MA_Order==0){
+      Corr_Structure=NULL
+    }else{
+      Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
+                             q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
+                             form=~Time)
+    }
   }else{
     BG_Test$Message="Breusch-Godfrey test does not identify autocorrelation"
     Corr_Structure=NULL
