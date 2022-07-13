@@ -1627,54 +1627,54 @@ GEE_MSM=function(Outcome,
   return(Output)
 }
 
-
-
-#*************************
-# SMD difference Plot ----
-#*************************
-# visualization of standardized mean difference comparison
-# Example
-#********
-# lapply(c("ggplot2"), checkpackages)
-# SMD_Data=data.frame(
-#   variable=c("AGE",
-#              "GENDER_SELF",
-#              "ETHNIC_WHITE",
-#              "MOBILITY",
-#              "SELFCARE",
-#              "PAIN",
-#              "ANXIETY"),
-#   Unweighted=abs(rnorm(7))+0.2,
-#   Weighted=abs(rnorm(7))
-# )
-# ## Create long-format data for ggplot2
-# SMD_DataMelt=melt(data=SMD_Data,
-#                   id.vars=c("variable"),
-#                   variable.name="Method",
-#                   value.name="SMD")
-# colnames(SMD_DataMelt)=c("variable", "Method", "SMD")
-# 
-# ## Order variable names by magnitude of SMD
-# varNames=as.character(SMD_Data$variable)[order(SMD_Data$Unweighted)]
-# 
-# ## Order factor levels in the same order
-# SMD_DataMelt$variable=factor(SMD_DataMelt$variable,
-#                              levels=varNames)
-# 
-# ## Plot using ggplot2
-# ggplot(data=SMD_DataMelt, mapping=aes(x=variable, y=SMD,
-#                                       group=Method, color=Method)) +
-#   ggtitle("Title")+
-#   # geom_line() +
-#   scale_colour_manual("", values=c("chocolate3","cyan4")) +
-#   # scale_fill_manual(values=c("chocolate3", "cyan4")) +
-#   geom_point(shape=21, size=5, stroke=2,) +
-#   geom_hline(yintercept=0.5, color=4, size=1.2, linetype=2) +
-#   geom_vline(xintercept=c(1:19), color=8, linetype=5)+
-#   coord_flip() +
-#   theme_bw() +
-#   theme(legend.key=element_blank(), text=element_text(size=30), legend.position=c(0.8, 0.2)) +
-#   labs(y="Standardized mean difference", x="")
+#********************
+# SMD difference Plot
+#********************
+SMD_difference_Plot_Example=function(){
+  # visualization of standardized mean difference comparison
+  # Example
+  # ********
+  # lapply(c("ggplot2"), checkpackages)
+  # SMD_Data=data.frame(
+  #   variable=c("AGE",
+  #              "GENDER_SELF",
+  #              "ETHNIC_WHITE",
+  #              "MOBILITY",
+  #              "SELFCARE",
+  #              "PAIN",
+  #              "ANXIETY"),
+  #   Unweighted=abs(rnorm(7))+0.2,
+  #   Weighted=abs(rnorm(7))
+  # )
+  # ## Create long-format data for ggplot2
+  # SMD_DataMelt=melt(data=SMD_Data,
+  #                   id.vars=c("variable"),
+  #                   variable.name="Method",
+  #                   value.name="SMD")
+  # colnames(SMD_DataMelt)=c("variable", "Method", "SMD")
+  # 
+  # ## Order variable names by magnitude of SMD
+  # varNames=as.character(SMD_Data$variable)[order(SMD_Data$Unweighted)]
+  # 
+  # ## Order factor levels in the same order
+  # SMD_DataMelt$variable=factor(SMD_DataMelt$variable,
+  #                              levels=varNames)
+  # 
+  # ## Plot using ggplot2
+  # ggplot(data=SMD_DataMelt, mapping=aes(x=variable, y=SMD,
+  #                                       group=Method, color=Method)) +
+  #   ggtitle("Title")+
+  #   # geom_line() +
+  #   scale_colour_manual("", values=c("chocolate3","cyan4")) +
+  #   # scale_fill_manual(values=c("chocolate3", "cyan4")) +
+  #   geom_point(shape=21, size=5, stroke=2,) +
+  #   geom_hline(yintercept=0.5, color=4, size=1.2, linetype=2) +
+  #   geom_vline(xintercept=c(1:19), color=8, linetype=5)+
+  #   coord_flip() +
+  #   theme_bw() +
+  #   theme(legend.key=element_blank(), text=element_text(size=30), legend.position=c(0.8, 0.2)) +
+  #   labs(y="Standardized mean difference", x="")
+}
 
 
 
@@ -8982,6 +8982,79 @@ rwmetro=function(target, N, x, VCOV, burnin=0){
 # [ --- Etc --- ] ---- 
 # 
 #*********************
+# Multiple_Comparison_Adjusted_P
+#********
+# Example
+#********
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLM_Multivariable_Results=GLM_Multivariable(Data=Data_to_use,
+#                                             Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                                             Res_Var=Res_Var,
+#                                             which.family="binomial (link='logit')")
+# Multiple_Comparison_Adjusted_P(Vars=rownames(summary(GLM_Multivariable_Results$model_fit)$coefficients)[-1],
+#                                Row_P_values=summary(GLM_Multivariable_Results$model_fit)$coefficients[-1, 4],
+#                                Summ_Table=GLM_Multivariable_Results$summ_table,
+#                                P.value_Var="P.value",
+#                                Methods=c("bonferroni", "BH"))
+Multiple_Comparison_Adjusted_P=function(Vars,
+                                        Row_P_values,
+                                        Summ_Table,
+                                        P.value_Var,
+                                        Methods){
+  # specify Methods from p.adjust.methods
+  
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
+  ## or all of adjustments at once
+  p.adjust.M=p.adjust.methods
+  
+  p.adj=sapply(p.adjust.M,
+               function(meth) p.adjust(Row_P_values, meth))
+  # p.adj.60=sapply(p.adjust.M, function(meth) p.adjust(p, meth, n=60))
+  # stopifnot(identical(p.adj[,"none"], p), p.adj <= p.adj.60)
+  stopifnot(identical(p.adj[,"none"], Row_P_values))
+  p.adj=ifelse(p.adj<0.001,
+               "<0.001",
+               round(p.adj, 3))
+  
+  ## or a bit nicer:
+  # noquote(apply(p.adj, 2, format.pval, digits=3))
+  Adjusted_P_Values=as.data.table(p.adj[, Methods],
+                                  keep.rownames=TRUE)
+  colnames(Adjusted_P_Values)=c("Vars",
+                                paste0("P.value(", Methods, ")"))
+  
+  stopifnot(identical(Vars, Adjusted_P_Values$Vars))
+  
+  colnames(Summ_Table)[1]="Vars"
+  
+  return(merge(Summ_Table,
+               Adjusted_P_Values,
+               sort=FALSE))
+}
+
+
+#*************
 # Stepwise_AIC
 #*************
 # Example
