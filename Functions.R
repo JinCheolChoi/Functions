@@ -1637,7 +1637,7 @@ SMD_difference_Plot_Example=function(){
   # visualization of standardized mean difference comparison
   # Example
   # ********
-  # lapply(c("ggplot2"), checkpackages)
+  # lapply(c("ggplot2", "data.table"), checkpackages)
   # SMD_Data=data.frame(
   #   variable=c("AGE",
   #              "GENDER_SELF",
