@@ -653,6 +653,9 @@ Marginal_Effect_2=function(Model_Fit,
 # head(w$unstab_IP_weights$ipw.weights, 10)
 # head(w$basic_stab_IP_weights$ipw.weights, 10)
 # head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# 
+# # propensity score
+# 1/w$unstab_IP_weights$ipw.weights
 IPW=function(Exposure,
              Time_Invariant_Covs,
              Time_Varying_Covs,
@@ -1047,7 +1050,7 @@ IPW=function(Exposure,
 #       #*********************************
 #       # unstabilized IP censoring weight
 #       # Unstabilized IP censoring weights for the censored individuals are 0.
-#       # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#       # (p.159, Hernï¿½n MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
 #       usw_censor_weights=ifelse(Data[[Censoring_Var]]==1,
 #                                 0,
 #                                 unstab.pn.cens/unstab.pd.cens)
@@ -1146,7 +1149,7 @@ IPW=function(Exposure,
 #       #*******************************
 #       # stabilized IP censoring weight
 #       # Stabilized IP censoring weights are not 0 regardless of censoring of individuals.
-#       # (p.159, Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#       # (p.159, Hernï¿½n MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
 #       sw_censor_weights=stab.pn.cens/stab.pd.cens
 #     }else{
 #       sw_censor_weights=rep(1, nrow(Data))
@@ -1158,7 +1161,7 @@ IPW=function(Exposure,
 #     sw_IP_weights=sw_censor_weights*sw_trt_weights
 #     
 #     # compute Time_Varying_Treatment_Weights
-#     # The general form of the (un)stabilized PI weights can be found on p.263 (Hernán MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#     # The general form of the (un)stabilized PI weights can be found on p.263 (Hernï¿½n MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
 #     Data[, Point_Treatment_Weights:=sw_IP_weights]
 #     Data %<>% 
 #       group_by(eval(parse(text=ID_Var))) %>% 
