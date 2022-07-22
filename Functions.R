@@ -272,27 +272,27 @@ SURVEY_Number_Updater=function(Data,
          paste0(Survey_Var, "_NEW"):=28]
     
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
-           "2020-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+           "2020-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-12-01", 
          paste0(Survey_Var, "_NEW"):=29]
     
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
-           "2020-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+           "2020-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2021-06-01", 
          paste0(Survey_Var, "_NEW"):=30]
     
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
-           "2021-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+           "2021-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2021-12-01", 
          paste0(Survey_Var, "_NEW"):=31]
     
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
-           "2021-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+           "2021-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2022-06-01", 
          paste0(Survey_Var, "_NEW"):=32]
     
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
-           "2022-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+           "2022-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2022-12-01", 
          paste0(Survey_Var, "_NEW"):=33]
     
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
-           "2022-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+           "2022-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2023-06-01", 
          paste0(Survey_Var, "_NEW"):=34]
   }
   
