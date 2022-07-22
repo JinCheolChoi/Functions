@@ -653,6 +653,9 @@ Marginal_Effect_2=function(Model_Fit,
 # head(w$unstab_IP_weights$ipw.weights, 10)
 # head(w$basic_stab_IP_weights$ipw.weights, 10)
 # head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# 
+# # propensity score
+# 1/w$unstab_IP_weights$ipw.weights
 IPW=function(Exposure,
              Time_Invariant_Covs,
              Time_Varying_Covs,
