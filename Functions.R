@@ -1761,6 +1761,9 @@ Segmented_Regression_Model=function(Data,
   # message generated based on https://search.r-project.org/CRAN/refmans/seastests/html/combined_test.html
   # look at p-values of 'QS-R p-value' and 'KW-R p-value'
   if(WO_Test$Result$Pval[2]<0.01 | WO_Test$Result$Pval[3]<0.002){
+    print("-----------------------")
+    print("- Seasonality warning -")
+    print("-----------------------")
     WO_Test$Message="The WO - test identifies seasonality"
     print(WO_Test$Message)
   }else{
@@ -1830,13 +1833,17 @@ Segmented_Regression_Model=function(Data,
             na.action=na.pass)
   
   if(BG_Test$Result$p.value<0.05){
-    BG_Test$Message=list(paste0("Outcome : ", Res_Var),
-                         "Breusch-Godfrey test identifies autocorrelation",
-                         "To adjust for autocorrelation in the model, autoregressive and moving average processes need to be taken into account.",
-                         "This can be done by fitting a model using generalized least squares (gls) with an autocorrelation-moving average correlation structure of order (p, q).",
-                         "Look at the acf and pacf function plots to determine the autoregressive (p) and moving average orders (q) in accordance with the instruction in the table shown at 7:10 in the following link.",
-                         "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238",
-                         "(if the link is not available, watch 1.7 Autocorrelation - Autocorrelation.mp4)")
+    BG_Test$Message=c(paste0("Outcome : ", Res_Var),
+                      "Breusch-Godfrey test identifies autocorrelation",
+                      "To adjust for autocorrelation in the model, autoregressive and moving average processes need to be taken into account.",
+                      "This can be done by fitting a model using generalized least squares (gls) with an autocorrelation-moving average correlation structure of order (p, q).",
+                      "Look at the acf and pacf function plots to determine the autoregressive (p) and moving average orders (q) in accordance with the instruction in the table shown at 7:10 in the following link.",
+                      "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238",
+                      "(if the link is not available, watch 1.7 Autocorrelation - Autocorrelation.mp4)")
+    
+    print("---------------------------")
+    print("- Autocorrelation warning -")
+    print("---------------------------")
     print(BG_Test$Message)
     
     if(AR_Order==0 & MA_Order==0){
