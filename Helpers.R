@@ -510,7 +510,7 @@ Check_multicollinearity_GLM=function(Data, dependent_var_name, ColumnsToUse,whic
   fullmod<-as.formula( paste( "dependent_var_vec ~", paste(var, collapse = "+")))
   mylogit<-glm(fullmod, data=non_missing_Data, family=which.family)
   OR.CI<-exp(cbind(OR = coef(mylogit), confint(mylogit, level=0.95)))
-  VIF<-round2(c(NA,vif(mylogit)),2)
+  VIF<-round2(c(NA,car::vif(mylogit)),2)
   VIF.squared<-round2(VIF^2,2)
   RES<-cbind(summary(mylogit)$coefficients,OR.CI,VIF,VIF.squared)
   RES<-RES[-1,which(colnames(RES)%in%c("VIF","VIF.squared"))]

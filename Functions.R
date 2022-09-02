@@ -1,6 +1,6 @@
 #***************************************
 #
-# [ --- Operational functions --- ] ----
+# [ --- Operational Functions --- ] ----
 #
 #***************************************
 # package check
@@ -30,6 +30,20 @@ round2=function(x, n){
   z*posneg
 }
 
+#**********
+# floor_dec
+#**********
+floor_dec=function(x, level=1){
+  round(x-5*10^(-level-1), level) 
+}
+
+#************
+# ceiling_dec
+#************
+ceiling_dec=function(x, level=1){
+  round(x+5*10^(-level-1), level)
+}
+
 #***************
 # elapsed_months
 #***************
@@ -45,6 +59,9 @@ elapsed_months=function(start_date, end_date){
 # convert the class of *_DATE to date
 #************************************
 convert_date=function(data){
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
   date.ind=grep('DATE', names(data))
   data[, (date.ind):=lapply(.SD, as.Date), .SDcols=date.ind]
 }
@@ -120,6 +137,1549 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
   return(Data)
 }
 
+#**********************
+# SURVEY_Number_Updater
+#**********************
+SURVEY_Number_Updater=function(Data,
+                               Survey_Var,
+                               Int_Date_Var){
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
+  # data.table
+  if(!is.data.table(Data)){
+    print("Format Data into data.table")
+  }else{
+    # new Int_Date_Var
+    # 1) Int_Date_Var_NEW=Int_Date_Var
+    Data[, paste0(Survey_Var, "_NEW"):=eval(parse(text=Survey_Var))]
+    
+    # 2) conditional assignments to Int_Date_Var_NEW
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           eval(parse(text=Int_Date_Var))<"2006-06-01",
+         paste0(Survey_Var, "_NEW"):=0]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2006-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2006-12-01",
+         paste0(Survey_Var, "_NEW"):=1]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2006-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2007-06-01",
+         paste0(Survey_Var, "_NEW"):=2]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2007-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2007-12-01", 
+         paste0(Survey_Var, "_NEW"):=3]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2007-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2008-06-01", 
+         paste0(Survey_Var, "_NEW"):=4]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2008-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2008-12-01", 
+         paste0(Survey_Var, "_NEW"):=5]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2008-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2009-06-01", 
+         paste0(Survey_Var, "_NEW"):=6]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2009-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2009-12-01", 
+         paste0(Survey_Var, "_NEW"):=7]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2009-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2010-06-01", 
+         paste0(Survey_Var, "_NEW"):=8]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2010-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2010-12-01", 
+         paste0(Survey_Var, "_NEW"):=9]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2010-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2011-06-01", 
+         paste0(Survey_Var, "_NEW"):=10]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2011-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2011-12-01", 
+         paste0(Survey_Var, "_NEW"):=11]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2011-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2012-06-01", 
+         paste0(Survey_Var, "_NEW"):=12]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2012-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2012-12-01", 
+         paste0(Survey_Var, "_NEW"):=13]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2012-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2013-06-01", 
+         paste0(Survey_Var, "_NEW"):=14]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2013-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2013-12-01", 
+         paste0(Survey_Var, "_NEW"):=15]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2013-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2014-06-01", 
+         paste0(Survey_Var, "_NEW"):=16]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2014-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2014-12-01", 
+         paste0(Survey_Var, "_NEW"):=17]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2014-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2015-06-01", 
+         paste0(Survey_Var, "_NEW"):=18]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2015-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2015-12-01", 
+         paste0(Survey_Var, "_NEW"):=19]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2015-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2016-06-01", 
+         paste0(Survey_Var, "_NEW"):=20]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2016-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2016-12-01", 
+         paste0(Survey_Var, "_NEW"):=21]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2016-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2017-06-01", 
+         paste0(Survey_Var, "_NEW"):=22]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2017-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2017-12-01", 
+         paste0(Survey_Var, "_NEW"):=23]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2017-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2018-06-01", 
+         paste0(Survey_Var, "_NEW"):=24]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2018-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2018-12-01", 
+         paste0(Survey_Var, "_NEW"):=25]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2018-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2019-06-01", 
+         paste0(Survey_Var, "_NEW"):=26]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2019-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2019-12-01", 
+         paste0(Survey_Var, "_NEW"):=27]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2019-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-06-01", 
+         paste0(Survey_Var, "_NEW"):=28]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2020-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2020-12-01", 
+         paste0(Survey_Var, "_NEW"):=29]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2020-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2021-06-01", 
+         paste0(Survey_Var, "_NEW"):=30]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2021-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2021-12-01", 
+         paste0(Survey_Var, "_NEW"):=31]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2021-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2022-06-01", 
+         paste0(Survey_Var, "_NEW"):=32]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2022-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2022-12-01", 
+         paste0(Survey_Var, "_NEW"):=33]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2022-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2023-06-01", 
+         paste0(Survey_Var, "_NEW"):=34]
+  }
+  
+  return(as.data.table(Data))
+}
+
+
+#************
+# Align_plots
+#************
+Align_plots=function(...){
+  pl=list(...)
+  stopifnot(do.call(all, lapply(pl, inherits, "gg")))
+  gl=lapply(pl, ggplotGrob)
+  bind2=function(x, y) gtable:::rbind_gtable(x, y, "first")
+  combined=Reduce(bind2, gl[-1], gl[[1]])
+  wl=lapply(gl, "[[", "widths")
+  combined$widths=do.call(grid::unit.pmax, wl)
+  grid::grid.newpage()
+  grid::grid.draw(combined)
+}
+
+
+#*********************************
+#
+# [ --- Marginal Effect --- ] ----
+#
+#*********************************
+# Marginal_Effect
+#
+# (based on 'margins')
+#*********************
+# This function is based on 'margins' (Version 0.3.26, Date 2021-01-10), which is available for the following object classes:
+#   
+# "betareg", see betareg
+# "glm", see glm, glm.nb
+# "ivreg", see ivreg
+# "lm", see lm
+# "loess", see loess
+# "merMod", see lmer, glmer
+# "nnet", see nnet
+# "polr", see polr
+# "svyglm", see svyglm
+#
+# Unfortunately, there are model classes that 'margins' does not support (ex. geeglm), for which other packages need to be used.
+# One good candidate is 'marginaleffects' that works on geeglm, based on which Marginal_Effect_2 is written.
+#********
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$id=as.factor(Data_to_use$id)
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
+#                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
+# GLMM_Marginal_Effect=Marginal_Effect(Model_Fit=GLMM_Mult_model$model_fit,
+#                                      Family="gaussian",
+#                                      Var_1="sex",
+#                                      Var_1_Levels=c("F", "M"),
+#                                      Var_2="age",
+#                                      Var_2_Levels=c(20, 30, 40, 50, 60))
+Marginal_Effect=function(Model_Fit,
+                         Family,
+                         Var_1,
+                         Var_1_Levels,
+                         Var_2,
+                         Var_2_Levels){
+  # check out packages
+  lapply(c("margins", "data.table"), checkpackages)
+  
+  #**********************************************
+  # marginal effect of Var_1 conditional on Var_2
+  List_Var_2=list(Var_2=Var_2_Levels)
+  names(List_Var_2)=Var_2
+  assign(paste0("Marginal_", Var_1),
+         margins(Model_Fit,
+                 type="link",
+                 at=List_Var_2))
+  Marginal_Summ_Var_1=summary(get(paste0("Marginal_", Var_1)))[grepl(Var_1, summary(get(paste0("Marginal_", Var_1)))$factor), ]
+  
+  #**********************************************
+  # marginal effect of Var_2 conditional on Var_1
+  List_Var_1=list(Var_1=Var_1_Levels)
+  names(List_Var_1)=Var_1
+  assign(paste0("Marginal_", Var_2),
+         margins(Model_Fit,
+                 type="link",
+                 at=List_Var_1))
+  Marginal_Summ_Var_2=summary(get(paste0("Marginal_", Var_2)))[grepl(Var_2, summary(get(paste0("Marginal_", Var_2)))$factor), ]
+  
+  # combine the marginal effect summaries
+  Out=rbind(data.table(round(Marginal_Summ_Var_1[, c("AME", "SE", "p")], 4)),
+            data.table(round(Marginal_Summ_Var_2[, c("AME", "SE", "p")], 4)))
+  
+  if(Family=="gaussian"){
+    Out$Estimate.and.CI=c(paste0(round(Marginal_Summ_Var_1[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_1[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_1[, "upper"], 3), ")"),
+                          paste0(round(Marginal_Summ_Var_2[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_2[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_2[, "upper"], 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "Estimate.and.CI")
+    
+    Out[, Variable:=c(paste0(Marginal_Summ_Var_1$factor, ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(Marginal_Summ_Var_2$factor, ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "Estimate.and.CI"))
+  }else if(Family=="binomial"){
+    Out$OR.and.CI=c(paste0(round(exp(Marginal_Summ_Var_1[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_1[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_1[, "upper"]), 3), ")"),
+                    paste0(round(exp(Marginal_Summ_Var_2[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_2[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_2[, "upper"]), 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "OR.and.CI")
+    
+    Out[, Variable:=c(paste0(Marginal_Summ_Var_1$factor, ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(Marginal_Summ_Var_2$factor, ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "OR.and.CI"))
+  }
+  
+  # P.value
+  Out[, P.value:=ifelse(P.value<0.001, "<0.001", P.value)]
+  
+  # return
+  return(as.data.table(Out[, c(1, 5, 4)]))
+}
+
+
+#******************
+# Marginal_Effect_2
+#
+# (based on 'marginaleffects')
+#*****************************
+# Example
+#********
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$id=as.factor(Data_to_use$id)
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
+#                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                                    Res_Var="outcome",
+#                                    Group_Var="id",
+#                                    which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
+#                                    NAGQ<-1,
+#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    nsim=5)
+# GLMM_Marginal_Effect_2=Marginal_Effect_2(Model_Fit=GLMM_Mult_model$model_fit,
+#                                          Family="gaussian",
+#                                          Var_1="sex",
+#                                          Var_1_Levels=c("F", "M"),
+#                                          Var_2="age",
+#                                          Var_2_Levels=c(20, 30, 40, 50, 60))
+Marginal_Effect_2=function(Model_Fit,
+                           Family,
+                           Var_1,
+                           Var_1_Levels,
+                           Var_2,
+                           Var_2_Levels,
+                           Model="GLMM"){
+  # check out packages
+  lapply(c("marginaleffects", "data.table"), checkpackages)
+  
+  # If Model==GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
+  # (ignore) It seems that this part doesn't matter as the actual data stored in the model object is used.
+  # (ignore) Still (and weirdly), the name of data used when fitted by geeglm is checked if a value named the same exists in the global environment.
+  # (ignore) If there is no value matched the same in the global environment, an error is entailed.
+  if(Model=="GEE"){
+    Non_Missing_Data<<-Model_Fit$data
+    print("Marginal_Effect_2 / Model : GEE")
+  }
+  
+  #**********************************************
+  # marginal effect of Var_1 conditional on Var_2
+  List_Var_2=list(x1=Model_Fit, x2=Var_2_Levels)
+  names(List_Var_2)=c("model", Var_2)
+  
+  Temp_Var_1=marginaleffects(Model_Fit,
+                             type="link",
+                             newdata=do.call(datagrid, List_Var_2))
+  setnames(Temp_Var_1,
+           c("term", "dydx", "std.error"),
+           c("factor", "AME", "SE"))
+  Temp_Var_1$z=Temp_Var_1$AME/Temp_Var_1$SE
+  Temp_Var_1$p=round(2*(1-pnorm(abs(Temp_Var_1$z))), 4)
+  Temp_Var_1$lower=round(Temp_Var_1$AME-qnorm(0.975)*Temp_Var_1$SE, 4)
+  Temp_Var_1$upper=round(Temp_Var_1$AME+qnorm(0.975)*Temp_Var_1$SE, 4)
+  
+  Temp_Var_1=Temp_Var_1[, !colnames(Temp_Var_1)%in%c("rowid", "type")]
+  
+  Marginal_Summ_Var_1=Temp_Var_1[grepl(Var_1, Temp_Var_1$factor), ]
+  
+  #**********************************************
+  # marginal effect of Var_2 conditional on Var_1
+  List_Var_1=list(x1=Model_Fit, x2=Var_1_Levels)
+  names(List_Var_1)=c("model", Var_1)
+  
+  Temp_Var_2=marginaleffects(Model_Fit,
+                             type="link",
+                             newdata=do.call(datagrid, List_Var_1))
+  setnames(Temp_Var_2,
+           c("term", "dydx", "std.error"),
+           c("factor", "AME", "SE"))
+  Temp_Var_2$z=Temp_Var_2$AME/Temp_Var_2$SE
+  Temp_Var_2$p=round(2*(1-pnorm(abs(Temp_Var_2$z))), 4)
+  Temp_Var_2$lower=round(Temp_Var_2$AME-qnorm(0.975)*Temp_Var_2$SE, 4)
+  Temp_Var_2$upper=round(Temp_Var_2$AME+qnorm(0.975)*Temp_Var_2$SE, 4)
+  
+  Temp_Var_2=Temp_Var_2[, !colnames(Temp_Var_2)%in%c("rowid", "type")]
+  
+  Marginal_Summ_Var_2=Temp_Var_2[grepl(Var_2, Temp_Var_2$factor), ]
+  
+  #**************************************
+  # combine the marginal effect summaries
+  Out=rbind(data.table(round(Marginal_Summ_Var_1[, c("AME", "SE", "p")], 4)),
+            data.table(round(Marginal_Summ_Var_2[, c("AME", "SE", "p")], 4)))
+  
+  if(Family=="gaussian"){
+    Out$Estimate.and.CI=c(paste0(round(Marginal_Summ_Var_1[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_1[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_1[, "upper"], 3), ")"),
+                          paste0(round(Marginal_Summ_Var_2[, "AME"], 3), " (", 
+                                 round(Marginal_Summ_Var_2[, "lower"], 3), " - ", 
+                                 round(Marginal_Summ_Var_2[, "upper"], 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "Estimate.and.CI")
+    
+    Out[, Variable:=c(paste0(paste0(Marginal_Summ_Var_1$factor, Marginal_Summ_Var_1$contrast), ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(paste0(Marginal_Summ_Var_2$factor, Marginal_Summ_Var_2$contrast), ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "Estimate.and.CI"))
+  }else if(Family=="binomial"){
+    Out$OR.and.CI=c(paste0(round(exp(Marginal_Summ_Var_1[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_1[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_1[, "upper"]), 3), ")"),
+                    paste0(round(exp(Marginal_Summ_Var_2[, "AME"]), 3), " (", 
+                           round(exp(Marginal_Summ_Var_2[, "lower"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_2[, "upper"]), 3), ")"))
+    colnames(Out)=c("Estimate", "Std.Error", "P.value", "OR.and.CI")
+    
+    Out[, Variable:=c(paste0(paste0(Marginal_Summ_Var_1$factor, Marginal_Summ_Var_1$contrast), ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
+                      paste0(paste0(Marginal_Summ_Var_2$factor, Marginal_Summ_Var_2$contrast), ":", Var_1, "=", Marginal_Summ_Var_2[, Var_1]))]
+    
+    setcolorder(Out,
+                c("Variable",
+                  "Estimate", "Std.Error", "P.value", "OR.and.CI"))
+  }
+  
+  # P.value
+  Out[, P.value:=ifelse(P.value<0.001, "<0.001", P.value)]
+  
+  # return
+  return(as.data.table(Out[, c(1, 5, 4)]))
+}
+
+
+#*******************************************
+#
+# [ --- Marginal Structural Model --- ] ----
+#
+#*******************************************
+# Inverse Probability Weighting (IPW)
+#************************************
+# Example
+#********
+# # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# #set seed to replicate results
+# set.seed(12345)
+# 
+# #define sample size
+# n=2000
+# #define confounder c1 (gender, male==1)
+# male=rbinom(n,1,0.55)
+# #define confounder c2 (age)
+# age=exp(rnorm(n, 3, 0.5))
+# #define treatment at time 1
+# t_1=rbinom(n,1,0.20)
+# #define treatment at time 2
+# t_2=rbinom(n,1,0.20)
+# #define treatment at time 3
+# t_3=rbinom(n,1,0.20)
+# #define depression at time 1 (prevalence=number per 100000 population)
+# d_1=exp(rnorm(n, 0.001, 0.5))
+# #define depression at time 2 (prevalence=number per 100000 population)
+# d_2=exp(rnorm(n, 0.002, 0.5))
+# #define depression at time 3 (prevalence=number per 100000 population)
+# d_3=exp(rnorm(n, 0.004, 0.5))
+# #define time-varying confounder v1 as a function of t1 and d1
+# v_1=(0.4*t_1 + 0.80*d_1 + rnorm(n, 0, sqrt(0.99))) + 5
+# #define time-varying confounder v2 as a function of t1 and d1
+# v_2=(0.4*t_2 + 0.80*d_2 + rnorm(n, 0, sqrt(0.55))) + 5
+# #define time-varying confounder v3 as a function of t1 and d1
+# v_3=(0.4*t_3 + 0.80*d_3 + rnorm(n, 0, sqrt(0.33))) + 5
+# #put all in a dataframe and write data to harddrive to use later in e.g. SPSS
+# df1=data.frame(male, age, v_1, v_2, v_3, t_1, t_2, t_3, d_1, d_2, d_3)
+# 
+# #required packages
+# lapply(c("geepack",
+#          "survey",
+#          "ipw",
+#          "reshape",
+#          "dplyr"), checkpackages)
+# 
+# # Data is readin long format
+# data1=df1
+# # Convert from wide to long format
+# data_long<-reshape(data1, varying=c("v_1", "v_2", "v_3", "t_1","t_2","t_3", "d_1", "d_2", "d_3"), direction="long", idvar="id", sep="_")
+# # Reshape from wide to long format
+# data_long_sort=arrange(data_long, id, time)
+# # Rearrange the dataset so that id is first
+# data_long_sort=data_long_sort[c("id", "time", "age", "male", "t", "v", "d")]
+# head(data_long_sort)
+# 
+# # male as factor
+# data_long_sort$male=as.factor(data_long_sort$male)
+# w=IPW(Exposure="t",
+#       Time_Invariant_Covs=c("male", "age"),
+#       Time_Varying_Covs=c("v"),
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="data_long_sort")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# 
+# # propensity score
+# 1/w$unstab_IP_weights$ipw.weights
+IPW=function(Exposure,
+             Time_Invariant_Covs,
+             Time_Varying_Covs,
+             which.family="binomial",
+             Link="logit",
+             # Timevar,
+             ID_Var,
+             Data){
+  # check out packages
+  lapply(c("data.table",
+           "ipw",
+           "dplyr"),
+         checkpackages)
+  # For binary exposure, the inverse probability of treatment weights for patients are estimated using a (pooled) logistic regression
+  # defined in a similar structure as the example in the book, Leite, W. L. (2016). Practical propensity score methods using R.
+  
+  # remove observations with missing data
+  Data_to_use_No_Missing=as.data.table(na.omit(eval(parse(text=Data))))
+  if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+    print("missing data removed.")
+  }
+  
+  # Time_Point
+  Data_to_use_No_Missing[, Time_Point:=0:(.N-1), by=ID_Var]
+  
+  # convert Exposure to numeric
+  Data_to_use_No_Missing[, (Exposure):=as.numeric(as.character(eval(parse(text=Exposure))))]
+  
+  # generate lagged exposure with a lag of one period
+  Data_to_use_No_Missing[,
+                         (paste0("Lagged_", Exposure)):=lapply(.SD, function(x) lag(x, n=1)),
+                         .SDcol=Exposure,
+                         by=ID_Var]
+  Data_to_use_No_Missing[is.na(eval(parse(text=paste0("Lagged_", Exposure)))), (paste0("Lagged_", Exposure)):=0]
+  
+  # cumsum lagged exposure (total number of previous measurement waves)
+  Data_to_use_No_Missing[,
+                         (paste0("Cumsum_Lagged_", Exposure)):=cumsum(eval(parse(text=paste0("Lagged_", Exposure)))),
+                         by=ID_Var]
+  
+  # # generate lagged time-varying covariates with a lag of one period
+  # Data_to_use_No_Missing[,
+  #                        (paste0("Lagged_", Time_Varying_Covs)):=lapply(.SD, function(x) lag(x, n=1)),
+  #                        .SDcol=Time_Varying_Covs,
+  #                        by=ID_Var]
+  
+  #*****************
+  # define numerator
+  # 1. unstabilized
+  unstab_numerator_formula=NULL
+  
+  # 2. basic stabilized
+  basic_stab_numerator_formula=paste0("~ 1")
+  
+  # 3. stabilized
+  # For the censoring weights, stabilized produces the same values as basic stabilized because Cumsum_Lagged_* variable has only 0 as its value.
+  # This might be something to further ponder upon later.
+  stab_numerator_formula=paste0("~ 1 + ",
+                                paste0("Cumsum_Lagged_", Exposure))
+  
+  # 4. adjusted stabilized by time-invariant covariates
+  adjusted_stab_numerator_formula=paste0("~ 1 + ",
+                                         paste0("Cumsum_Lagged_", Exposure),
+                                         " + ",
+                                         paste0(Time_Invariant_Covs, collapse=" + "))
+  
+  # #*****************
+  # # define numerator
+  # # 1. unstabilized
+  # unstab_numerator_formula=NULL
+  # 
+  # # 2. basic stabilized
+  # basic_stab_numerator_formula_t0=1
+  # basic_stab_numerator_formula_t=paste0("~ ",
+  #                                       "Lagged_",
+  #                                       Exposure)
+  # 
+  # # 3. adjusted stabilized by time-invariant covariates
+  # adjusted_stab_numerator_formula_t0=paste0("~ ",
+  #                                           paste0(Time_Invariant_Covs, collapse=" + "))
+  # adjusted_stab_numerator_formula_t=paste0("~ ",
+  #                                          "Lagged_",
+  #                                          Exposure,
+  #                                          " + ",
+  #                                          paste0(Time_Invariant_Covs, collapse=" + "))
+  # 
+  #*******************
+  # define denominator
+  denominator_formula=paste0("~ ",
+                             paste0("Cumsum_Lagged_", Exposure),
+                             " + ",
+                             paste0(Time_Invariant_Covs, collapse=" + "),
+                             " + ",
+                             paste0(Time_Varying_Covs, collapse=" + "))
+  
+  
+  # #*****************
+  # # define numerator
+  # # 1. unstabilized
+  # unstab_numerator_formula=NULL
+  # 
+  # # 2. basic stabilized
+  # basic_stab_numerator_formula_t0=1
+  # basic_stab_numerator_formula_t=paste0("~ ",
+  #                                       "Lagged_",
+  #                                       Exposure)
+  # 
+  # # 3. adjusted stabilized by time-invariant covariates
+  # adjusted_stab_numerator_formula_t0=paste0("~ ",
+  #                                           paste0(Time_Invariant_Covs, collapse=" + "))
+  # adjusted_stab_numerator_formula_t=paste0("~ ",
+  #                                          "Lagged_",
+  #                                          Exposure,
+  #                                          " + ",
+  #                                          paste0(Time_Invariant_Covs, collapse=" + "))
+  # 
+  # #*******************
+  # # define denominator
+  # denominator_formula_t0=paste0("~ ",
+  #                               paste0(Time_Invariant_Covs, collapse=" + "),
+  #                               " + ",
+  #                               paste0(Time_Varying_Covs, collapse=" + "))
+  # 
+  # denominator_formula_t=paste0("~ ",
+  #                              "Lagged_",
+  #                              Exposure,
+  #                              " + ",
+  #                              paste0(Time_Invariant_Covs, collapse=" + "),
+  #                              " + ",
+  #                              paste0(Time_Varying_Covs, collapse=" + "))
+  
+  #*********************
+  # calculate IP weights
+  # 1. unstabilized
+  unstab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', unstab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="first",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  unstab_IP_weights=eval(parse(text=unstab_ipwtm_function))
+  
+  # 2. basic stabilized
+  basic_stab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', basic_stab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="all",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  basic_stab_IP_weights=eval(parse(text=basic_stab_ipwtm_function))
+  
+  # 3. stabilized
+  stab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', stab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="all",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  stab_IP_weights=eval(parse(text=stab_ipwtm_function))
+  
+  # 4. adjusted stabilized by time-invariant covariates
+  adjusted_stab_ipwtm_function=paste0(
+    'ipwtm(exposure=', Exposure,',
+           family="', which.family, '",
+           link="', Link, '",
+           timevar=Time_Point,
+           numerator=', adjusted_stab_numerator_formula,',
+           denominator=', denominator_formula, ',
+           id=', ID_Var, ',
+           type="all",
+           data=Data_to_use_No_Missing)')
+  # obtain unstabilized weight
+  adjusted_stab_IP_weights=eval(parse(text=adjusted_stab_ipwtm_function))
+  
+  # export
+  Out=c()
+  Out$unstab_IP_weights=unstab_IP_weights
+  Out$basic_stab_IP_weights=basic_stab_IP_weights
+  Out$stab_IP_weights=stab_IP_weights
+  Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
+  
+  return(Out)
+}
+
+
+#**********************
+# IP_Weights_Calculator
+#**********************
+# Example
+#********
+# # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# #set seed to replicate results
+# set.seed(12345)
+# 
+# #define sample size
+# n=2000
+# #define confounder c1 (gender, male==1)
+# male=rbinom(n,1,0.55)
+# #define confounder c2 (age)
+# age=exp(rnorm(n, 3, 0.5))
+# #define treatment at time 1
+# t_1=rbinom(n,1,0.20)
+# #define treatment at time 2
+# t_2=rbinom(n,1,0.20)
+# #define treatment at time 3
+# t_3=rbinom(n,1,0.20)
+# #define depression at time 1 (prevalence=number per 100000 population)
+# d_1=exp(rnorm(n, 0.001, 0.5))
+# #define depression at time 2 (prevalence=number per 100000 population)
+# d_2=exp(rnorm(n, 0.002, 0.5))
+# #define depression at time 3 (prevalence=number per 100000 population)
+# d_3=exp(rnorm(n, 0.004, 0.5))
+# #define time-varying confounder v1 as a function of t1 and d1
+# v_1=(0.4*t_1 + 0.80*d_1 + rnorm(n, 0, sqrt(0.99))) + 5
+# #define time-varying confounder v2 as a function of t1 and d1
+# v_2=(0.4*t_2 + 0.80*d_2 + rnorm(n, 0, sqrt(0.55))) + 5
+# #define time-varying confounder v3 as a function of t1 and d1
+# v_3=(0.4*t_3 + 0.80*d_3 + rnorm(n, 0, sqrt(0.33))) + 5
+# #put all in a dataframe and write data to harddrive to use later in e.g. SPSS
+# df1=data.frame(male, age, v_1, v_2, v_3, t_1, t_2, t_3, d_1, d_2, d_3)
+# 
+# #required packages
+# lapply(c("geepack",
+#          "survey",
+#          "ipw",
+#          "reshape",
+#          "dplyr"), checkpackages)
+# 
+# # Data is readin long format
+# data1=df1
+# # Convert from wide to long format
+# data_long<-reshape(data1, varying=c("v_1", "v_2", "v_3", "t_1","t_2","t_3", "d_1", "d_2", "d_3"), direction="long", idvar="id", sep="_")
+# # Reshape from wide to long format
+# data_long_sort=arrange(data_long, id, time)
+# # Rearrange the dataset so that id is first
+# data_long_sort=data_long_sort[c("id", "time", "age", "male", "t", "v", "d")]
+# head(data_long_sort)
+# 
+# # male as factor
+# data_long_sort$male=as.factor(data_long_sort$male)
+# w=ipwtm(exposure=t,
+#         family="binomial",
+#         link="logit",
+#         numerator=~ male + age,
+#         denominator=~ v + male + age,
+#         id=id,
+#         timevar=time,
+#         type="all",
+#         data=data_long_sort)
+# w2=IP_Weights_Calculator(Exposure="t",
+#                          Effect_Modifiers=c("male", "age"),
+#                          Covariates="v",
+#                          which.family="binomial",
+#                          ID_Var="id",
+#                          Data=data_long_sort)
+# 
+# # compare calculated weights
+# head(w$ipw.weights, 10)
+# head(w2$Time_Varying_Treatment_IP_weights, 10)
+# # looks the same but weirdly R regards them as different numbers
+# head(w$ipw.weights, 10)==head(w2$Time_Varying_Treatment_IP_weights, 10)
+# # iptw
+# iptw=w$ipw.weights
+# iptw2=w2$Time_Varying_Treatment_IP_weights
+# # Add the iptw variable onto a new dataframe = data2.
+# data2=cbind(data_long_sort, iptw)
+# # fit a weighted gee
+# geeglm(d~t + time + factor(male) + age + cluster(id),
+#        id=id,
+#        data=data2,
+#        family=gaussian("identity"),
+#        corstr="ar1",
+#        weights=iptw)
+# geeglm(d~t + time + factor(male) + age + cluster(id),
+#        id=id,
+#        data=data2,
+#        family=gaussian("identity"),
+#        corstr="ar1",
+#        weights=iptw2)
+# IP_Weights_Calculator=function(Exposure,
+#                                Effect_Modifiers=NULL, # usually time-invariant
+#                                Covariates, # usually time-varying
+#                                Censoring_Var=NULL,
+#                                which.family, # distribution of Exposure (currently only binomial with logit link)
+#                                # Timevar, # this is equivalent to timevar in ipwtm, but not applicable yet
+#                                ID_Var,
+#                                # Type, # currently, the algorithm runs as Type="all
+#                                Data,
+#                                Stabilized=TRUE,
+#                                Effect_Modification=TRUE){
+#   #*****
+#   # Note
+#   #*****
+#   # Effect_Modification=TRUE allows the weights to take into account modifiers when calculating the numerator
+#   # Whether Effect_Modification is TRUE, specify Effect_Modifiers that are considered a part of covariates that go into the denominator
+#   
+#   # Exposure="PRIMARY_CARE_Bi"
+#   # Effect_Modifiers=Time_Invariant_Covs
+#   # Covariates=Time_Varying_Covs
+#   # Censoring_Var=Censor_Var
+#   # # Censoring_Var=NULL
+#   # which.family="binomial"
+#   # # Timevar="Time"
+#   # ID_Var="CODE"
+#   # # Type="all"
+#   # Data=Data_to_use_ER_L6M
+#   # Stabilized=TRUE
+#   # Effect_Modification=TRUE
+#   
+#   # check out packages
+#   lapply(c("data.table", "magrittr", "dplyr"), checkpackages)
+#   
+#   # as data frame
+#   Data=as.data.frame(Data)
+#   # Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+#   # Data=Data[Non_Missing_Outcome_Obs, ]
+#   Origin_N_Rows=nrow(Data)
+#   
+#   # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
+#   Data[, ID_Var]=as.factor(Data[, ID_Var])
+#   
+#   # as data table
+#   Data=as.data.table(Data)
+#   
+#   if(Stabilized==FALSE){
+#     #*************
+#     #
+#     # unstabilized
+#     #
+#     #*****************
+#     # treatment weight
+#     #*****************
+#     # denominator
+#     unstabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
+#                                                     paste0(Effect_Modifiers, collapse="+"),
+#                                                     "+",
+#                                                     paste0(Covariates, collapse="+")))
+#     
+#     unstabilized_trt_dnom_fit=glm(unstabilized_trt_dnom_fullmod, 
+#                                   family=eval(parse(text=which.family)),
+#                                   data=Data)
+#     
+#     unstab.pd.qsmk=predict(unstabilized_trt_dnom_fit, type = "response")
+#     
+#     #**********
+#     # numerator
+#     unstab.pn.qsmk=rep(1, nrow(Data))
+#     
+#     #*********************************
+#     # unstabilized IP treatment weight
+#     usw_trt_weights=ifelse(Data[[Exposure]]==0,
+#                            unstab.pn.qsmk/(1-unstab.pd.qsmk),
+#                            unstab.pn.qsmk/unstab.pd.qsmk)
+#     
+#     #*****************
+#     # censoring weight
+#     #*****************
+#     if(!is.null(Censoring_Var)){
+#       #************
+#       # denominator
+#       unstabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                          paste0(Exposure),
+#                                                          "+",
+#                                                          paste0(Effect_Modifiers, collapse="+"),
+#                                                          "+",
+#                                                          paste0(Covariates, collapse="+")))
+#       unstabilized_censor_dnom_fit=glm(unstabilized_censor_dnom_fullmod, 
+#                                        family="binomial", # censoring variable is always binary
+#                                        data=Data)
+#       
+#       unstab.pd.cens=1-predict(unstabilized_censor_dnom_fit, type = "response")
+#       
+#       #**********
+#       # numerator
+#       unstab.pn.cens=rep(1, nrow(Data))
+#       
+#       #*********************************
+#       # unstabilized IP censoring weight
+#       # Unstabilized IP censoring weights for the censored individuals are 0.
+#       # (p.159, Hern�n MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#       usw_censor_weights=ifelse(Data[[Censoring_Var]]==1,
+#                                 0,
+#                                 unstab.pn.cens/unstab.pd.cens)
+#     }else{
+#       usw_censor_weights=rep(1, nrow(Data))
+#     }
+#     
+#     #*****************************
+#     # final unstabilized IP weight
+#     #*****************************
+#     usw_IP_weights=usw_censor_weights*usw_trt_weights
+#     
+#     # compute Time_Varying_Treatment_Weights
+#     Data[, Point_Treatment_Weights:=usw_IP_weights]
+#     Data %<>% 
+#       group_by(eval(parse(text=ID_Var))) %>% 
+#       mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
+#       ungroup() %>% 
+#       as.data.table
+#   }else{
+#     #***********
+#     #
+#     # stabilized
+#     #
+#     #*****************
+#     # treatment weight
+#     #*****************
+#     # denominator
+#     stabilized_trt_dnom_fullmod=as.formula(paste0(Exposure, "~",
+#                                                   paste0(Effect_Modifiers, collapse="+"),
+#                                                   "+",
+#                                                   paste0(Covariates, collapse="+")))
+#     
+#     stabilized_trt_dnom_fit=glm(stabilized_trt_dnom_fullmod, 
+#                                 family=eval(parse(text=which.family)),
+#                                 data=Data)
+#     
+#     stab.pd.qsmk=predict(stabilized_trt_dnom_fit, type = "response")
+#     
+#     #**********
+#     # numerator
+#     if(Effect_Modification==TRUE){
+#       stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~",
+#                                                    paste0(Effect_Modifiers, collapse="+")))
+#     }else{
+#       stabilized_trt_num_fullmod=as.formula(paste0(Exposure, "~1"))
+#     }
+#     stabilized_trt_num_fit=glm(stabilized_trt_num_fullmod, 
+#                                family=eval(parse(text=which.family)),
+#                                data=Data)
+#     
+#     stab.pn.qsmk=predict(stabilized_trt_num_fit, type = "response")
+#     
+#     #*******************************
+#     # stabilized IP treatment weight
+#     sw_trt_weights=ifelse(Data[[Exposure]]==0,
+#                           (1-stab.pn.qsmk)/(1-stab.pd.qsmk),
+#                           stab.pn.qsmk/stab.pd.qsmk)
+#     
+#     #*****************
+#     # censoring weight
+#     #*****************
+#     if(!is.null(Censoring_Var)){
+#       #************
+#       # denominator
+#       stabilized_censor_dnom_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                        paste0(Exposure),
+#                                                        "+",
+#                                                        paste0(Effect_Modifiers, collapse="+"),
+#                                                        "+",
+#                                                        paste0(Covariates, collapse="+")))
+#       stabilized_censor_dnom_fit=glm(stabilized_censor_dnom_fullmod, 
+#                                      family="binomial", # censoring variable is always binary
+#                                      data=Data)
+#       
+#       stab.pd.cens=1-predict(stabilized_censor_dnom_fit, type = "response")
+#       
+#       #**********
+#       # numerator
+#       if(Effect_Modification==TRUE){
+#         stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                         paste0(Exposure),
+#                                                         "+",
+#                                                         paste0(Effect_Modifiers, collapse="+")))
+#       }else{
+#         stabilized_censor_num_fullmod=as.formula(paste0(Censoring_Var, "~",
+#                                                         paste0(Exposure)))
+#       }
+#       
+#       stabilized_censor_num_fit=glm(stabilized_censor_num_fullmod, 
+#                                     family="binomial", # censoring variable is always binary
+#                                     data=Data)
+#       
+#       stab.pn.cens=1-predict(stabilized_censor_num_fit, type = "response")
+#       
+#       #*******************************
+#       # stabilized IP censoring weight
+#       # Stabilized IP censoring weights are not 0 regardless of censoring of individuals.
+#       # (p.159, Hern�n MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#       sw_censor_weights=stab.pn.cens/stab.pd.cens
+#     }else{
+#       sw_censor_weights=rep(1, nrow(Data))
+#     }
+#     
+#     #***************************
+#     # final stabilized IP weight
+#     #***************************
+#     sw_IP_weights=sw_censor_weights*sw_trt_weights
+#     
+#     # compute Time_Varying_Treatment_Weights
+#     # The general form of the (un)stabilized PI weights can be found on p.263 (Hern�n MA, Robins JM (2020). Causal Inference: What If. Boca Raton: Chapman & Hall/CRC)
+#     Data[, Point_Treatment_Weights:=sw_IP_weights]
+#     Data %<>% 
+#       group_by(eval(parse(text=ID_Var))) %>% 
+#       mutate(Time_Varying_Treatment_Weights=cumprod(Point_Treatment_Weights)) %>% 
+#       ungroup() %>% 
+#       as.data.table
+#   }
+#   
+#   # export weights
+#   if(Stabilized==FALSE){
+#     Data[, `:=`(Index=.I,
+#                 censor_weights=usw_censor_weights,
+#                 trt_weights=usw_trt_weights,
+#                 Point_Treatment_IP_weights=usw_IP_weights,
+#                 Time_Varying_Treatment_IP_weights=Data$Time_Varying_Treatment_Weights)]
+#   }else{
+#     Data[, `:=`(Index=.I,
+#                 censor_weights=sw_censor_weights,
+#                 trt_weights=sw_trt_weights,
+#                 Point_Treatment_IP_weights=sw_IP_weights,
+#                 Time_Varying_Treatment_IP_weights=Time_Varying_Treatment_Weights)]
+#     
+#   }
+#   return(Data[, .SD, .SDcols=c(ID_Var,
+#                                "Index",
+#                                "censor_weights",
+#                                "trt_weights",
+#                                "Point_Treatment_IP_weights",
+#                                "Time_Varying_Treatment_IP_weights")])
+# }
+
+# # Keep this function just in case
+# IPW=function(Exposure,
+#              Time_Invariant_Covs,
+#              Time_Varying_Covs,
+#              which.family,
+#              Link=NULL,
+#              Tstart=NULL,
+#              Timevar=NULL,
+#              ID_Var,
+#              Type="first",
+#              Data){
+#   # check out packages
+#   lapply(c("data.table",
+#            "ipw",
+#            "dplyr"),
+#          checkpackages)
+#   
+#   # #
+#   # Exposure="PRIMARY_CARE_Bi"
+#   # Time_Invariant_Covs="ETHNIC_WHITE"
+#   # Time_Varying_Covs="AGE"
+#   # # Censoring_Var="Censor"
+#   # which.family="survival"
+#   # Link=NULL
+#   # # Link="logit" # for family="survival" this argument is ignored
+#   # Tstart="START_TIME"
+#   # Timevar="STOP_TIME"
+#   # ID_Var="CODE"
+#   # Type="first"
+#   # Data="Data_to_use"
+#   
+#   # remove observations with missing data
+#   Data_to_use_No_Missing=na.omit(eval(parse(text=Data)))
+#   if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+#     print("missing data removed.")
+#   }
+#   
+#   #*********************************
+#   # unstabilized IP treatment weight
+#   # define the function
+#   Usw_num=NULL
+#   Usw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   unstab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Usw_num,',
+#            denominator=', Usw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # ipwtm_function=paste0(
+#   #   'ipwtm(exposure=PRIMARY_CARE_Bi,
+#   #          family="survival",
+#   #          link=NULL,
+#   #          tstart=START_TIME,
+#   #          timevar=STOP_TIME,
+#   #          numerator=NULL,
+#   #          denominator=~ETHNIC_WHITE,
+#   #          id=CODE,
+#   #          type="first",
+#   #          data=Data_to_use_No_Missing)')
+#   
+#   # obtain unstabilized weight
+#   unstab_IP_weights=eval(parse(text=unstab.ipwtm_function))
+#   
+#   
+#   #*******************************
+#   # stabilized IP treatment weight
+#   # define the function
+#   Sw_num=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"))
+#   Sw_den=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"),
+#                 "+",
+#                 paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Sw_num,',
+#            denominator=', Sw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   adjusted_stab_IP_weights=eval(parse(text=stab.ipwtm_function))
+#   
+#   
+#   #*************************************
+#   # basic stabilized IP treatment weight
+#   # define the function
+#   Bsw_num=paste0("~ 1")
+#   Bsw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   basic.stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Bsw_num,',
+#            denominator=', Bsw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   basic_stab_IP_weights=eval(parse(text=basic.stab.ipwtm_function))
+#   
+#   # export
+#   Out=c()
+#   Out$unstab_IP_weights=unstab_IP_weights
+#   Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
+#   Out$basic_stab_IP_weights=basic_stab_IP_weights
+#   
+#   return(Out)
+# }
+
+# # Keep this function just in case
+# IPW_2=function(Exposure,
+#                Time_Invariant_Covs,
+#                Time_Varying_Covs,
+#                which.family="binomial",
+#                Link="logit",
+#                ID_Var,
+#                Data){
+#   # check out packages
+#   lapply(c("data.table",
+#            "ipw",
+#            "dplyr"),
+#          checkpackages)
+#   
+#   #
+#   Exposure="PRIMARY_CARE_Bi"
+#   Time_Invariant_Covs="ETHNIC_WHITE"
+#   Time_Varying_Covs="AGE"
+#   # Censoring_Var="Censor"
+#   which.family="survival"
+#   Link=NULL
+#   # Link="logit" # for family="survival" this argument is ignored
+#   Tstart="START_TIME"
+#   Timevar="STOP_TIME"
+#   ID_Var="CODE"
+#   Type="first"
+#   Data="Data_to_use"
+#   
+#   # remove observations with missing data
+#   Data_to_use_No_Missing=na.omit(eval(parse(text=Data)))
+#   if(nrow(eval(parse(text=Data)))!=nrow(Data_to_use_No_Missing)){
+#     print("missing data removed.")
+#   }
+#   
+#   #*********************************
+#   # unstabilized IP treatment weight
+#   # define the function
+#   Usw_num=NULL
+#   Usw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   unstab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Usw_num,',
+#            denominator=', Usw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # ipwtm_function=paste0(
+#   #   'ipwtm(exposure=PRIMARY_CARE_Bi,
+#   #          family="survival",
+#   #          link=NULL,
+#   #          tstart=START_TIME,
+#   #          timevar=STOP_TIME,
+#   #          numerator=NULL,
+#   #          denominator=~ETHNIC_WHITE,
+#   #          id=CODE,
+#   #          type="first",
+#   #          data=Data_to_use_No_Missing)')
+#   
+#   # obtain unstabilized weight
+#   unstab_IP_weights=eval(parse(text=unstab.ipwtm_function))
+#   
+#   
+#   #*******************************
+#   # stabilized IP treatment weight
+#   # define the function
+#   Sw_num=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"))
+#   Sw_den=paste0("~",
+#                 paste0(Time_Invariant_Covs, collapse="+"),
+#                 "+",
+#                 paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Sw_num,',
+#            denominator=', Sw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   adjusted_stab_IP_weights=eval(parse(text=stab.ipwtm_function))
+#   
+#   
+#   #*************************************
+#   # basic stabilized IP treatment weight
+#   # define the function
+#   Bsw_num=paste0("~ 1")
+#   Bsw_den=paste0("~",
+#                  paste0(Time_Invariant_Covs, collapse="+"),
+#                  "+",
+#                  paste0(Time_Varying_Covs, collapse="+"))
+#   
+#   basic.stab.ipwtm_function=paste0(
+#     'ipwtm(exposure=', Exposure,',
+#            family="', which.family, '",
+#            link="', Link, '",
+#            tstart=', Tstart,',
+#            timevar=', Timevar, ',
+#            numerator=', Bsw_num,',
+#            denominator=', Bsw_den, ',
+#            id=', ID_Var, ',
+#            type="', Type, '",
+#            data=Data_to_use_No_Missing)')
+#   
+#   # obtain stabilized weight
+#   basic_stab_IP_weights=eval(parse(text=basic.stab.ipwtm_function))
+#   
+#   # export
+#   Out=c()
+#   Out$unstab_IP_weights=unstab_IP_weights
+#   Out$adjusted_stab_IP_weights=adjusted_stab_IP_weights
+#   Out$basic_stab_IP_weights=basic_stab_IP_weights
+#   
+#   return(Out)
+# }
+
+
+
+#********
+# GEE_MSM
+#********
+# estimate the causal effect of exposure on the outcome using GEE
+#****************************************************************
+# Example
+#********
+# # (data simulation code source : https://rpubs.com/mbounthavong/IPTW_MSM_Tutorial)
+# #set seed to replicate results
+# set.seed(12345)
+# 
+# #define sample size
+# n=2000
+# #define confounder c1 (gender, male==1)
+# male=rbinom(n,1,0.55)
+# #define confounder c2 (age)
+# age=exp(rnorm(n, 3, 0.5))
+# #define treatment at time 1
+# t_1=rbinom(n,1,0.20)
+# #define treatment at time 2
+# t_2=rbinom(n,1,0.20)
+# #define treatment at time 3
+# t_3=rbinom(n,1,0.20)
+# #define depression at time 1 (prevalence=number per 100000 population)
+# d_1=exp(rnorm(n, 0.001, 0.5))
+# #define depression at time 2 (prevalence=number per 100000 population)
+# d_2=exp(rnorm(n, 0.002, 0.5))
+# #define depression at time 3 (prevalence=number per 100000 population)
+# d_3=exp(rnorm(n, 0.004, 0.5))
+# #define time-varying confounder v1 as a function of t1 and d1
+# v_1=(0.4*t_1 + 0.80*d_1 + rnorm(n, 0, sqrt(0.99))) + 5
+# #define time-varying confounder v2 as a function of t1 and d1
+# v_2=(0.4*t_2 + 0.80*d_2 + rnorm(n, 0, sqrt(0.55))) + 5
+# #define time-varying confounder v3 as a function of t1 and d1
+# v_3=(0.4*t_3 + 0.80*d_3 + rnorm(n, 0, sqrt(0.33))) + 5
+# #put all in a dataframe and write data to harddrive to use later in e.g. SPSS
+# df1=data.frame(male, age, v_1, v_2, v_3, t_1, t_2, t_3, d_1, d_2, d_3)
+# 
+# #required packages
+# lapply(c("geepack",
+#          "survey",
+#          "ipw",
+#          "reshape",
+#          "dplyr"), checkpackages)
+# 
+# # Data is readin long format
+# data1=df1
+# # Convert from wide to long format
+# data_long<-reshape(data1, varying=c("v_1", "v_2", "v_3", "t_1","t_2","t_3", "d_1", "d_2", "d_3"), direction="long", idvar="id", sep="_")
+# # Reshape from wide to long format
+# data_long_sort=arrange(data_long, id, time)
+# # Rearrange the dataset so that id is first
+# data_long_sort=data_long_sort[c("id", "time", "age", "male", "t", "v", "d")]
+# head(data_long_sort)
+# 
+# # male as factor
+# data_long_sort$male=as.factor(data_long_sort$male)
+# w=IPW(Exposure="t",
+#       Time_Invariant_Covs=c("male", "age"),
+#       Time_Varying_Covs=c("v"),
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="data_long_sort")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# data_long_sort$weights=w$adjusted_stab_IP_weights$ipw.weights
+# GEE_MSM(Outcome="d",
+#         Exposure="t",
+#         which.family="gaussian",
+#         ID_Var="id",
+#         Weight_Var="weights",
+#         Data=data_long_sort)
+GEE_MSM=function(Outcome,
+                 Exposure,
+                 which.family="binomial",
+                 ID_Var,
+                 Weight_Var,
+                 Data){
+  # check out packages
+  lapply(c("data.table",
+           "dplyr",
+           "doBy",
+           
+           "geepack"),
+         checkpackages)
+  
+  # remove observations with missing data
+  Data_to_use_No_Missing=as.data.table(na.omit(Data))
+  if(nrow(Data)!=nrow(Data_to_use_No_Missing)){
+    print("missing data removed.")
+  }
+  
+  # Time_Point
+  Data_to_use_No_Missing[, Time_Point:=0:(.N-1), by=ID_Var]
+  
+  # convert Exposure to numeric
+  Data_to_use_No_Missing[, (Exposure):=as.numeric(as.character(eval(parse(text=Exposure))))]
+  
+  # generate lagged exposure with a lag of one period
+  Data_to_use_No_Missing[,
+                         (paste0("Lagged_", Exposure)):=lapply(.SD, function(x) lag(x, n=1)),
+                         .SDcol=Exposure,
+                         by=ID_Var]
+  Data_to_use_No_Missing[is.na(eval(parse(text=paste0("Lagged_", Exposure)))), (paste0("Lagged_", Exposure)):=0]
+  
+  # cumsum lagged exposure (total number of previous measurement waves)
+  Data_to_use_No_Missing[,
+                         (paste0("Cumsum_Lagged_", Exposure)):=cumsum(eval(parse(text=paste0("Lagged_", Exposure)))),
+                         by=ID_Var]
+  
+  # as data frame
+  Data_to_use_No_Missing=as.data.frame(Data_to_use_No_Missing)
+  
+  model_formula=as.formula(paste(Outcome, "~", paste(c(Exposure, paste0("Cumsum_Lagged_", Exposure), "Time_Point"), collapse="+")))
+  model_fit=geeglm(model_formula,
+                   data=Data_to_use_No_Missing,
+                   weights=Data_to_use_No_Missing[, Weight_Var],
+                   id=Data_to_use_No_Missing[, ID_Var],
+                   family=which.family,
+                   waves=Data_to_use_No_Missing[, "Time_Point"],
+                   corstr="ar1")
+  
+  # Individual Wald test and confidence interval for each parameter
+  est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
+  
+  # Output
+  Output=c()
+  Origin_N_Rows=nrow(Data)
+  Used_N_Rows=nrow(Data_to_use_No_Missing)
+  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  Output$model_fit=model_fit
+  Output$model_formula=model_formula
+  #Output$vif=HH::vif(model_fit)
+  
+  if(grepl("gaussian", which.family)){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
+                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
+                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
+                                 row.names=names(coef(model_fit))[-1]
+    )
+  }else if(grepl("binomial", which.family)){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 row.names=names(coef(model_fit))[-1]
+    )
+    
+  }else if(grepl("poisson", which.family)){
+    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+                                 Std.Error=round2(est$std.error, 3), 
+                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
+                                                  format(round2(est$p.value, 3), nsmall=3)), 
+                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 row.names=names(coef(model_fit))[-1]
+    )
+  }
+  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  return(Output)
+}
+
+#********************
+# SMD difference Plot
+#********************
+SMD_difference_Plot_Example=function(){
+  # visualization of standardized mean difference comparison
+  # Example
+  # ********
+  # lapply(c("ggplot2", "data.table"), checkpackages)
+  # SMD_Data=data.frame(
+  #   variable=c("AGE",
+  #              "GENDER_SELF",
+  #              "ETHNIC_WHITE",
+  #              "MOBILITY",
+  #              "SELFCARE",
+  #              "PAIN",
+  #              "ANXIETY"),
+  #   Unweighted=abs(rnorm(7))+0.2,
+  #   Weighted=abs(rnorm(7))
+  # )
+  # ## Create long-format data for ggplot2
+  # SMD_DataMelt=melt(data=SMD_Data,
+  #                   id.vars=c("variable"),
+  #                   variable.name="Method",
+  #                   value.name="SMD")
+  # colnames(SMD_DataMelt)=c("variable", "Method", "SMD")
+  # 
+  # ## Order variable names by magnitude of SMD
+  # varNames=as.character(SMD_Data$variable)[order(SMD_Data$Unweighted)]
+  # 
+  # ## Order factor levels in the same order
+  # SMD_DataMelt$variable=factor(SMD_DataMelt$variable,
+  #                              levels=varNames)
+  # 
+  # ## Plot using ggplot2
+  # ggplot(data=SMD_DataMelt, mapping=aes(x=variable, y=SMD,
+  #                                       group=Method, color=Method)) +
+  #   ggtitle("Title")+
+  #   # geom_line() +
+  #   scale_colour_manual("", values=c("chocolate3","cyan4")) +
+  #   # scale_fill_manual(values=c("chocolate3", "cyan4")) +
+  #   geom_point(shape=21, size=5, stroke=2,) +
+  #   geom_hline(yintercept=0.5, color=4, size=1.2, linetype=2) +
+  #   geom_vline(xintercept=c(1:19), color=8, linetype=5)+
+  #   coord_flip() +
+  #   theme_bw() +
+  #   theme(legend.key=element_blank(), text=element_text(size=30), legend.position=c(0.8, 0.2)) +
+  #   labs(y="Standardized mean difference", x="")
+}
+
+
 
 #*************************************************
 #
@@ -128,6 +1688,297 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
 #*************************************************
 # Segmented_Regression_Model
 #***************************
+# Example
+#********
+# lapply(c("ggplot2",
+#          "data.table"), checkpackages)
+# int=85
+# set.seed(42)
+# df=data.table(
+#   count=as.integer(rpois(132, 9) + rnorm(132, 1, 1)),
+#   time=1:132,
+#   at_risk=rep(
+#     c(4305, 4251, 4478, 4535, 4758, 4843, 4893, 4673, 4522, 4454, 4351),
+#     each =12
+#   ),
+#   month=rep(factor(month.name, levels=month.name), length=132)
+# )
+# df[, intv:=ifelse(time >= int, 1, 0)]
+# df[, intv_trend:=c(rep(0, (int - 1)), 1:(length(unique(time)) - (int - 1)))]
+# # Add a grouping variable manually
+# df[, group:=ifelse(intv==1, "Intervention", "Control")]
+# # time
+# df[, time:=as.Date(time, origin="2020-01-01")]
+# ITS=Segmented_Regression_Model(Data=df,
+#                                Res_Var="count",
+#                                Time_Var="time",
+#                                Int_Var="intv",
+#                                ylim=c(min(df[["count"]], na.rm=T)-5,
+#                                       max(df[["count"]], na.rm=T)+5),
+#                                # main=Sub,
+#                                ylab=paste0("Count"),
+#                                xlab="Time",
+#                                AR_Order=1, # p
+#                                MA_Order=0)
+# ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+Segmented_Regression_Model=function(Data,
+                                    Res_Var,
+                                    Time_Var,
+                                    Int_Var,
+                                    Period=12,
+                                    AR_Order=1, # p
+                                    MA_Order=1, # q
+                                    ...){
+  # check out packages
+  lapply(c("data.table",
+           "car", # for durbinWatsonTest
+           "seastests", # for combined_test
+           
+           "nlme",
+           "forecast",
+           "zoo"), # to test autocorrelation
+         checkpackages)
+  
+  # # as data frame
+  # Data=as.data.frame(Data)
+  Data=as.data.table(Data)
+  Data[[Res_Var]]=as.numeric(as.character(Data[[Res_Var]]))
+  
+  #***************************************************************************************************
+  # overall seasonality check (Webel-Ollech's test that combines the QS-test and the Kruskall-Wallis test)
+  # 
+  # Intervention=ts(Data[[Int_Var]],
+  #                 start=c(year(min(Data[[Time_Var]])),
+  #                         1), frequency=12)
+  y=ts(Data[[Res_Var]],
+       start=c(year(min(Data[[Time_Var]])),
+               month(min(Data[[Time_Var]]))),
+       frequency=Period)
+  
+  WO_Test=c()
+  WO_Test$Result=combined_test(y)
+  
+  # message generated based on https://search.r-project.org/CRAN/refmans/seastests/html/combined_test.html
+  # look at p-values of 'QS-R p-value' and 'KW-R p-value'
+  if(WO_Test$Result$Pval[2]<0.01 | WO_Test$Result$Pval[3]<0.002){
+    print("-----------------------")
+    print("- Seasonality warning -")
+    print("-----------------------")
+    WO_Test$Message="The WO - test identifies seasonality"
+    print(WO_Test$Message)
+  }else{
+    WO_Test$Message="The WO - test does not identify seasonality"
+  }
+  
+  #*****************
+  # define variables
+  # Month
+  Data$Month=month(Data[[Time_Var]])
+  
+  # Time
+  Data[[Time_Var]]=as.factor(Data[[Time_Var]])
+  Data$Time=as.numeric(Data[[Time_Var]])
+  
+  # Level
+  Data$Level=as.numeric(Data[[Int_Var]])
+  
+  # Trend
+  Data=as.data.table(Data)
+  Data[, Trend:=0]
+  Data[eval(parse(text=Int_Var))==1, Trend:=1:.N]
+  
+  #*********************************************
+  # autocorrelation check (Breusch-Godfrey test)
+  # examined if autocorrelation resides in the outcome by conducting the Breusch-Godfrey test up to 12-time points
+  # The null hypothesis is that there is no serial correlation of any order up to 12
+  # fit model (lm)
+  if(WO_Test$Message=="The WO - test identifies seasonality"){
+    # If there exists significant evidence of existence of seasonality from the Webel-Ollech test,
+    # the seasonally adjusted model is fitted with Fourier terms (pairs of sine and cosine functions) with 12 months as the underlying period reflecting the full seasonal cycle
+    # (reference : Interrupted time series regression for the evaluation of public health interventions - A tutorial)
+    model_formula=as.formula(paste(Res_Var, "~ Time + Level + Trend + harmonic(Month, 2, ", Period, ")"))
+  }else{
+    model_formula=as.formula(paste(Res_Var, "~ Time + Level + Trend"))
+  }
+  
+  # handle missing data
+  Non_Missing_Outcome_Obs=which(!is.na(Data[[Res_Var]]))
+  Data_to_fit=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data_to_fit)
+  
+  # fit lm
+  lm_model_fit=lm(model_formula,
+                  data=Data_to_fit)
+  
+  # Breusch-Godfrey test
+  BG_Test=c()
+  BG_Test$Result=checkresiduals(lm_model_fit,
+                                lag=Period,
+                                plot=FALSE)
+  
+  # Durbin-Watson test up to 12 time periods (for monthly data)
+  # this test is additional
+  DW_Test=car::durbinWatsonTest(lm_model_fit,
+                                max.lag=Period,
+                                alternative="two.sided")
+  
+  # acf
+  Acf=acf(Data[, .SD, .SDcols=Res_Var],
+          plot=FALSE,
+          na.action=na.pass)
+  
+  # pacf
+  Pacf=pacf(Data[, .SD, .SDcols=Res_Var],
+            plot=FALSE,
+            na.action=na.pass)
+  
+  if(BG_Test$Result$p.value<0.05){
+    BG_Test$Message=c(paste0("Outcome : ", Res_Var),
+                      "Breusch-Godfrey test identifies autocorrelation",
+                      "To adjust for autocorrelation in the model, autoregressive and moving average processes need to be taken into account.",
+                      "This can be done by fitting a model using generalized least squares (gls) with an autocorrelation-moving average correlation structure of order (p, q).",
+                      "Look at the acf and pacf function plots to determine the autoregressive (p) and moving average orders (q) in accordance with the instruction in the table shown at 7:10 in the following link.",
+                      "https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238",
+                      "(if the link is not available, watch 1.7 Autocorrelation - Autocorrelation.mp4)")
+    
+    print("---------------------------")
+    print("- Autocorrelation warning -")
+    print("---------------------------")
+    print(BG_Test$Message)
+    
+    if(AR_Order==0 & MA_Order==0){
+      Corr_Structure=NULL
+    }else{
+      Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
+                             q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
+                             form=~Time)
+    }
+  }else{
+    BG_Test$Message="Breusch-Godfrey test does not identify autocorrelation"
+    Corr_Structure=NULL
+  }
+  
+  #**************************
+  # fit the final model (gls)
+  gls_model_fit=gls(model_formula,
+                    data=Data_to_fit,
+                    correlation=Corr_Structure)
+  
+  # number of observations from a model fit
+  Used_N_Rows=nobs(gls_model_fit)
+  
+  # Output
+  Output=c()
+  Output$N_Time_Points=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
+  Output$gls_model_fit=gls_model_fit
+  Output$WO_Test=WO_Test
+  Output$BG_Test=BG_Test
+  Output$DW_Test=DW_Test
+  Output$Acf=function(){plot(Acf, main=Res_Var)}
+  Output$Pacf=function(){plot(Pacf, main=Res_Var)}
+  Output$summ_table=as.data.frame(summary(gls_model_fit)$tTable)
+  colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+  
+  # Coefficients in summ_table represent the followings.
+  # Time : Pre-intervention slope by time
+  # Level : Immediate level change after intervention
+  # Trend : Trend (Slope) change after intervention
+  Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+  Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
+  Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
+  Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+  Output$Interpretation=paste0("The outcome changes by ", Output$summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
+                               "This time effect changes to ", Output$summ_table["Time", "Estimate"]+Output$summ_table["Trend", "Estimate"],
+                               "(=", Output$summ_table["Time", "Estimate"], "+", Output$summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
+                               "After the intervention, the outcome immediately changes by ",
+                               Output$summ_table["Level", "Estimate"],
+                               " on average.")
+  
+  # plot
+  Output$Fitted_Regression_Line_Plot=function(){
+    Data=as.data.frame(Data)
+    plot(Data$Time,
+         Data[[Res_Var]],
+         # ylim=c(0, 100),
+         ...,
+         # main=Sub,
+         # xlab="Time",
+         # ylab=Res_Var,
+         xaxt="n",
+         pch=19,
+         cex=1,
+         cex.lab=1.5,
+         cex.axis=1.5)
+    axis(1,
+         at=1:length(Data[[Time_Var]]),
+         labels=format(as.Date(Data[[Time_Var]]), "%Y-%m"),
+         cex.axis=1)
+    
+    # Pre_Period_End=length(Data[[Time_Var]][Data[[Int_Var]]==0])
+    Post_Period_Start=which.min(Data[[Int_Var]]==0) # the first time value of the post-intervention period
+    
+    abline(
+      v=Post_Period_Start,
+      lty=2,
+      col=1)
+    
+    # indices of times with non-missing outcome that are used to fit the gls model
+    Non_missing_Time=match(Data_to_fit$Time,
+                           Data$Time)
+    
+    # fitted value
+    Fitted_Values=fitted(gls_model_fit)
+    names(Fitted_Values)=Non_missing_Time
+    
+    # Pre_Period_End_No_Missing : the last time index of the pre-intervention period
+    Pre_Period_End_No_Missing=max(Non_missing_Time[Non_missing_Time<Post_Period_Start])
+    
+    # pre-intervention regression line
+    lines(Non_missing_Time[Non_missing_Time<=Pre_Period_End_No_Missing],
+          Fitted_Values[Non_missing_Time<=Pre_Period_End_No_Missing],
+          col="red", lwd=2)
+    
+    # post-intervention regression line
+    lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
+          Fitted_Values[Non_missing_Time>Pre_Period_End_No_Missing],
+          col="blue", lwd=2)
+    
+    # extrapolated regression line extended from the pre-intervention regression line
+    # !!! this one only works for non-seasonally-adjusted model !!!
+    segments(1,
+             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2],
+             nrow(Data),
+             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*nrow(Data),
+             lty=2,
+             lwd=2,
+             col="red")
+    
+    # Post_Data_prediction=Data_to_fit[Time%in%c(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing]), ]
+    # Post_Data_prediction[, Level:=0]
+    # lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
+    #       predict(gls_model_fit, newdata=Post_Data_prediction),
+    #       col="blue", lwd=2)
+    
+    # legend("topleft",
+    #        legend=c("Pre-change point estimated mean",
+    #                 "Post-change point estimated mean",
+    #                 "Projection based on pre-change point phase",
+    #                 "Intervention time"),
+    #        col=c("red",
+    #              "blue",
+    #              "red",
+    #              "blaCk"),
+    #        lty=c(1, 1, 2, 2),
+    #        cex=1,
+    #        text.font=1)
+  }
+  return(Output)
+}
+
+
+#************************************************
+# Segmented_Regression_Model (old one / obsolete)
+#************************************************
 # Example
 #********
 # lapply(c("ggplot2"), checkpackages)
@@ -156,64 +2007,64 @@ Format_Columns=function(Data, Res_Var, Pred_Vars, vector.OF.classes.num.fact, le
 #                                 X_Lab="Time",
 #                                 Group_Var="group",
 #                                 Y_Lab="Frequency")
-Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
-  # as data frame
-  Data=as.data.frame(Data)
-  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
-  Data=Data[Non_Missing_Outcome_Obs, ]
-  Origin_N_Rows=nrow(Data)
-  
-  Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
-  
-  Data[, Time_Var]=as.factor(Data[, Time_Var])
-  Data$Time_Order=as.numeric(Data[, Time_Var])
-  
-  # fit model
-  model_fit=lm(as.formula(paste(Res_Var, "~", Int_Var, "*Time_Order")), data=Data)
-  
-  # number of observations from a model fit
-  Used_N_Rows=nobs(model_fit)
-  
-  # Output
-  Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-  Output$model_fit=model_fit
-  Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
-  colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
-  Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
-  Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
-  Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
-  Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3)) 
-  
-  return(Output)
-}
-
-#********************************
-# Segmented_Regression_Model_Plot
-#********************************
-Segmented_Regression_Model_Plot=function(Data,
-                                         X_Var,
-                                         Y_Var,
-                                         Group_Var,
-                                         X_Lab="Time",
-                                         Y_Lab="Frequency"){
-  
-  # plot
-  Trend_Plot=ggplot(Data, aes(x=eval(parse(text=X_Var)), y=eval(parse(text=Y_Var)))) +
-    geom_line()+
-    geom_point()+
-    geom_smooth(method="lm", se=T, aes(colour=eval(parse(text=Group_Var)))) +
-    theme_bw()+
-    xlab(X_Lab)+
-    ylab(Y_Lab)+
-    labs(colour="", size=16)+
-    theme(axis.title.x=element_text(size=rel(1.8)),
-          axis.title.y=element_text(size=rel(1.8)),
-          axis.text.x=element_text(size=rel(1.8)),
-          legend.text=element_text(size=rel(1.5)))
-  
-  Trend_Plot
-}
+# Segmented_Regression_Model=function(Data, Res_Var, Time_Var, Int_Var){
+#   # as data frame
+#   Data=as.data.frame(Data)
+#   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+#   Data=Data[Non_Missing_Outcome_Obs, ]
+#   Origin_N_Rows=nrow(Data)
+# 
+#   Data[, Res_Var]=as.numeric(as.character(Data[, Res_Var]))
+# 
+#   Data[, Time_Var]=as.factor(Data[, Time_Var])
+#   Data$Time_Order=as.numeric(Data[, Time_Var])
+# 
+#   # fit model
+#   model_fit=lm(as.formula(paste(Res_Var, "~", Int_Var, "*Time_Order")), data=Data)
+# 
+#   # number of observations from a model fit
+#   Used_N_Rows=nobs(model_fit)
+# 
+#   # Output
+#   Output=c()
+#   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
+#   Output$model_fit=model_fit
+#   Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
+#   colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+#   Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+#   Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
+#   Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
+#   Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+# 
+#   return(Output)
+# }
+# 
+# #********************************
+# # Segmented_Regression_Model_Plot
+# #********************************
+# Segmented_Regression_Model_Plot=function(Data,
+#                                          X_Var,
+#                                          Y_Var,
+#                                          Group_Var,
+#                                          X_Lab="Time",
+#                                          Y_Lab="Frequency"){
+#   
+#   # plot
+#   Trend_Plot=ggplot(Data, aes(x=eval(parse(text=X_Var)), y=eval(parse(text=Y_Var)))) +
+#     geom_line()+
+#     geom_point()+
+#     geom_smooth(method="lm", se=T, aes(colour=eval(parse(text=Group_Var)))) +
+#     theme_bw()+
+#     xlab(X_Lab)+
+#     ylab(Y_Lab)+
+#     labs(colour="", size=16)+
+#     theme(axis.title.x=element_text(size=rel(1.8)),
+#           axis.title.y=element_text(size=rel(1.8)),
+#           axis.text.x=element_text(size=rel(1.8)),
+#           legend.text=element_text(size=rel(1.5)))
+#   
+#   Trend_Plot
+# }
 
 #************************
 #
@@ -273,6 +2124,9 @@ COX_Bivariate=function(Data,
                        PH_assumption_P.value=Temp$cox.zph$table[1, "p"],
                        N_non_missing_data=Temp$N_non_missing_data))
   }
+  
+  # print a note
+  print("The PH assumption is better to be considered at the multivariable analysis level.")
   return(Output)
 }
 
@@ -316,6 +2170,7 @@ COX_Multivariable=function(Data,
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
+  Analyzed_Data<<-Data # for COX_Backward_by_AIC
   
   # main algorithm
   Output=c()
@@ -334,7 +2189,7 @@ COX_Multivariable=function(Data,
     fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
   }
   
-  model_fit=coxph(fullmod, na.action=na.exclude, data=Data)
+  model_fit=coxph(fullmod, na.action=na.exclude, data=Analyzed_Data)
   
   # number of events from a model fit
   Used_N_Rows=nobs(model_fit)
@@ -354,10 +2209,44 @@ COX_Multivariable=function(Data,
   # Rejecting 'age' means that there is strong evidence of non-proportional hazards for age.
   # cox.zph : Test the assumption based on Schoenfeld residuals
   Output$cox.zph=cox.zph(model_fit)
-  Output$cox.zph$table[, "p"]=ifelse(Output$cox.zph$table[, "p"]<0.001, "<0.001", 
-                                     Output$cox.zph$table[, "p"])
+  Assumption_Table_Temp=Output$cox.zph$table
+  Assumption_Table_Temp[, "p"]=ifelse(Assumption_Table_Temp[, "p"]<0.001, "<0.001", 
+                                      Assumption_Table_Temp[, "p"])
+  Output$cox.zph$table=rbind(cbind(rep(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "chisq"],
+                                       Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"]),
+                                   rep(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"],
+                                       Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"]),
+                                   rep(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "p"],
+                                       Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "df"]))
+                             # GLOBAL=Assumption_Table_Temp[nrow(Assumption_Table_Temp), ]
+  )
+  colnames(Output$cox.zph$table)=c("chisq", "df", "p")
+  Output$cox.zph$Vars_with_PH_assumption_violated=names(Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "p"][Assumption_Table_Temp[-nrow(Assumption_Table_Temp), "p"]<0.05])
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Scaled schoenfeld residual plot
+  # cutoff time points : look at the residual plot and visually check where the lines change angle
+  # source(https://stats.stackexchange.com/questions/144923/extended-cox-model-and-cox-zph/238964#238964)
+  Vars=Output$cox.zph$Vars_with_PH_assumption_violated
+  Schoenfeld_Plot=function(Var){
+    plot(Output$cox.zph[which(names(Assumption_Table_Temp[, "p"])==Var)],
+         main="Scaled schoenfeld residual plot",
+         lwd=2,
+         cex.lab=1.5,
+         cex.axis=2,
+         cex.main=2,
+         cex.sub=2)
+    abline(0, 0, col=1, lty=3, lwd=2)
+    abline(h=Output$model_fit$coef[which(names(Assumption_Table_Temp[, "p"])==Var)], col=3, lwd=2, lty=2)
+    legend("bottomright",
+           legend=c('Reference line for null effect',
+                    "Average hazard over time",
+                    "Time-varying hazard"),
+           lty=c(3, 2, 1), col=c(1, 3, 1), lwd=2,
+           cex=1.5)
+  }
+  Output$cox.zph$plots=function(Var){Schoenfeld_Plot(Var)}
+  
+  # Individual Wald test and confidence interval for each parameter
   Fit.Summary=summary(model_fit)
   HR.Coefficients=Fit.Summary$coefficients
   HR.Conf.int=Fit.Summary$conf.int
@@ -383,15 +2272,18 @@ COX_Multivariable=function(Data,
   
   # print a note
   if(Message=="Yes"){
+    # The proportional hazards assumption is no longer satisfied when using the extended Cox model. (That is, the assumption check is not necessary!)
+    # If time-dependent variables are considered, the Cox model form may still be used, but such a model no longer satisfies the PH assumption, and is called the extended Cox model.
+    # (p.109, Survival Analysis: A Self-Learning Text, Third Edition (Statistics for Biology and Health))
     print("Note : PH Assumption is not necessary for the extended Cox model that includes time-variant variables (so, the data is formatted in the counting process layout).")
   }
   return(Output)
 }
 
 
-#**************************
+#*************************
 # COX_Confounder_Selection
-#**************************
+#*************************
 # Example
 #********
 # for now, algorithm works with no interaction term
@@ -640,6 +2532,45 @@ KM_Plot=function(Data,
                  Res_Var,
                  Pred_Vars="1",
                  ...){
+  # check out packages
+  lapply(c("ggplot2", "survminer"), checkpackages)
+  
+  #**************
+  # temp function
+  # .set_font
+  .set_font=function(font){
+    font=ggpubr:::.parse_font(font)
+    ggtext::element_markdown(size=font$size, face=font$face, colour=font$color)
+  }
+  
+  # Survival_Table
+  Survival_Table=function(x, y, z){
+    temp_table=do.call(x,
+                       list(fit=survfit_output,
+                            data=Data,
+                            xlab=y,
+                            ylab=z,
+                            risk.table.title="",
+                            cumevents.title="",
+                            cumcensor.title="",
+                            fontsize=8,
+                            xlim=c(0, 180),
+                            break.time.by=28,
+                            legend.labs=c("Methadone", "Buprenorphine"),
+                            font.tickslab=20))
+    temp_table=temp_table+theme(plot.subtitle=.set_font(25),
+                                plot.caption=.set_font(25),
+                                axis.title.x=.set_font(30),
+                                axis.title.y=.set_font(20),
+                                axis.text.x=.set_font(25),
+                                axis.text.y=.set_font(15),
+                                panel.border=element_rect(color="black",
+                                                          fill=NA,
+                                                          size=1))
+    return(temp_table)
+  }
+  
+  #
   if(!is.null(Start_Time)){
     fullmod=as.formula(paste("Surv(", Start_Time, ", ", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
   }else{
@@ -670,43 +2601,180 @@ KM_Plot=function(Data,
   survfit_output=do.call(survfit, args=list(formula=fullmod, data=Data))
   
   # ggsurvplot
-  (ggsurv_plot=ggsurvplot(
-    fit=survfit_output,
-    ...
-  )$plot+
-      annotate("text", x=0, y=0.2, 
-               label=Log_rank_test,
-               cex=15, col="black", 
-               vjust=0, hjust=0,
-               fontface=4)+
-      guides(color=guide_legend(override.aes=list(size=1),
-                                keywidth=3,
-                                keyheight=3)))
+  ggsurv_plot=ggsurvplot(
+    fit=survfit_output
+    # risk.table=TRUE,
+    # tables.height=0.2,
+    , fontsize=10
+    , break.time.by=28
+    , xlim=c(0, 180)
+    # , ggtheme=theme_bw(base_size=15)
+    # , pval= Log_rank_test
+    , ...
+  )
   
-  # ggsurvplot(
-  #   fit=do.call(survfit, args=list(formula=fullmod, data=Data)),
-  #   xlab="Days",
-  #   ylab="Retention Rate",
-  #   title="Kaplan-Meier curve for retention rate in assigned treatment on all randomized participants (mITT==1), stratified by fentanyl use at SCR",
-  #   font.x=25,
-  #   font.y=25,
-  #   font.tickslab=25,
-  #   font.legend=25,
-  #   font.title=25
-  # )$plot+
-  #   annotate("text", x=0, y=0.2, 
-  #            label=Log_rank_test,
-  #            cex=10, col="black", 
-  #            vjust=0, hjust=0,
-  #            fontface=4)
+  # ggsurv_plot
+  ggsurv_plot$plot=ggsurv_plot$plot+
+    annotate("text", x=0, y=0.2,
+             label=Log_rank_test,
+             cex=10, col="black",
+             vjust=0, hjust=0,
+             fontface=4)+
+    guides(color=guide_legend(override.aes=list(size=1),
+                              keywidth=3,
+                              keyheight=3))+
+    theme(panel.border=element_rect(color="black",
+                                    fill=NA,
+                                    size=1))
+  # tables
+  Funcs=c("ggrisktable",
+          "ggcumevents",
+          "ggcumcensor")
+  Xlabs=c("",
+          "",
+          "Days")
+  Ylabs=c("N at risk",
+          "Cum. events",
+          "Cum. censorings")
+  Tables=mapply(Survival_Table,
+                Funcs,
+                Xlabs,
+                Ylabs,
+                SIMPLIFY=FALSE)
+  
+  names(Tables)=Funcs
+  # Tables$nrow=length(Funcs)
   
   # output
   output=c()
   output$survfit_output=survfit_output
   output$ggsurv_plot=ggsurv_plot
   output$pairwise_test=pairwise_test
+  output$summ_tables=Tables
   
+  # return output
   return(output)
+}
+
+
+#********************
+#
+# COX_Backward_by_AIC
+#
+#*******************************
+# AIC-based backward elimination
+#*******************************
+# # Example
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,NA,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,NA,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# COX.fit=COX_Multivariable(Data=Data_to_use,
+#                           # Pred_Vars=c("x1", "x2", "x3", "x2:x3"), #!!!! for now, algorithm works the best with no interaction term (PH_assumption_P.value needs to be further touched for merging in output)
+#                           Pred_Vars=c("x1", "x2"),
+#                           Res_Var="event",
+#                           Group_Vars="id",
+#                           Strat_Vars="x3",
+#                           Start_Time="start",
+#                           Stop_Time="stop")
+# COX_Backward_by_AIC(Full_Model=COX.fit$model_fit,
+#                     Pred_Vars=c("x1", "x2"))
+COX_Backward_by_AIC=function(Full_Model,
+                             Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GLMM.fit$model_fit
+  # Pred_Vars
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GLMM.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model=Full_Model
+  #Current_Pred_Vars=Pred_Vars
+  Include_Index=c(1:length(Pred_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Current_Full_Model_AIC=AIC(Current_Full_Model)
+    
+    Reduced_Model_AICs=c()
+    
+    # run GLMM excluding one variable at once
+    if(length(Include_Index)==0){
+      print("All variables are removed.")
+    }else{
+      for(i in 1:length(Pred_Vars[Include_Index])){
+        #i=1
+        Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+        Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
+        print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+      }
+    }
+    
+    # AIC of multivariable model excluding each variable
+    Temp_Table=data.table(
+      Exclusion="-",
+      Var=c("(none)", Pred_Vars[Include_Index]),
+      AIC=c(Current_Full_Model_AIC, Reduced_Model_AICs))
+    
+    # order by AIC
+    Temp_Table=Temp_Table[order(AIC), ]
+    
+    # save summary table at the current step
+    Out$summ_table[[step]]=Temp_Table
+    
+    if(Temp_Table$Var[1]=="(none)"){
+      loop.key=1
+    }else{
+      # if there is a variable whose exclusion leads to an improvement of the model (deacresed AIC)
+      # remove the variable
+      Var_to_Remove=Temp_Table[1, Var]
+      
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Pred_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[setdiff(1:length(Pred_Vars), Include_Index)], collapse="-"))))
+      # increase step
+      step=step+1
+      
+      # # if there's no more variable left
+      # if(length(Include_Index)==0){
+      #   Temp_Table=data.table(
+      #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
+      #     Estimate=c(AIC(Current_Full_Model)[-1]),
+      #     Delta="",
+      #     Rank=""
+      #   )
+      #   Out$summ_table[[step]]=Temp_Table
+      #   loop.key=1
+      # }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Selected_Vars=Pred_Vars[Include_Index]
+  
+  return(Out)
 }
 
 
@@ -738,8 +2806,8 @@ KM_Plot=function(Data,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # GLM_Bivariate(Data=Data_to_use,
-#               Pred_Vars=list("center",
-#                              c("sex", "age", "sex:age")),
+#               Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                           list(c("sex", "age", "sex:age"))),
 #               Res_Var=Res_Var,
 #               which.family="binomial (link='logit')")
 GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
@@ -823,7 +2891,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   # Output
   if(grepl("gaussian", which.family)){
-    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    # Individual Wald test and confidence interval for each parameter
     Est.CI=cbind(OR=coef(model_fit), confint(model_fit, level=0.95))
     colnames(Est.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model_fit)$coefficients, Est.CI)
@@ -841,7 +2909,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
   }else if(grepl("binomial", which.family)){ # default with the logit link function
-    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    # Individual Wald test and confidence interval for each parameter
     OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
     est=cbind.fill(summary(model_fit)$coefficients, OR.CI)
@@ -859,7 +2927,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                             )
     )
     # }else if(which.family=="binomial (link='log')"){ # log-binomial regression with the log link function
-    #   # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    #   # Individual Wald test and confidence interval for each parameter
     #   RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     #   colnames(RR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
     #   est=cbind(summary(model_fit)$coefficients, RR.CI)
@@ -877,7 +2945,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
     #                           )
     #   )
   }else if(grepl("poisson", which.family)){
-    # IndivID_vecual Wald test and confID_vecence interval for each parameter
+    # Individual Wald test and confidence interval for each parameter
     RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
     colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
     est=cbind(summary(model_fit)$coefficients, RR.CI)
@@ -900,13 +2968,25 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
-                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
+                            # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                            # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
+    
   }else{
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
+  
+  # likelihood ratio test
+  LRT_results=anova(model_fit, test="LRT") # synonymous with test="Chisq" (https://stat.ethz.ch/R-manual/R-devel/library/stats/html/anova.glm.html)
+  LRT_pvalues=LRT_results$`Pr(>Chi)`
+  LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
+                     format(round2(LRT_pvalues, 7), nsmall=3))
+  Output$summ_table$`P.value(LRT)`=rep(LRT_pvalues[-1], LRT_results$Df[-1])
+  Output$summ_table$`P.value(LRT)`[duplicated(rep(rownames(LRT_results)[-1], LRT_results$Df[-1]))]=""
   
   return(Output)
 }
@@ -1253,7 +3333,7 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   RR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
   colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
   est=cbind(summary(model_fit)$coefficients, RR.CI)
@@ -1377,13 +3457,13 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #
 #*********************
 # GEE_Bivariate
-#******************
+#**************
 # Example
-#******************
+#************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
@@ -1395,9 +3475,8 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # GEE_Bivariate(Data=Data_to_use,
-#               Pred_Vars=list("center",
-#                              "treat",
-#                              c("sex", "age", "sex:age")),
+#               Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                           list(c("sex", "age", "sex:age"))),
 #               Res_Var="outcome",
 #               Group_Var="id",
 #               which.family="binomial (link='logit')")
@@ -1429,110 +3508,9 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
 # GEE_Multivariable
 #******************
 # Example
-#************************************
-# lapply(c("geepack"), checkpackages)
-# data("respiratory")
-# Data_to_use=respiratory
-# # generate missing data
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(Pred_Vars=="treat")]="P"
-# levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data_to_use[sample(1:nrow(Data_to_use), 20), "treat"]=NA
-# Data_to_use=Format_Columns(Data_to_use,
-#                            Res_Var="outcome",
-#                            Pred_Vars,
-#                            vector.OF.classes.num.fact,
-#                            levels.of.fact)
-# # run GEE_Multivariable
-# GEE_Multivariable(Data=Data_to_use,
-#                   Pred_Vars=c("center", "treat", "sex", "age", "sex:age"),
-#                   Res_Var="outcome",
-#                   Group_Var=c("id"),
-#                   which.family="binomial (link='logit')")
-GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
-  # check out packages
-  lapply(c("geepack", "MESS", "doBy", "data.table"), checkpackages)
-  
-  # as data frame
-  Data=as.data.frame(Data)
-  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
-  Data=Data[Non_Missing_Outcome_Obs, ]
-  Origin_N_Rows=nrow(Data)
-  
-  # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
-  Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
-  
-  # number of observations from a model fit
-  if(sum(grepl(":", Pred_Vars))>0){
-    Data=na.omit(Data[, c(Pred_Vars[!grepl(":", Pred_Vars)], Res_Var, Group_Var)])
-    Used_N_Rows=nrow(Data)
-  }else{
-    Data=na.omit(Data[, c(Pred_Vars, Res_Var, Group_Var)])
-    Used_N_Rows=nrow(Data)
-  }
-  
-  # run model
-  #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  model_fit=geeglm(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"))),
-                   data=Data, 
-                   id=Data[, Group_Var],
-                   family=eval(parse(text=which.family)),
-                   corstr="exchangeable")
-  
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
-  est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
-  
-  # Output
-  Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
-  Output$model_fit=model_fit
-  #Output$vif=HH::vif(model_fit)
-  
-  if(grepl("gaussian", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
-                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
-                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
-    )
-  }else if(grepl("binomial", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
-    )
-    
-  }else if(grepl("poisson", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
-    )
-  }
-  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
-  return(Output)
-}
-
-#***************************
-# GEE_Multivariable_with_vif
-#***************************
-# Example
-#**************************************************************************
+#*************************************************************************
 # Note : 1. Argument must be declared with '<-' in a function for HH::vif!
-#**************************************************************************
+#*************************************************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_original=respiratory
@@ -1540,6 +3518,9 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 # Data_original$outcome[1:5]=NA
 # Data_original$treat[c(3, 7, 35, 74)]=NA
 # Data_original$id[c(6, 25, 45, 98)]=NA
+# Data_original$sex=as.character(Data_original$sex)
+# Data_original$sex[c(2, 15, 35, 58, 93)]="N"
+# Data_original$sex=factor(Data_original$sex)
 # Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_original[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
@@ -1554,13 +3535,17 @@ GEE_Multivariable=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ #
 #                              vector.OF.classes.num.fact,
 #                              levels.of.fact)
 # # run GEE_Multivariable
-# GEE_Multivariable_with_vif(Data<-Data_original,
-#                            Pred_Vars<-c("center", "sex", "age", "sex:age"),
-#                            Res_Var<-Res_Var,
-#                            Group_Var<-Group_Var,
-#                            which.family<-"binomial (link='logit')")
+# GEE_Multivariable(Data<-Data_original,
+#                   Pred_Vars<-c("center", "sex", "age", "sex:age"),
+#                   Res_Var<-Res_Var,
+#                   Group_Var<-Group_Var,
+#                   which.family<-"binomial (link='logit')")
 # Data_original=as.data.table(Data_original)
-GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ # names of people should be numeric
+GEE_Multivariable=function(Data,
+                           Pred_Vars,
+                           Res_Var,
+                           Group_Var,
+                           which.family){ # names of people should be numeric
   # check out packages
   lapply(c("geepack", "MESS", "doBy", "HH", "data.table"), checkpackages)
   
@@ -1571,20 +3556,24 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
+  
+  # Non_Missing_Data for GEE_Backward_by_QIC
   if(sum(grepl(":", Pred_Vars))>0){
-    Non_Missing_Data<<-Remove_missing(Data, # remove missing data
-                                      c(Pred_Vars[!grepl(":", Pred_Vars)],
-                                        Res_Var,
-                                        Group_Var))
+    Non_Missing_Data=Remove_missing(Data, # remove missing data
+                                    c(Pred_Vars[!grepl(":", Pred_Vars)],
+                                      Res_Var,
+                                      Group_Var))
   }else{
-    Non_Missing_Data<<-Remove_missing(Data, # remove missing data
-                                      c(Pred_Vars,
-                                        Res_Var,
-                                        Group_Var))
+    Non_Missing_Data=Remove_missing(Data, # remove missing data
+                                    c(Pred_Vars,
+                                      Res_Var,
+                                      Group_Var))
   }
   
   # Convert code to numeric/factor (This is very important when running gee! Whether it is numeric or factor doesn't matter. They produce the same result!)
-  Non_Missing_Data[, Group_Var]=as.numeric(as.factor(Non_Missing_Data[, Group_Var]))
+  # Non_Missing_Data[, Group_Var]=as.numeric(as.factor(Non_Missing_Data[, Group_Var]))
+  Non_Missing_Data[, Group_Var]=as.factor(Non_Missing_Data[, Group_Var])
+  Non_Missing_Data<<-Non_Missing_Data
   
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
@@ -1597,12 +3586,20 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
   
   # Output
   Output=c()
   N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  
+  model_fit$call=str2lang(paste0("geeglm(formula=", paste(Res_Var, "~", paste(Pred_Vars, collapse="+")),
+                                 ", family=", which.family,
+                                 ", data=Non_Missing_Data",
+                                 ", id=", Group_Var,
+                                 ", corstr='exchangeable')",
+                                 collapse=""))
+  
   Output$model_fit=model_fit
   
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
@@ -1645,7 +3642,10 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
   
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
-                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
+                            # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                            # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
@@ -1660,7 +3660,7 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 # GEE_Confounder_Selection
 #*************************
 # Example
-#******************
+#****************************************************
 # # for now, algorithm works with no interaction term
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
@@ -1686,11 +3686,11 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 # Res_Var="outcome"
 # Group_Var="id"
 # # All arguments must be declared with '<-'!
-# GEE.fit=GEE_Multivariable_with_vif(Data<-Data_to_use,
-#                                    Pred_Vars<-Pred_Vars,
-#                                    Res_Var<-Res_Var,
-#                                    Group_Var<-Group_Var,
-#                                    which.family<-"binomial (link='logit')")
+# GEE.fit=GEE_Multivariable(Data<-Data_to_use,
+#                           Pred_Vars<-Pred_Vars,
+#                           Res_Var<-Res_Var,
+#                           Group_Var<-Group_Var,
+#                           which.family<-"binomial (link='logit')")
 # Confounder_Steps=GEE_Confounder_Selection(Full_Model=GEE.fit$model_fit,
 #                                           Main_Pred_Var="sex",
 #                                           Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"], # for now, algorithm works with no interaction term
@@ -1698,11 +3698,11 @@ GEE_Multivariable_with_vif=function(Data, Pred_Vars, Res_Var, Group_Var, which.f
 #                                           Min.Change.Percentage=5,
 #                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
 # Confounder_Ind=which(Pred_Vars%in%Confounder_Steps$Confounders)
-# GEE.confound.fit=GEE_Multivariable_with_vif(Data<-Data_to_use,
-#                                             Pred_Vars<-Pred_Vars[Confounder_Ind],
-#                                             Res_Var<-Res_Var,
-#                                             Group_Var<-Group_Var,
-#                                             which.family<-"binomial (link='logit')")
+# GEE.confound.fit=GEE_Multivariable(Data<-Data_to_use,
+#                                    Pred_Vars<-Pred_Vars[Confounder_Ind],
+#                                    Res_Var<-Res_Var,
+#                                    Group_Var<-Group_Var,
+#                                    which.family<-"binomial (link='logit')")
 # GEE.fit$summ_table
 # GEE.confound.fit$summ_table
 GEE_Confounder_Selection=function(Full_Model, 
@@ -1879,11 +3879,11 @@ GEE_Confounder_Model=function(Data,
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
   
-  Output$Full_Multivariable_Model=GEE_Multivariable_with_vif(Data<<-Data,
-                                                             Pred_Vars<<-Pred_Vars,
-                                                             Res_Var<<-Res_Var,
-                                                             Group_Var<<-Group_Var,
-                                                             which.family<<-which.family)
+  Output$Full_Multivariable_Model=GEE_Multivariable(Data<<-Data,
+                                                    Pred_Vars<<-Pred_Vars,
+                                                    Res_Var<<-Res_Var,
+                                                    Group_Var<<-Group_Var,
+                                                    which.family<<-which.family)
   
   # Confounder selection
   Confounder_Steps=GEE_Confounder_Selection(Full_Model=Output$Full_Multivariable_Model$model_fit,
@@ -1901,11 +3901,11 @@ GEE_Confounder_Model=function(Data,
   #                       Group_Var))
   
   # Multivariable model with confounders
-  Output$Confounder_Model=GEE_Multivariable_with_vif(Data<<-Data,
-                                                     Pred_Vars<<-Pred_Vars[Confounder_Ind],
-                                                     Res_Var<<-Res_Var,
-                                                     Group_Var<<-Group_Var,
-                                                     which.family<<-which.family)
+  Output$Confounder_Model=GEE_Multivariable(Data<<-Data,
+                                            Pred_Vars<<-Pred_Vars[Confounder_Ind],
+                                            Res_Var<<-Res_Var,
+                                            Group_Var<<-Group_Var,
+                                            which.family<<-which.family)
   
   return(Output)
 }
@@ -1940,18 +3940,17 @@ GEE_Confounder_Model=function(Data,
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GEE.fit=GEE_Multivariable_with_vif(Data=Data_to_use,
+# GEE.fit=GEE_Multivariable(Data=Data_to_use,
 #                                    Pred_Vars=Pred_Vars,
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
 #                                    which.family<-"binomial")
 # QIC_Selection_Steps=GEE_Backward_by_QIC(Full_Model=GEE.fit$model_fit,
-#                                                      Pred_Vars=Pred_Vars)
+#                                         Pred_Vars=Pred_Vars)
 GEE_Backward_by_QIC=function(Full_Model,
                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
   # Full_Model=GEE.fit$model_fit
   # Pred_Vars
-  
   
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
@@ -1983,16 +3982,20 @@ GEE_Backward_by_QIC=function(Full_Model,
     Reduced_Model_QICs=c()
     
     # run GEE excluding one variable at once
-    for(i in 1:length(Pred_Vars[Include_Index])){
-      #i=1
-      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
-      Reduced_Model_QICs[i]=QIC(Current_Reduced_Model)["QIC"]
-      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+    if(length(Include_Index)==0){
+      print("All variables are removed.")
+    }else{
+      for(i in 1:length(Pred_Vars[Include_Index])){
+        #i=1
+        Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+        Reduced_Model_QICs[i]=QIC(Current_Reduced_Model)["QIC"]
+        print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+      }
     }
     
     # QIC of multivariable model excluding each variable
     Temp_Table=data.table(
-      Inclusion="-",
+      Exclusion="-",
       Var=c("(none)", Pred_Vars[Include_Index]),
       QIC=c(Current_Full_Model_QIC, Reduced_Model_QICs))
     
@@ -2002,7 +4005,7 @@ GEE_Backward_by_QIC=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(Temp_Table$QIC[1]>=Current_Full_Model_QIC){
+    if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
     }else{
       # if there is a variable whose exclusion leads to an improvement of the model (deacresed QIC)
@@ -2061,7 +4064,7 @@ GEE_Backward_by_QIC=function(Full_Model,
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GEE.fit=GEE_Multivariable_with_vif(Data=Data_to_use,
+# GEE.fit=GEE_Multivariable(Data=Data_to_use,
 #                                    Pred_Vars=Pred_Vars,
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
@@ -2185,6 +4188,177 @@ GEE_Backward_by_P=function(Full_Model,
   return(Out)
 }
 
+#********************
+# GEE_Backward_by_P_2
+#********************
+# GEE_Backward_by_P_2 is basically the same as GEE_Backward_by_P
+GEE_Backward_by_P_2=function(Full_Model,
+                             Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GEE.fit$model_fit
+  # Pred_Vars
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GEE.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  Current_Full_Model=Full_Model
+  
+  #***************
+  # main algorithm
+  #***************
+  Reduced_Model_QICs=c()
+  
+  Pred_Vars_Temp=Pred_Vars
+  Summ_Table=list()
+  Temp_Table=data.table(
+    Step=1,
+    Further_Excluded_Var="(none)",
+    QIC=QIC(Current_Full_Model)["QIC"])
+  
+  # run GEE excluding one variable with the highest p-valuse in the current model
+  for(Step in 1:length(Pred_Vars)){
+    #Step=2
+    Out$Model[[Step]]=Current_Full_Model
+    Current_Coefficients=coef(Current_Full_Model)
+    Current_Summ_Table=data.table(names=c("(Intercept)", Pred_Vars_Temp),
+                                  esticon(Current_Full_Model, diag(length(Current_Coefficients)))[, c("estimate", "std.error", "p.value")])
+    
+    # save info of the current model
+    Summ_Table[[Step]]=Current_Summ_Table[order(p.value, decreasing=TRUE)]
+    
+    # identify the variable to remove by p-value
+    Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[-1, p.value]))]
+    Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove]
+    
+    # update the model
+    Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Var_To_Remove, collapse="-"))))
+    Current_Full_Model=Current_Reduced_Model
+    
+    # save info
+    Temp_Table=rbind(Temp_Table,
+                     data.table(
+                       Step=Step+1,
+                       Further_Excluded_Var=Var_To_Remove,
+                       QIC=QIC(Current_Full_Model)["QIC"]))
+    
+    print(paste0("Step : ", Step, "/", length(Pred_Vars)))
+  }
+  Out$Model[[Step+1]]=Current_Full_Model
+  
+  # Out
+  Out$summ_table=Summ_Table
+  Out$QIC_Table=Temp_Table
+  # the final model with the lowest QIC
+  Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  
+  return(Out)
+}
+
+#*******************************
+# GEE_Backward_by_P_missing_Data
+#*******************************
+# If the variable contains missing values, these missing data are removed even when the reduced model is fitted.
+# As there are one variable less in the reduced model, it is likely that a larger sample is used for the reduced model fit.
+# In other words, the sample used for the reference model is likely to be smaller because of the variable that is included in the reference model, but not in the reduced model.
+# On the contrary, GEE_Backward_by_P (or GEE_Backward_by_P_2) runs a reduced model based on the same sample that's used for the reference model through the 'update' function.
+# I'm not sure for now which one to use between this one and GEE_Backward_by_P (or GEE_Backward_by_P_2).
+# However, it might make more sense to use GEE_Backward_by_P (or GEE_Backward_by_P_2) because a reduced model is built and compared with the reference model based on the same sample.
+GEE_Backward_by_P_missing_Data=function(Data,
+                                        Pred_Vars,
+                                        Res_Var,
+                                        Group_Var,
+                                        which.family){ # minimum percentage of change-in-estimate to terminate the algorithm
+  # Full_Model=GEE.fit$model_fit
+  # Pred_Vars
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Full_Model=GEE.example$model_fit
+  # Main_Pred_Var="sex"
+  # Pred_Vars=c("center", "treat", "age", "baseline", "visit")
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  Pred_Vars_Temp=Pred_Vars
+  Full_Model=GEE_Multivariable(Data=Data,
+                               Pred_Vars=Pred_Vars_Temp,
+                               Res_Var=Res_Var,
+                               Group_Var="CODE",
+                               which.family="binomial")
+  
+  Current_Full_Model=Full_Model
+  
+  #***************
+  # main algorithm
+  #***************
+  Reduced_Model_QICs=c()
+  
+  Summ_Table=list()
+  Temp_Table=data.table(
+    Step=1,
+    Further_Excluded_Var="(none)",
+    QIC=QIC(Current_Full_Model$model_fit)["QIC"])
+  
+  Out$Model[[1]]=Current_Full_Model$model_fit
+  Summ_Table[[1]]=Current_Full_Model$summ_table[order(P.value, decreasing=TRUE)]
+  # run GEE excluding one variable with the highest p-valuse in the current model
+  for(Step in 1:length(Pred_Vars)){
+    #Step=1
+    est=esticon(Current_Full_Model$model_fit,
+                diag(length(coef(Current_Full_Model$model_fit))))[-1, ]
+    Current_Summ_Table=data.table(names(coef(Current_Full_Model$model_fit))[-1],
+                                  est)
+    Current_Summ_Table=Current_Summ_Table[order(p.value, decreasing=TRUE)]
+    
+    # identify the variable to remove by p-value
+    Var_To_Remove=Current_Summ_Table[, 1][which.max(Current_Summ_Table[, p.value])]
+    Var_To_Remove_Original_Name=Pred_Vars_Temp[unlist(lapply(Pred_Vars_Temp, function(x) grepl(x, Var_To_Remove)))]
+    Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove_Original_Name]
+    
+    # update the model
+    if(length(Pred_Vars_Temp)==0){
+      break
+    }else{
+      Current_Reduced_Model=GEE_Multivariable(Data=Data,
+                                              Pred_Vars=Pred_Vars_Temp,
+                                              Res_Var=Res_Var,
+                                              Group_Var="CODE",
+                                              which.family="binomial")
+      Current_Full_Model=Current_Reduced_Model
+    }
+    
+    # save info
+    Out$Model[[Step+1]]=Current_Full_Model$model_fit
+    Summ_Table[[Step+1]]=Current_Full_Model$summ_table[order(P.value, decreasing=TRUE)]
+    Temp_Table=rbind(Temp_Table,
+                     data.table(
+                       Step=Step+1,
+                       Further_Excluded_Var=Var_To_Remove_Original_Name,
+                       QIC=QIC(Current_Reduced_Model$model_fit)["QIC"]))
+    
+    print(paste0("Step : ", Step, "/", length(Pred_Vars)))
+  }
+  Out$Model[[Step+1]]=Current_Full_Model
+  
+  # Out
+  Out$summ_table=Summ_Table
+  Out$QIC_Table=Temp_Table
+  # the final model with the lowest QIC
+  Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  
+  return(Out)
+}
+
 
 
 #************************
@@ -2282,7 +4456,6 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
 } ## names of people should be numeric
 
 
-
 #**********************
 #
 # [ --- GLMM --- ] ----
@@ -2307,8 +4480,8 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
 #                            levels.of.fact)
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
 # GLMM_Bivariate(Data=Data_to_use,
-#                Pred_Vars=list("center",
-#                               c("sex", "age", "sex:age")),
+#                Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                            list(c("sex", "age", "sex:age"))),
 #                Res_Var="outcome",
 #                Group_Var="id",
 #                which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
@@ -2364,7 +4537,7 @@ GLMM_Bivariate=function(Data,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
     Output=rbind(Output,
-                 cbind(Temp$summ_table[, c(1:5, 7)],
+                 cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
     
     # print out progress
@@ -2393,13 +4566,17 @@ GLMM_Bivariate=function(Data,
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[c(2, 15, 35, 58, 93)]="N"
+# Data_to_use$sex=factor(Data_to_use$sex)
+# Data_to_use$id=as.factor(Data_to_use$id)
 # Data_to_use=Format_Columns(Data_to_use,
 #                            Res_Var="outcome",
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use,Data_to_use),
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
 #                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
@@ -2444,7 +4621,10 @@ GLMM_Multivariable=function(Data,
                             Compute.Power=FALSE,
                             nsim=1000){
   # check out packages
-  lapply(c("lme4", "simr", "sjPlot", "MASS", "data.table", "optimx"), checkpackages)
+  lapply(c("lme4", "simr",
+           "glmmTMB",
+           "sjPlot",
+           "MASS", "data.table", "optimx"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -2455,6 +4635,7 @@ GLMM_Multivariable=function(Data,
   # run model
   #fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep=""))
   if(grepl("gaussian", which.family)){
+    lapply(c("lmerTest"), checkpackages) # this package is required to obtain p-values
     myfit=lmer(as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), paste("+(1|", Group_Var, ")", collapse=""), sep="")), 
                na.action=na.exclude, 
                data=Data, 
@@ -2486,6 +4667,7 @@ GLMM_Multivariable=function(Data,
   
   # coefficient
   Coef=summary(myfit)$coefficients
+  
   Coef.ind=c()
   # confidence interval (raw)
   CI.raw=confint(myfit, level=0.95, method="Wald")
@@ -2526,18 +4708,19 @@ GLMM_Multivariable=function(Data,
   Output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
   
   if(grepl("gaussian", which.family)){
-    Output$summ_table$`P-value`=c()
+    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
+                                       format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, ncol(Coef)][Coef.ind]<0.001, "<0.001", 
+    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
@@ -2550,12 +4733,26 @@ GLMM_Multivariable=function(Data,
   
   if(!is.null(dim(Output_vif))){
     Output$summ_table=cbind(Output$summ_table,
-                            GVIF=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
+                            `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
+                            # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
+                            # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
     Output$summ_table=cbind(Output$summ_table,
                             VIF=Output_vif,
                             N_data_used=N_data_used)
+  }
+  
+  # likelihood ratio test
+  # this works only for lmer (that is, which.family=="gaussian")
+  if(grepl("gaussian", which.family)){
+    LRT_results=anova(myfit)
+    LRT_pvalues=LRT_results$`Pr(>F)`
+    LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
+                       format(round2(LRT_pvalues, 7), nsmall=3))
+    Output$summ_table$`P.value(F-test)`=rep(LRT_pvalues, LRT_results$NumDF)
+    Output$summ_table$`P.value(F-test)`[duplicated(rep(rownames(LRT_results), LRT_results$NumDF))]=""
   }
   
   # power
@@ -2912,30 +5109,44 @@ GLMM_Confounder_Model=function(Data,
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
-# pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
-# res_var="outcome"
+# Pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# Res_var="outcome"
 # rand_var="id"
 # which.family="gaussian(link=identity)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, pred_vars], class))=="integer", "num", "fact")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(pred_vars=="treat")]="P"
-# levels.of.fact[which(pred_vars=="sex")]="F"
+# levels.of.fact[which(Pred_vars=="treat")]="P"
+# levels.of.fact[which(Pred_vars=="sex")]="F"
 # 
-# Data=Format_Columns(Data=Data_to_use,
-#                     Res_Var="outcome",
-#                     Pred_Vars=pred_vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+# Data_to_use=Format_Columns(Data=Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars=Pred_vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # 
-# Data$sex=as.character(Data$sex)
-# Data[sample(nrow(Data), 150), "sex"]="N"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 150), "sex"]="N"
 # lambda=seq(0, 5, by=0.5)
+# 
+# # exclude missing obsevations
+# Data_to_use=as.data.table(Data_to_use)
+# Data_to_use=na.omit(Data_to_use[,
+#                                 .SD,
+#                                 .SDcols=c(Res_var, Pred_vars, rand_var)])
+# 
+# # grouping variable
+# Data_to_use[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+# 
+# # speicfy GLMM model
+# form.fixed=as.formula(outcome ~ center + as.factor(treat) + as.factor(sex) + age + baseline + visit)
+# # random effect
+# form.rnd=list(id=~1)
+# 
 # # GLMM_LASSO_CV_Out
 # GLMM_LASSO_CV_Out=GLMM_LASSO_CV(Data=Data_to_use,
-#                                 pred_vars,
-#                                 res_var,
-#                                 rand_var,
-#                                 which.family,
+#                                 form.fixed=form.fixed,
+#                                 form.rnd=form.rnd,
+#                                 which.family=which.family,
 #                                 k=6,
 #                                 lambda=lambda)
 # 
@@ -2944,24 +5155,29 @@ GLMM_Confounder_Model=function(Data,
 # # cv error
 # GLMM_LASSO_CV_Out$CV_Error
 # # plot
-# GLMM_LASSO_CV_Out$CV_plot
+# GLMM_LASSO_CV_Out$CV_Error_plot
 # # optimal lambda
-# GLMM_LASSO_CV_Out$Optimal_Lambda
-
+# GLMM_LASSO_CV_Out$Optimal_Lambda_by_CV_Error
+# # IC_Matrix
+# GLMM_LASSO_CV_Out$IC_matrix
+# 
 # # There's a function that performs a CV for GLMM, called cv.glmmLasso, in lmmen package.
 # # However, there appears to be some issues when the function is excuted (fun a code below). I googled to find how to troubleshoot, but there's even not
 # # a single example that shows the use of the function.
 # # https://raw.githubusercontent.com/cran/glmmLasso/master/demo/glmmLasso-soccer.r
-# library(lmmen)
-# cv.glmmLasso(dat=Data_to_use,
-#              form.fixed=outcome~center + as.factor(treat) + as.factor(sex) + age + baseline + visit,
-#              form.rnd=list(id=~1),
-#              family=binomial(link=logit),
-#              lambda=seq(0, 5, by=0.5))
+# # (Edit) The function seems to work fine now, so some parts from the original script of the function are integrated into GLMM_LASSO_CV to obtain AIC and BIC.
+# # lapply(c("lmmen"), checkpackages)
+# # Package 'lmmen' was removed from the CRAN repository. (https://CRAN.R-project.org/package=lmmen)
+# Origianl_cv.glmmLasso=cv.glmmLasso(dat=Data_to_use,
+#                                    form.fixed=form.fixed,
+#                                    form.rnd=form.rnd,
+#                                    family=which.family,
+#                                    lambda=seq(0, 5, by=0.5))
+# # compare BICs
+# GLMM_LASSO_CV_Out$IC_matrix$BIC==Origianl_cv.glmmLasso$BIC_path
 GLMM_LASSO_CV=function(Data,
-                       pred_vars,
-                       res_var,
-                       rand_var,
+                       form.fixed,
+                       form.rnd,
                        which.family,
                        k=4,
                        lambda=seq(0, 10, by=1)){
@@ -2972,16 +5188,23 @@ GLMM_LASSO_CV=function(Data,
   # convert data to data frame
   Data=as.data.table(Data)
   
-  #****************************
-  # exclude missing obsevations
-  #****************************
-  CV_data=na.omit(Data[, 
-                       .SD, 
-                       .SDcols=c(res_var, pred_vars, rand_var)])
+  # res_var
+  res_var=gsub("as.factor", "", as.character(form.fixed)[2])
+  
+  # pred_vars
+  pred_vars=unlist(strsplit(
+    gsub("[() ]",
+         "",
+         gsub("as.factor", "", as.character(form.fixed)[3])),
+    "\\+"
+  ))
   
   # grouping variable
-  CV_data[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+  group_var=names(form.rnd)
+  Data[, (group_var):=lapply(.SD, as.factor), .SDcols=group_var]
   
+  # remove missing data
+  Data=na.omit(Data[, .SD, .SDcols=c(res_var, pred_vars, group_var)])
   
   #***
   # CV
@@ -2989,20 +5212,20 @@ GLMM_LASSO_CV=function(Data,
   # generate array containing fold-number for each sample (row)
   pass.ind=1
   while(sum(pass.ind)>0){
-    folds=sample(rep_len(1:k, nrow(CV_data)), nrow(CV_data))
+    folds=sample(rep_len(1:k, nrow(Data)), nrow(Data))
     for(k.ind in 1:k){
       #k.ind=1
-      # actual split of the CV_data
+      # actual split of the Data
       fold=which(folds == k.ind)
       
       # divide data into training and test sets
-      CV_data_train=CV_data[-fold, ]
-      CV_data_test=CV_data[fold, ]
+      Data_train=Data[-fold, ]
+      Data_test=Data[fold, ]
       
-      if(sum((CV_data_train[, .SD, .SDcols=pred_vars] %>% 
+      if(sum((Data_train[, .SD, .SDcols=pred_vars] %>% 
               lapply(function(x) length(unique(x))) %>% 
               unlist)==1)>0){
-        print(which((CV_data_train[, .SD, .SDcols=pred_vars] %>% 
+        print(which((Data_train[, .SD, .SDcols=pred_vars] %>% 
                        lapply(function(x) length(unique(x))) %>% 
                        unlist)==1))
         #print(paste0("Re-diving data"))
@@ -3013,8 +5236,6 @@ GLMM_LASSO_CV=function(Data,
       }
     }  
   }
-  # speicfy GLMM model (with dummies)
-  CV.model=as.formula(paste(res_var, "~", paste(ifelse(!unlist(Data[, lapply(.SD, is.numeric), .SDcols=pred_vars]), paste0("as.factor(", pred_vars, ")"), pred_vars), collapse="+"), sep=""))
   
   # generate empty matrix to save Train_Error
   Train_Error=matrix(NA, length(lambda), k)
@@ -3024,65 +5245,90 @@ GLMM_LASSO_CV=function(Data,
   CV_Error=matrix(NA, length(lambda), k)
   rownames(CV_Error)=c(paste0("lambda=", lambda))
   colnames(CV_Error)=c(paste0(1:k, "nd sub"))
-  # generate empty matrix to save CV_AIC
-  CV_AIC=matrix(NA, length(lambda), k)
-  rownames(CV_AIC)=c(paste0("lambda=", lambda))
-  colnames(CV_AIC)=c(paste0(1:k, "nd sub"))
-  # generate empty matrix to save CV_BIC
-  CV_BIC=matrix(NA, length(lambda), k)
-  rownames(CV_BIC)=c(paste0("lambda=", lambda))
-  colnames(CV_BIC)=c(paste0(1:k, "nd sub"))
+  # generate empty matrix to save IC_matrix
+  IC_matrix=matrix(NA, length(lambda), ncol=2)
+  rownames(IC_matrix)=c(paste0("lambda=", lambda))
+  colnames(IC_matrix)=c("AIC", "BIC")
+  
+  # specify starting values for the very first fit; pay attention that Delta.start has suitable length! 
+  d.size=(max(as.numeric(row.names(Data)))*(sum(grepl('^Z',names(Data)))+1))+(sum(grepl('^X',names(Data)))+1)
+  Delta.start.base=Delta.start=as.matrix(t(rep(0,d.size)))
+  Q.start.base=Q.start=0.1  
   
   # run algorithm
   for(lambda.ind in 1:length(lambda)){
     #lambda.ind=1
+    
     # actual cross validation
     for(k.ind in 1:k) {
-      #k.ind=2
-      # actual split of the CV_data
+      #k.ind=1
+      # actual split of the Data
       fold=which(folds == k.ind)
       
       # divide data into training and test sets
-      CV_data_train=CV_data[-fold, ]
-      CV_data_test=CV_data[fold, ]
+      Data_train=Data[-fold, ]
+      Data_test=Data[fold, ]
       
-      # random effect
-      random_effect=list(id=~1)
-      names(random_effect)=rand_var
       ## fit adjacent category model
-      glmmLasso.fit=glmmLasso(CV.model, 
-                              rnd=random_effect, 
-                              family=eval(parse(text=which.family)), 
-                              data=CV_data_train, 
-                              lambda=lambda[lambda.ind])
+      glmmLasso.cv.fit=glmmLasso(form.fixed, 
+                                 rnd=form.rnd, 
+                                 family=eval(parse(text=which.family)), 
+                                 data=Data_train, 
+                                 lambda=lambda[lambda.ind])
       
       # Make predictions and compute the R2, RMSE and MAE
-      predictions_train=glmmLasso.fit %>% predict(CV_data_train)
-      predictions_test=glmmLasso.fit %>% predict(CV_data_test)
+      predictions_train=glmmLasso.cv.fit %>% predict(Data_train)
+      predictions_test=glmmLasso.cv.fit %>% predict(Data_test)
       
       # Train_Error and CV_Error
-      Train_Error[lambda.ind, k.ind]=mean(unlist(predictions_train - CV_data_train[, .SD, .SDcol=res_var])^2)
-      CV_Error[lambda.ind, k.ind]=mean(unlist(predictions_test - CV_data_test[, .SD, .SDcol=res_var])^2)
-      
-      CV_AIC[lambda.ind, k.ind]=glmmLasso.fit$aic
-      CV_BIC[lambda.ind, k.ind]=glmmLasso.fit$bic
+      Train_Error[lambda.ind, k.ind]=mean(unlist(predictions_train - Data_train[, .SD, .SDcol=res_var])^2)
+      CV_Error[lambda.ind, k.ind]=mean(unlist(predictions_test - Data_test[, .SD, .SDcol=res_var])^2)
       
       if(k.ind == k){
         # print process
         print(paste0("k : ", k.ind, ", lambda : ", lambda[lambda.ind]))
       }
     }
+    
+    # obtain AIC & BIC
+    suppressMessages({
+      suppressWarnings({
+        glmmLasso.fit=try(glmmLasso::glmmLasso(fix=stats::as.formula(form.fixed),
+                                               rnd=form.rnd,
+                                               data=Data,lambda=lambda[lambda.ind],
+                                               switch.NR=FALSE,final.re=TRUE,
+                                               control=list(start=Delta.start[lambda.ind,],q.start=Q.start[lambda.ind]))
+        )
+      })      
+    })
+    
+    if(class(glmmLasso.fit)!="try-error")
+    {  
+      IC_matrix[lambda.ind, "AIC"]=glmmLasso.fit$aic
+      IC_matrix[lambda.ind, "BIC"]=glmmLasso.fit$bic
+      Delta.start=rbind(Delta.start,glmmLasso.fit$Deltamatrix[glmmLasso.fit$conv.step,])
+      Q.start=c(Q.start,glmmLasso.fit$Q_long[[glmmLasso.fit$conv.step+1]])
+    }else{
+      Delta.start=rbind(Delta.start,Delta.start.base)
+      Q.start=c(Q.start,Q.start.base)
+    }
+    # 
+    # glmmLasso.fit=glmmLasso(form.fixed, 
+    #                         rnd=form.rnd, 
+    #                         family=eval(parse(text=which.family)), 
+    #                         data=Data, 
+    #                         lambda=lambda[lambda.ind])
+    # IC_matrix[lambda.ind, "AIC"]=glmmLasso.fit$aic
+    # IC_matrix[lambda.ind, "BIC"]=glmmLasso.fit$bic
   }
-  
   # combine Train_Error and CV_Error
   out=list()
   out$Train_Error=Train_Error
   out$CV_Error=CV_Error
-  out$CV_AIC=CV_AIC
-  out$CV_BIC=CV_BIC
+  out$IC_matrix=as.data.table(IC_matrix, keep.rownames=TRUE)
   
-  # optimal lambda
-  out$Optimal_Lambda=lambda[which.min(apply(CV_Error, 1, mean))]
+  # optimal lambda by CV Error
+  out$Optimal_Lambda_by_CV_Error=lambda[which.min(apply(CV_Error, 1, mean))]
   
   # plot
   Error_by_Lambda=data.frame(
@@ -3090,7 +5336,7 @@ GLMM_LASSO_CV=function(Data,
     Error=c(apply(out$Train_Error, 1, mean), apply(out$CV_Error, 1, mean)),
     Label=c(rep("Train", length(lambda)), rep("CV", length(lambda)))
   )
-  out$CV_plot=Error_by_Lambda %>%
+  out$CV_Error_plot=Error_by_Lambda %>%
     ggplot(aes(x=lambda, y=Error, group=Label)) +
     geom_line(aes(color=Label)) +
     geom_point(aes(color=Label)) +
@@ -3108,39 +5354,58 @@ GLMM_LASSO_CV=function(Data,
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
-# pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
-# res_var="outcome"
+# Pred_vars=c("center", "treat", "sex", "age", "baseline", "visit")
+# Res_var="outcome"
 # rand_var="id"
 # which.family="gaussian(link=identity)" # "gaussian(link=identity)", "binomial(link=logit)", "poisson(link=log)"
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, pred_vars], class))=="integer", "num", "fact")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(pred_vars=="treat")]="P"
-# levels.of.fact[which(pred_vars=="sex")]="F"
+# levels.of.fact[which(Pred_vars=="treat")]="P"
+# levels.of.fact[which(Pred_vars=="sex")]="F"
 # 
-# Data_to_use=rbind(Data_to_use)
-# Data_to_use=Format_Columns(Data_to_use,
-#                     Res_Var="outcome",
-#                     Pred_Vars=pred_vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+# Data_to_use=Format_Columns(Data=Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars=Pred_vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # 
-# # lambda
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use[sample(nrow(Data_to_use), 150), "sex"]="N"
 # lambda=seq(0, 5, by=0.5)
+# 
+# # exclude missing obsevations
+# Data_to_use=as.data.table(Data_to_use)
+# Data_to_use=na.omit(Data_to_use[,
+#                                 .SD,
+#                                 .SDcols=c(Res_var, Pred_vars, rand_var)])
+# 
+# # grouping variable
+# Data_to_use[, (rand_var):=lapply(.SD, as.factor), .SDcols=rand_var]
+# 
+# # speicfy GLMM model
+# form.fixed=as.formula(outcome ~ center + as.factor(treat) + as.factor(sex) + age + baseline + visit)
+# # random effect
+# form.rnd=list(id=~1)
+# 
 # # GLMM_LASSO_CV_Out
 # GLMM_LASSO_CV_Out=GLMM_LASSO_CV(Data=Data_to_use,
-#                                 pred_vars,
-#                                 res_var,
-#                                 rand_var,
-#                                 which.family,
+#                                 form.fixed=form.fixed,
+#                                 form.rnd=form.rnd,
+#                                 which.family=which.family,
 #                                 k=6,
 #                                 lambda=lambda)
 # 
+# # optimal lambda by CV error
+# GLMM_LASSO_CV_Out$Optimal_Lambda_by_CV_Error
+# # optimal labmda by AIC
+# lambda[which.min(GLMM_LASSO_CV_Out$IC_matrix$AIC)]
+# # optimal labmda by BIC
+# lambda[which.min(GLMM_LASSO_CV_Out$IC_matrix$BIC)]
 # 
-# GLMM_LASSO_CV_Out$Optimal_Lambda
-# 
+# # fit model
 # GLMM.LASSO.fit=GLMM_LASSO(Data=Data_to_use,
-#                           pred_vars,
-#                           res_var,
+#                           Pred_vars,
+#                           Res_var,
 #                           rand_var,
 #                           which.family,
 #                           lambda=0) # optimal lambda
@@ -3179,6 +5444,91 @@ GLMM_LASSO=function(Data, pred_vars, res_var, rand_var, which.family="binomial(l
                           switch.NR=TRUE)
   return(glmmLasso.fit)
 }
+
+#*************
+# cv.glmmLasso
+#*************
+# This function comes from the package 'lmmen' that was removed from the CRAN repository. (https://CRAN.R-project.org/package=lmmen)
+#' @title Cross Validation for glmmLasso package
+#' @description Cross Validation for glmmLasso package as shown in example xxx
+#' @param dat data.frame, containing y,X,Z and subject variables
+#' @param form.fixed formaula, fixed param formula, Default: NULL
+#' @param form.rnd list, named list containing random effect formula, Default: NULL
+#' @param lambda numeric, vector containing lasso penalty levels, Default: seq(500, 0, by = -5)
+#' @param family family, family function that defines the distribution link of the glmm, Default: gaussian(link = "identity")
+#' @return list of a fitted glmmLasso object and the cv BIC path
+#' @examples
+#' \dontrun{cv.glmmLasso(initialize_example(seed=1))}
+#' @references A. Groll and G. Tutz. Variable selection for generalized linear mixed models by L1-penalized estimation. 
+#'  Statistics and Computing, pages 1–18, 2014.
+#'  
+#'  \href{https://raw.githubusercontent.com/cran/glmmLasso/master/demo/glmmLasso-soccer.r}{cv function is the generalized form of last example glmmLasso package demo file}
+#'  
+#' @seealso 
+#'  \code{\link[glmmLasso]{glmmLasso}}
+#' @rdname cv.glmmLasso
+#' @export 
+#' @importFrom glmmLasso glmmLasso
+#' @importFrom stats gaussian as.formula
+cv.glmmLasso=function(dat,
+                      form.fixed=NULL,
+                      form.rnd=NULL,
+                      lambda=seq(500,0,by=-5),
+                      family=stats::gaussian(link = "identity")
+){
+  
+  if(inherits(dat,'matrix')) dat <- as.data.frame(dat)
+  
+  d.size=(max(as.numeric(row.names(dat)))*(sum(grepl('^Z',names(dat)))+1))+(sum(grepl('^X',names(dat)))+1)
+  
+  dat<-data.frame(subject=as.factor(row.names(dat)),dat,check.names = FALSE,row.names = NULL)
+  
+  if(is.null(form.fixed)) form.fixed<-sprintf('y~%s',paste(grep('^X',names(dat),value = TRUE),collapse = '+'))
+  if(is.null(form.rnd)) form.rnd<-eval(parse(text=sprintf('form.rnd<-list(subject=~1+%s)',paste(grep('^Z',names(dat),value = TRUE),collapse = '+'))))
+  
+  BIC_vec<-rep(Inf,length(lambda))
+  
+  # specify starting values for the very first fit; pay attention that Delta.start has suitable length! 
+  
+  Delta.start.base<-Delta.start<-as.matrix(t(rep(0,d.size)))
+  Q.start.base<-Q.start<-0.1  
+  
+  for(j in 1:length(lambda))
+  {
+    suppressMessages({
+      suppressWarnings({
+        fn <- try(glmmLasso::glmmLasso(fix = stats::as.formula(form.fixed),
+                                       rnd = form.rnd,
+                                       data = dat,lambda = lambda[j],
+                                       switch.NR = FALSE,final.re=TRUE,
+                                       control = list(start=Delta.start[j,],q.start=Q.start[j]))      
+        )
+      })      
+    })
+    
+    if(class(fn)!="try-error")
+    {  
+      BIC_vec[j]<-fn$bic
+      Delta.start<-rbind(Delta.start,fn$Deltamatrix[fn$conv.step,])
+      Q.start<-c(Q.start,fn$Q_long[[fn$conv.step+1]])
+    }else{
+      Delta.start<-rbind(Delta.start,Delta.start.base)
+      Q.start<-c(Q.start,Q.start.base)
+    }
+  }
+  
+  opt<-which.min(BIC_vec)
+  
+  suppressWarnings({
+    final <- glmmLasso::glmmLasso(fix = as.formula(form.fixed), rnd = form.rnd,
+                                  data = dat, lambda=lambda[opt],switch.NR=FALSE,final.re=TRUE,
+                                  control = list(start=Delta.start[opt,],q_start=Q.start.base))
+    
+    final
+  })
+  
+  list(fit.opt=final,BIC_path=BIC_vec)
+}  
 
 
 #********************
@@ -3455,7 +5805,7 @@ GLMM_Overdispersion_Test=function(model){
 
 
 
-#**********************
+#*********************
 #
 # GLMM_Backward_by_AIC
 #
@@ -3474,7 +5824,7 @@ GLMM_Overdispersion_Test=function(model){
 # summary(MultiLinearReg)
 #********
 # Example
-#********
+# ********
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -3503,12 +5853,11 @@ GLMM_Overdispersion_Test=function(model){
 #                             Compute.Power=F,
 #                             nsim=30)
 # AIC_Selection_Steps=GLMM_Backward_by_AIC(Full_Model=GLMM.fit$model_fit,
-#                                                      Pred_Vars=Pred_Vars)
+#                                          Pred_Vars=Pred_Vars)
 GLMM_Backward_by_AIC=function(Full_Model,
                               Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
   # Full_Model=GLMM.fit$model_fit
   # Pred_Vars
-  
   
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
@@ -3540,16 +5889,20 @@ GLMM_Backward_by_AIC=function(Full_Model,
     Reduced_Model_AICs=c()
     
     # run GLMM excluding one variable at once
-    for(i in 1:length(Pred_Vars[Include_Index])){
-      #i=1
-      Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
-      Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
-      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+    if(length(Include_Index)==0){
+      print("All variables are removed.")
+    }else{
+      for(i in 1:length(Pred_Vars[Include_Index])){
+        #i=1
+        Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
+        Reduced_Model_AICs[i]=AIC(Current_Reduced_Model)
+        print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
+      }
     }
     
     # AIC of multivariable model excluding each variable
     Temp_Table=data.table(
-      Inclusion="-",
+      Exclusion="-",
       Var=c("(none)", Pred_Vars[Include_Index]),
       AIC=c(Current_Full_Model_AIC, Reduced_Model_AICs))
     
@@ -3559,7 +5912,7 @@ GLMM_Backward_by_AIC=function(Full_Model,
     # save summary table at the current step
     Out$summ_table[[step]]=Temp_Table
     
-    if(Temp_Table$AIC[1]>=Current_Full_Model_AIC){
+    if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
     }else{
       # if there is a variable whose exclusion leads to an improvement of the model (deacresed AIC)
@@ -3931,14 +6284,17 @@ GLMM_Multinomial_Bivariate=function(Data,
                                        maxit=maxit,
                                        par.update=par.update)
     
-    Output$N_data_used=rbind(Output$N_data_used, Temp$N_data_used)
-    Output$Estimate=rbind(Output$Estimate, Temp$Estimate)
-    Output$Std.Error=rbind(Output$Std.Error, Temp$Std.Error)
-    Output$`P-value`=rbind(Output$`P-value`, Temp$`P-value`)
-    Output$OR.and.CI=rbind(Output$OR.and.CI, Temp$OR.and.CI)
+    Output=rbind(Output, Temp$summ_table)
+    
+    # print out progress
+    if(sum(grepl(":", Pred_Vars[i]))>0){
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", unlist(Pred_Vars[i])[grepl(":", unlist(Pred_Vars[i]))], " (", i ," out of ", length(Pred_Vars), ")"))
+    }else{
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
+    }
   }
   
-  return(Output)
+  return(as.data.table(Output, keep.rownames=TRUE))
 }
 
 
@@ -4076,20 +6432,22 @@ GLMM_Multinomial_Multivariate=function(Data,
   
   # Output
   Output=c()
-  Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=myfit
   
   Output$converged.set=data.table(count=count, k=k, maxit=maxit, tol=tol)
-  Output$Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
-  Output$Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
-  Output$`P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
-                                   format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
-  Output$OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
-                                   " (",
-                                   format(round(Lower_Bound, 2), nsmall=2),
-                                   " - ",
-                                   format(round(Upper_Bound, 2), nsmall=2),
-                                   ")"), nrow=length(levels(Y))-1))
+  
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  
+  Estimate=t(matrix(round2(Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  Std.Error=t(matrix(round2(SE.Coef[Coef.ind], 3), nrow=length(levels(Y))-1))
+  `P-value`=t(matrix(ifelse(P_values[Coef.ind]<0.001, "<0.001", 
+                            format(round2(P_values[Coef.ind], 3), nsmall=3)), nrow=length(levels(Y))-1))
+  OR.and.CI=t(matrix(paste0(format(round(exp(Coef[Coef.ind]), 2), nsmall=2), 
+                            " (",
+                            format(round(Lower_Bound, 2), nsmall=2),
+                            " - ",
+                            format(round(Upper_Bound, 2), nsmall=2),
+                            ")"), nrow=length(levels(Y))-1))
   
   # name Output rows
   row_names=c()
@@ -4102,14 +6460,30 @@ GLMM_Multinomial_Multivariate=function(Data,
       row_names=c(row_names, Pred_Vars[i])
     }
   }
-  colnames(Output$Estimate)=levels(Y)[-length(levels(Y))]
-  colnames(Output$Std.Error)=levels(Y)[-length(levels(Y))]
-  colnames(Output$`P-value`)=levels(Y)[-length(levels(Y))]
-  colnames(Output$OR.and.CI)=levels(Y)[-length(levels(Y))]
-  rownames(Output$Estimate)=row_names
-  rownames(Output$Std.Error)=row_names
-  rownames(Output$`P-value`)=row_names
-  rownames(Output$OR.and.CI)=row_names
+  
+  colnames(Estimate)=levels(Y)[-length(levels(Y))]
+  colnames(Std.Error)=levels(Y)[-length(levels(Y))]
+  colnames(`P-value`)=levels(Y)[-length(levels(Y))]
+  colnames(OR.and.CI)=levels(Y)[-length(levels(Y))]
+  rownames(Estimate)=row_names
+  rownames(Std.Error)=row_names
+  rownames(`P-value`)=row_names
+  rownames(OR.and.CI)=row_names
+  
+  # summ_table
+  summ_table=c()
+  for(ind in 1:ncol(Estimate)){
+    Temp_Summ=cbind(OR.and.CI[, ind],
+                    `P-value`[, ind])
+    colnames(Temp_Summ)=paste0(colnames(Estimate)[ind], c(" (OR.and.CI)", " (P-value)"))
+    
+    summ_table=cbind(summ_table, Temp_Summ)
+  }
+  rownames(summ_table)=rownames(OR.and.CI)
+  summ_table=cbind(summ_table, N_data_used)
+  
+  Output$summ_table=as.data.table(summ_table,
+                                  keep.rownames=TRUE)
   
   return(Output)
 }
@@ -4176,14 +6550,15 @@ GLMM_Multinomial_Multivariate=function(Data,
 #                        Res_Var<-"outcome",
 #                        Group_Var<-"id",
 #                        NAGQ=3)
-#********************************
+#***********************
 # CLMM_Ordinal_Bivariate
 CLMM_Ordinal_Bivariate=function(Data,
                                 Pred_Vars,
                                 Type_Odds,
                                 Res_Var,
                                 Group_Var,
-                                NAGQ=3){
+                                NAGQ=3,
+                                ...){
   # check out packages
   lapply(c("ordinal"), checkpackages)
   
@@ -4201,7 +6576,7 @@ CLMM_Ordinal_Bivariate=function(Data,
   Output=c()
   
   for(i in 1:length(Pred_Vars)){
-    #i=7
+    #i=5
     i<<-i
     if(Type_Odds[i]=="Prop"){
       model_fit=clmm2(as.formula(paste(Res_Var, "~", Pred_Vars[i])),
@@ -4210,7 +6585,10 @@ CLMM_Ordinal_Bivariate=function(Data,
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
-                      link="logistic")
+                      link="logistic",
+                      ...)
+      # adjust the value of grtol if the algorithm failed to converge
+      # control=clmm2.control(grtol=1e-1)
     }else if(Type_Odds[i]=="Non_Prop"){
       model_fit=clmm2(as.formula(paste(Res_Var, "~1")),
                       nominal=as.formula(paste("~", Pred_Vars[i])),
@@ -4218,7 +6596,8 @@ CLMM_Ordinal_Bivariate=function(Data,
                       data=Data,
                       Hess=TRUE,
                       nAGQ=NAGQ,
-                      link="logistic")
+                      link="logistic",
+                      ...)
     }
     
     model_fit.summ=summary(model_fit)$coefficients
@@ -4399,7 +6778,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                                     Type_Odds,
                                     Res_Var,
                                     Group_Var,
-                                    NAGQ=3){
+                                    NAGQ=3,
+                                    ...){
   # check out packages
   lapply(c("ordinal", "data.table"), checkpackages)
   
@@ -4425,7 +6805,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
-                    link="logistic")
+                    link="logistic",
+                    ...)
   }else if(length(Nom_Vars)==0){ # if all are proportional odds
     model_fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     #nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
@@ -4433,7 +6814,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
-                    link="logistic")
+                    link="logistic",
+                    ...)
   }else if(length(Loc_Vars)!=0 & length(Nom_Vars)!=0){ # mixed
     model_fit=clmm2(as.formula(paste(Res_Var, "~", paste(Loc_Vars, collapse="+"))),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
@@ -4441,7 +6823,8 @@ CLMM_Ordinal_Multivariable=function(Data,
                     data=Data,
                     Hess=TRUE,
                     nAGQ=NAGQ,
-                    link="logistic")
+                    link="logistic",
+                    ...)
   }
   
   # number of observations from a model fit
@@ -4621,7 +7004,7 @@ CLMM_Ordinal_Multivariable=function(Data,
 #                                     Res_Var<-"outcome",
 #                                     Group_Var<-"id",
 #                                     NAGQ<-3)
-# # The value 'Data' must be defined!
+# # The value 'Data' and 'NAGC' must be defined in the global environme!
 # Data=Data_to_use
 # Confounder_Steps=CLMM_Confounder_Selection(Full_Model=CLMM.fit$model_fit,
 #                                            Main_Pred_Var="sex",
@@ -4636,15 +7019,22 @@ CLMM_Confounder_Selection=function(Full_Model,
                                    Main_Pred_Var_Type_Odds,
                                    Potential_Con_Vars,
                                    Potential_Con_Vars_Type_Odds,
-                                   Min.Change.Percentage=5,
-                                   Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
-  # check packages
-  lapply(c("dplyr", "data.table"), checkpackages)
+                                   Min.Change.Percentage=5, # minimum percentage of change-in-estimate to terminate the algorithm
+                                   Estimate="raw_estimate"){
+  #*****
+  # Note
+  #*****
+  # For now, algorithm works with no interaction term
+  # Due to the nature of 'clmm2', parameters must be defined and assigned with values in the global environment, including location, random, data, and nAGQ.
+  # The other parameters are not currently considered.
   
-  # Full_Model=CLMM.example$model_fit
-  # Main_Pred_Var="sex"
-  # Potential_Con_Vars=c("center", "treat", "age", "baseline", "visit")
-  # check out packages
+  # Full_Model : An existing fit from the cumulative link mixed model (clmm2) function
+  # Main_Pred_Var_Type_Odds : type of cumulative odds for the primary predictor variable of interest
+  # Potential_Con_Vars_Type_Odds : type of cumulative odds for potential confounders
+  # "Prop" for proportional; "Non_Prop" for non-proportional
+  
+  # check packages
+  lapply(c("data.table"), checkpackages)
   
   # Out
   Out=c()
@@ -5476,10 +7866,15 @@ Threshold=function(X, Y, alpha=1, level=0.95, nrep=100, p2s=0){
 #                             Col_Var="outcome",
 #                             Ref_of_Row_Var="F",
 #                             Missing="Include",
-#                             Ind_P_Value=F)
-Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include", Ind_P_Value=F){
+#                             Ind_P_Value=T)
+Contingency_Table_Generator=function(Data,
+                                     Row_Var,
+                                     Col_Var,
+                                     Ref_of_Row_Var,
+                                     Missing="Not_Include",
+                                     Ind_P_Value=F){
   # library
-  library(epitools)
+  lapply(c("epitools"), checkpackages)
   
   # Data as data table
   Data=as.data.frame(Data)
@@ -5535,13 +7930,14 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   ) %>% as.data.frame()
   
   # post-processing
-  colnames(Merged)[1:2]=c("Predictor", "Value")
+  colnames(Merged)[1:2]=c("Variable", "Value")
   colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(Col_Var, "=", colnames(Contingency_Table), " (n=", Sum_Col_Wise, ")")
   colnames(Merged)[3+ncol(Contingency_Table)]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
   Out=Merged
   
   # calculate OR given a response variable of two levels
-  if(ncol(Contingency_Table)==2){
+  if(sum(rownames(Contingency_Table)!="NA")>=2 &
+     sum(colnames(Contingency_Table)!="NA")==2){
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
       oddsratio(method="wald")
@@ -5572,7 +7968,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
   
   # 
   Out=as.data.table(Out)
-  if(nrow(Contingency_Table)>1 & ncol(Contingency_Table)>1){
+  if(sum(rownames(Contingency_Table)!="NA")>1 & sum(colnames(Contingency_Table)!="NA")>1){
     Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value<0.001,
                                                              "<0.001",
                                                              paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value, 3)))
@@ -5606,7 +8002,7 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 # checkpackages)
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
-# Data_to_use=respiratory
+# Data_to_use=as.data.table(respiratory)
 # 
 # # randomly generate NAs in some variables
 # Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
@@ -5627,9 +8023,13 @@ Contingency_Table_Generator=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Mis
 #                                     Row_Var="age",
 #                                     Col_Var="outcome",
 #                                     Missing="Not_Include")
-Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_Var, Missing="Not_Include"){
+Contingency_Table_Generator_Conti_X=function(Data,
+                                             Row_Var,
+                                             Col_Var,
+                                             Ref_of_Row_Var,
+                                             Missing="Not_Include"){
   # library
-  library(doBy)
+  lapply(c("doBy"), checkpackages)
   
   # Data as data table
   Data=as.data.frame(Data)
@@ -5760,7 +8160,7 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   Out$`P.value_T_test`=as.character(Out$`P.value_T_test`)
   Out$`P.value_ANOVA`=as.character(Out$`P.value_ANOVA`)
   Out[-1, c("OR.and.CI", "P.value", "P.value_Mann_Whitney", "P.value_T_test", "P.value_ANOVA")]=""
-  colnames(Out)[1:2]=c("Predictor", "Value")
+  colnames(Out)[1:2]=c("Variable", "Value")
   
   #
   colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
@@ -5768,6 +8168,496 @@ Contingency_Table_Generator_Conti_X=function(Data, Row_Var, Col_Var, Ref_of_Row_
   colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+5)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)", "P-value (T_test)", "P-value (ANOVA)")
   
   # return
+  return(as.data.table(Out))
+}
+
+
+#*************************************
+#
+# Weighted_Contingency_Table_Generator
+#
+#*************************************
+# lapply(c("dplyr",
+#          "data.table",
+#          
+#          "lme4",
+#          "epitools"
+# ),
+# checkpackages)
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=respiratory
+# 
+# # randomly generate NAs in some variables
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 30)]=NA
+# Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
+# Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=NA
+# #Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=2
+# 
+# # Work on predictor with more than 2 levels
+# Data_to_use=as.data.table(Data_to_use)
+# Data_to_use[sample(nrow(Data_to_use), 50), sex:="N"]
+# 
+# Data_to_use[age<20, age_cat:="<20"]
+# Data_to_use[20<=age & age<30, age_cat:="20<=age<30"]
+# Data_to_use[30<=age & age<40, age_cat:="30<=age<40"]
+# Data_to_use[40<=age & age<50, age_cat:="40<=age<50"]
+# Data_to_use[50<=age & age<60, age_cat:="50<=age<60"]
+# Data_to_use[60<=age, age_cat:="60<=age"]
+# Data_to_use[, age_cat:=as.factor(age_cat)]
+# 
+# # Data at baseline
+# BL_Data=Data_to_use %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# 
+# # CT_1 using Contingency_Table_Generator()
+# CT_1=Contingency_Table_Generator(Data=na.omit(Data_to_use),
+#                                  Row_Var="sex",
+#                                  Col_Var="outcome",
+#                                  Ref_of_Row_Var="F",
+#                                  Missing="Include",
+#                                  Ind_P_Value=T)
+# # A table made from CT_2 is identical to CT_1 above given Weight_Var=1 and no missing data.
+# CT_2=Weighted_Contingency_Table_Generator(Data=na.omit(Data_to_use),
+#                                           Row_Var="sex",
+#                                           Col_Var="outcome",
+#                                           Weight_Var=1)
+# # for now, Treat should be numeric
+# Data_to_use[treat=="A", Treat:=1]
+# Data_to_use[treat=="P", Treat:=0]
+# 
+# # estimate inverse probability (IP) weights
+# # distinguish time-invariant and -variant covariates
+# Time_Invariant_Covs=c("baseline", "center")
+# Time_Varying_Covs=c("sex", "age")
+# Data_to_use=na.omit(Data_to_use)
+# w=IPW(Exposure="Treat",
+#       Time_Invariant_Covs=Time_Invariant_Covs,
+#       Time_Varying_Covs=Time_Varying_Covs,
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="Data_to_use")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# Data_to_use[, Weights:=w$adjusted_stab_IP_weights$ipw.weights]
+# # apply weights
+# CT_3=Weighted_Contingency_Table_Generator(Data=na.omit(Data_to_use),
+#                                           Row_Var="sex",
+#                                           Col_Var="outcome",
+#                                           Weight_Var="Weights")
+Weighted_Contingency_Table_Generator=function(Data,
+                                              Row_Var,
+                                              Col_Var,
+                                              # Missing,
+                                              Weight_Var){
+  # check packages
+  lapply(c("data.table",
+           "tableone",
+           "jstable",
+           
+           "survey",
+           "stringr", # for str_replace()
+           
+           "smd", # calculate smd
+           "MBESS"), # for smd confidence interval
+         checkpackages)
+  
+  # Data to data.frame
+  Data=as.data.frame(Data)
+  
+  # apply weights to data
+  weighteddata=svydesign(ids=~1,
+                         data=Data,
+                         weights=formula(paste0("~", Weight_Var)))
+  
+  #***********************
+  # weighted table overall
+  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
+                                          data=weighteddata,
+                                          test=TRUE,
+                                          smd=TRUE,
+                                          factorVars=Row_Var)
+  weightedtable_overall_result=print(weightedtable_overall,
+                                     showAllLevels=TRUE,
+                                     formatOptions=list(big.mark=","),
+                                     noSpaces=TRUE,
+                                     printToggle=FALSE)
+  
+  # # detailed information including missingness (this is for continuous)
+  # summary(weightedtable_overall)
+  # 
+  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
+  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+  
+  #*************************************
+  # weighted table stratified by Col_Var
+  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
+                                             strata=Col_Var,
+                                             data=weighteddata,
+                                             test=TRUE,
+                                             smd=TRUE,
+                                             factorVars=Row_Var)
+  weightedtable_stratified_result=print(weightedtable_stratified,
+                                        showAllLevels=TRUE,
+                                        formatOptions=list(big.mark=","),
+                                        noSpaces=TRUE,
+                                        smd=TRUE,
+                                        printToggle=FALSE)
+  weightedtable_stratified_result[weightedtable_stratified_result==""]=NA
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # smd.output=smd::smd(x=Data[, Row_Var],
+  #                     g=Data[, Col_Var],
+  #                     w=Data[, Weight_Var],
+  #                     std.error=TRUE)
+  # 
+  # smd.conf=c()
+  # for(i in 1:length(smd.output$estimate)){
+  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
+  #                        n.1=table(Data[[Col_Var]])[1],
+  #                        n.2=table(Data[[Col_Var]])[2])
+  #   point.smd=ci.smd.output$smd
+  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
+  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
+  #   smd.conf[i]=c(paste0(round(point.smd, 2),
+  #                        " (",
+  #                        round(lower.smd, 2),
+  #                        " - ",
+  #                        round(upper.smd, 2),
+  #                        ")"))
+  # }
+  
+  # check if Row_Var is factor or numeric
+  Check_Factor=ifelse(is.null(levels(Data[, Row_Var])), 0, 1)
+  if(Check_Factor==1){
+    X3_Text=as.character(levels(Data[, Row_Var]))
+    X3_Text=X3_Text[X3_Text%in%names(table(Data[, Row_Var])!=0)[(table(Data[, Row_Var])!=0)]]
+  }else{
+    stop("Row_Var is not a factor. Please double-check.")
+  }
+  
+  # Col_Var levels
+  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
+  if(Check_Factor==1){
+    X4_Text=as.character(levels(Data[, Col_Var]))
+  }else{
+    X4_Text=sort(unique(Data[, Col_Var]))
+  }
+  
+  # Out
+  Out=matrix(NA, nrow=length(X3_Text), ncol=5+length(X4_Text))
+  Out[, 1]=Row_Var
+  Out[, 2]=weightedtable_stratified_result[-1, "level"]
+  for(i in 1:length(X4_Text)){
+    Out[, i+2]=str_replace(weightedtable_stratified_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_result))], "[)]", "%)")
+  }
+  Out[, i+3]=str_replace(weightedtable_overall_result[-1, "Overall"], "[)]", "%)")
+  
+  # The hypothesis test functions used by default are chisq.test() for categorical variables (with continuity correction) and oneway.test() for continous variables (with equal variance assumption, i.e., regular ANOVA).
+  # Two-group ANOVA is equivalent of t-test.
+  # You may be worried about the nonnormal variables and small cell counts in the stage variable. In such a situation, you can use the nonnormal argument like before as well as the exact (test) argument in the print() method.
+  # Now kruskal.test() is used for the nonnormal continous variables and fisher.test() is used for categorical variables specified in the exact argument. kruskal.test() is equivalent to wilcox.test() in the two-group case.
+  Out[, i+4]=weightedtable_stratified_result[-1, "p"] # P-value (Chi-square)
+  # Out[, i+5]=c("", smd.conf)
+  Out[, i+5]=weightedtable_stratified_result[-1, "SMD"]
+  
+  colnames(Out)=c("Variable",
+                  "Value",
+                  paste0(Col_Var,
+                         "=",
+                         X4_Text,
+                         " (n=",
+                         round(as.numeric(weightedtable_stratified_result["n", c(2:(1+length(X4_Text)))]), 1),
+                         ")"),
+                  paste0("Total (n=",
+                         round(as.numeric(weightedtable_overall_result["n", 2]), 1),
+                         ")"),
+                  "P-value (Chi-square)", # default : chisq.test()
+                  # fisher.test() is not available 
+                  # "SMD (95% CI)",
+                  "SMD") # t-test
+  
+  return(as.data.table(Out))
+}
+
+
+#*********************************************
+#
+# Weighted_Contingency_Table_Generator_Conti_X
+#
+#*********************************************
+# Example
+#********
+# lapply(c("dplyr",
+#          "data.table",
+# 
+#          "lme4",
+#          "epitools",
+#          "doBy" # for esticon function
+# ),
+# checkpackages)
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_to_use=as.data.table(respiratory)
+# 
+# # randomly generate NAs in some variables
+# Data_to_use$age[sample(1:nrow(Data_to_use), 30)]=NA
+# Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]=NA
+# #Data_to_use$outcome[sample(1:nrow(Data_to_use), 30)]="2"
+# 
+# # Data at baseline
+# BL_Data=Data_to_use %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit)) %>%
+#   ungroup()
+# #
+# Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                                     Row_Var="age",
+#                                     Col_Var="outcome",
+#                                     Missing="Not_Include")
+# Weighted_Contingency_Table_Generator_Conti_X(Data=BL_Data,
+#                                              Row_Var="age",
+#                                              Col_Var="outcome",
+#                                              Weight_Var=1)
+# 
+# # for now, Treat should be numeric
+# Data_to_use[treat=="A", Treat:=1]
+# Data_to_use[treat=="P", Treat:=0]
+# 
+# # estimate inverse probability (IP) weights
+# # distinguish time-invariant and -variant covariates
+# Time_Invariant_Covs=c("baseline", "center")
+# Time_Varying_Covs=c("sex", "age")
+# Data_to_use=na.omit(Data_to_use)
+# w=IPW(Exposure="Treat",
+#       Time_Invariant_Covs=Time_Invariant_Covs,
+#       Time_Varying_Covs=Time_Varying_Covs,
+#       which.family="binomial",
+#       Link="logit",
+#       ID_Var="id",
+#       Data="Data_to_use")
+# head(w$unstab_IP_weights$ipw.weights, 10)
+# head(w$basic_stab_IP_weights$ipw.weights, 10)
+# head(w$adjusted_stab_IP_weights$ipw.weights, 10)
+# Data_to_use[, Weights:=w$adjusted_stab_IP_weights$ipw.weights]
+# # apply weights
+# Weighted_Contingency_Table_Generator_Conti_X(Data=na.omit(Data_to_use),
+#                                              Row_Var="age",
+#                                              Col_Var="outcome",
+#                                              Weight_Var="Weights")
+Weighted_Contingency_Table_Generator_Conti_X=function(Data,
+                                                      Row_Var,
+                                                      Col_Var,
+                                                      Weight_Var=1,
+                                                      Form=1){
+  # check packages
+  lapply(c("data.table",
+           "tableone",
+           "jstable",
+           
+           "survey",
+           
+           "smd", # calculate smd
+           "MBESS"), # for smd confidence interval
+         checkpackages)
+  
+  # Data to data.frame
+  Data=as.data.frame(Data)
+  
+  # apply weights to data
+  weighteddata=svydesign(ids=~1,
+                         data=Data,
+                         weights=formula(paste0("~", Weight_Var)))
+  
+  #***********************
+  # weighted table overall
+  weightedtable_overall=svyCreateTableOne(vars=Row_Var,
+                                          data=weighteddata,
+                                          test=TRUE,
+                                          smd=TRUE)
+  weightedtable_overall_median_result=print(weightedtable_overall,
+                                            showAllLevels=TRUE,
+                                            nonnormal=Row_Var, # nonnormal
+                                            formatOptions=list(big.mark=","),
+                                            noSpaces=TRUE,
+                                            printToggle=FALSE)
+  weightedtable_overall_mean_result=print(weightedtable_overall,
+                                          showAllLevels=TRUE,
+                                          formatOptions=list(big.mark=","),
+                                          noSpaces=TRUE,
+                                          printToggle=FALSE)
+  
+  # # detailed information including missingness (this is for continuous)
+  # summary(weightedtable_overall)
+  # 
+  # biomarkers <- c("bili","chol","copper","alk.phos","ast","trig","protime")
+  # print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+  
+  #*************************************
+  # weighted table stratified by Col_Var
+  weightedtable_stratified=svyCreateTableOne(vars=Row_Var,
+                                             strata=Col_Var,
+                                             data=weighteddata,
+                                             test=TRUE,
+                                             smd=TRUE)
+  weightedtable_stratified_median_result=print(weightedtable_stratified,
+                                               showAllLevels=TRUE,
+                                               nonnormal=Row_Var, # nonnormal
+                                               formatOptions=list(big.mark=","),
+                                               noSpaces=TRUE,
+                                               smd=TRUE,
+                                               printToggle=FALSE)
+  weightedtable_stratified_mean_result=print(weightedtable_stratified,
+                                             showAllLevels=TRUE,
+                                             formatOptions=list(big.mark=","),
+                                             noSpaces=TRUE,
+                                             smd=TRUE,
+                                             printToggle=FALSE)
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # smd.output=smd::smd(x=Data[, Row_Var],
+  #                     g=Data[, Col_Var],
+  #                     w=Data[, Weight_Var],
+  #                     std.error=TRUE)
+  # 
+  # for(i in 1:length(smd.output$estimate)){
+  #   ci.smd.output=ci.smd(smd=smd.output[i, "estimate"],
+  #                        n.1=table(Data[[Col_Var]])[1],
+  #                        n.2=table(Data[[Col_Var]])[2])
+  #   point.smd=ci.smd.output$smd
+  #   lower.smd=ci.smd.output$Lower.Conf.Limit.smd
+  #   upper.smd=ci.smd.output$Upper.Conf.Limit.smd
+  #   smd.conf[i]=c(paste0(round(point.smd, 2),
+  #                        " (",
+  #                        round(lower.smd, 2),
+  #                        " - ",
+  #                        round(upper.smd, 2),
+  #                        ")"))
+  # }
+  
+  # #*******************************
+  # # calculate confidence intervals
+  # # smd (https://cran.r-project.org/web/packages/smd/vignettes/smd_usage.html)
+  # point.smd=smd::smd(x=Data[, Col_Var],
+  #                    g=Data[, Row_Var],
+  #                    w=Data[, Weight_Var],
+  #                    std.error=TRUE)
+  # 
+  # smd.conf=ci.smd(smd=point.smd$estimate,
+  #                 n.1=table(Data[[Col_Var]])[1],
+  #                 n.2=table(Data[[Col_Var]])[2])
+  
+  # check if Row_Var is numeric
+  Num_Factor=is.numeric(Data[, Row_Var])
+  if(Num_Factor==1 & Form==1){
+    Out_Rows=7
+  }else if(Num_Factor==1 & Form==2){
+    Out_Rows=2
+  }else{
+    stop("Row_Var is not a numerical variable. Please double-check.")
+  }
+  
+  # Col_Var levels
+  Check_Factor=ifelse(is.null(levels(Data[, Col_Var])), 0, 1)
+  if(Check_Factor==1){
+    X4_Text=as.character(levels(Data[, Col_Var]))
+  }else{
+    X4_Text=as.character(sort(unique(Data[, Col_Var])))
+  }
+  # p-value test
+  if(length(X4_Text)==2){
+    p_value_name="P-value (T-test)"
+  }else if(length(X4_Text)>2){
+    p_value_name="P-value (ANOVE)"
+  }
+  # Out
+  Out=matrix(NA, nrow=Out_Rows, ncol=6+length(X4_Text))
+  
+  if(Form==1){
+    Out[, 1]=Row_Var
+    Out[, 2]=c("Min", "Q1", "Median", "Mean", "SD", "Q3", "Max")
+    for(i in 1:length(X4_Text)){
+      Out[, i+2]=c(round(c(weightedtable_stratified$ContTable[[X4_Text[i]]][, "min"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p25"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "median"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "mean"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "sd"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "p75"],
+                           weightedtable_stratified$ContTable[[X4_Text[i]]][, "max"]), 2))
+    }
+    Out[, i+3]=c(round(c(weightedtable_overall$ContTable$Overall[, "min"],
+                         weightedtable_overall$ContTable$Overall[, "p25"],
+                         weightedtable_overall$ContTable$Overall[, "median"],
+                         weightedtable_overall$ContTable$Overall[, "mean"],
+                         weightedtable_overall$ContTable$Overall[, "sd"],
+                         weightedtable_overall$ContTable$Overall[, "p75"],
+                         weightedtable_overall$ContTable$Overall[, "max"]), 2))
+    
+    # The hypothesis test functions used by default are chisq.test() for categorical variables (with continuity correction) and oneway.test() for continous variables (with equal variance assumption, i.e., regular ANOVA).
+    # Two-group ANOVA is equivalent of t-test.
+    # You may be worried about the nonnormal variables and small cell counts in the stage variable. In such a situation, you can use the nonnormal argument like before as well as the exact (test) argument in the print() method.
+    # Now kruskal.test() is used for the nonnormal continous variables and fisher.test() is used for categorical variables specified in the exact argument. kruskal.test() is equivalent to wilcox.test() in the two-group case.
+    Out[3, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
+    Out[4, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
+    # Out[, i+6]=smd.conf
+    Out[4, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
+    colnames(Out)=c("Variable",
+                    "Value",
+                    paste0(Col_Var,
+                           "=",
+                           X4_Text,
+                           " (n=",
+                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
+                           ")"),
+                    paste0("Total (n=",
+                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
+                           ")"),
+                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
+                    p_value_name, # default : oneway.test()
+                    # "SMD (95% CI)",
+                    "SMD") # t-test
+  }else if(Form==2){
+    Out[1, 1]=paste0(Row_Var, " (median [IQR])")
+    Out[2, 1]=paste0(Row_Var, " (mean (SD))")
+    Out[, 2]=weightedtable_stratified_mean_result[-1, "level"]
+    for(i in 1:length(X4_Text)){
+      Out[1, i+2]=weightedtable_stratified_median_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_median_result))]
+      Out[2, i+2]=weightedtable_stratified_mean_result[-1, which(X4_Text[i]==colnames(weightedtable_stratified_mean_result))]
+    }
+    Out[1, i+3]=weightedtable_overall_median_result[-1, "Overall"]
+    Out[2, i+3]=weightedtable_overall_mean_result[-1, "Overall"]
+    
+    Out[1, i+4]=weightedtable_stratified_median_result[-1, "p"] # P-value (Mann_Whitney)
+    Out[2, i+5]=weightedtable_stratified_mean_result[-1, "p"] # P-value (ANOVE or T-test)
+    
+    # Out[, i+5]=smd.conf
+    Out[2, i+6]=weightedtable_stratified_mean_result[-1, "SMD"]
+    
+    colnames(Out)=c("Variable",
+                    "Value",
+                    paste0(Col_Var,
+                           "=",
+                           X4_Text,
+                           " (n=",
+                           round(as.numeric(weightedtable_stratified_mean_result["n", c(2:(1+length(X4_Text)))]), 1),
+                           ")"),
+                    paste0("Total (n=",
+                           round(as.numeric(weightedtable_overall_mean_result["n", 2]), 1),
+                           ")"),
+                    "P-value (Mann_Whitney)",  # default : kruskal.test(), which is equivalent to wilcox.test()
+                    p_value_name, # default : oneway.test()
+                    # "SMD (95% CI)",
+                    "SMD") # t-test
+  }
+  
   return(as.data.table(Out))
 }
 
@@ -5817,6 +8707,8 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
     Table=table(Data[, .SD, .SDcols=Var])
   }
   
+  names(Table)[is.na(names(Table))]="NA"
+  
   CT=t(as.matrix(paste0(Table, " (", round(Table/sum(Table_with_missing)*100, 2), "%)")))
   
   Out=cbind(Var, 
@@ -5831,7 +8723,7 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 #
 # Contingency_Table_Univariable_Conti_X
 #
-#************************************
+#**************************************
 # Generate summary (contingency) table that outlines characteristics from dataset
 # Var : Continuous variable
 #********
@@ -5867,14 +8759,13 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
   Table=round(summary(Data[, Var]), 2)
   
   if(Form==1){
-    Out=cbind(Var, 
-              Value="Median (IQR)", 
-              paste0(Table[3], " (", Table[5]-Table[2], ")"))
-    
-  }else if(Form==2){
     Out=cbind(Var,
               Value=c(names(Table)),
               data.table(unclass(Table)))
+  }else if(Form==2){
+    Out=cbind(Var, 
+              Value="Median (IQR)", 
+              paste0(Table[3], " (", Table[5]-Table[2], ")"))
   }
   colnames(Out)=c("Variable", "Value", paste0("Total (n=", nrow(Data), ")")) 
   return(as.data.table(Out))
@@ -5915,7 +8806,9 @@ Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
 
 
 #********************************
+#
 # Raw_Contingency_Table_Generator
+#
 #********************************
 # lapply(c("dplyr",
 #          "data.table",
@@ -6018,7 +8911,8 @@ Raw_Contingency_Table_Generator=function(Data,
   colnames(Merged)[1:2]=c("Predictor", "Value")
   colnames(Merged)[1:2]=c("Predictor", "Value")
   colnames(Merged)[3:(3+ncol(Contingency_Table)-1)]=paste0(names(Sum_Col_Wise))
-  colnames(Merged)[3+ncol(Contingency_Table)]=paste0(sum(Sum_Col_Wise))
+  colnames(Merged)[3+ncol(Contingency_Table)]="Overall"
+  # colnames(Merged)[3+ncol(Contingency_Table)]=paste0(sum(Sum_Col_Wise))
   Out=Merged
   
   # return
@@ -6026,7 +8920,9 @@ Raw_Contingency_Table_Generator=function(Data,
 }
 
 #*********************
+#
 # Line_Graph_Generator
+#
 #*********************
 Line_Graph_Generator=function(Table_Data, 
                               Y_lab="Y",
@@ -6096,6 +8992,79 @@ rwmetro=function(target, N, x, VCOV, burnin=0){
 # [ --- Etc --- ] ---- 
 # 
 #*********************
+# Multiple_Comparison_Adjusted_P
+#********
+# Example
+#********
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLM_Multivariable_Results=GLM_Multivariable(Data=Data_to_use,
+#                                             Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                                             Res_Var=Res_Var,
+#                                             which.family="binomial (link='logit')")
+# Multiple_Comparison_Adjusted_P(Vars=rownames(summary(GLM_Multivariable_Results$model_fit)$coefficients)[-1],
+#                                Row_P_values=summary(GLM_Multivariable_Results$model_fit)$coefficients[-1, 4],
+#                                Summ_Table=GLM_Multivariable_Results$summ_table,
+#                                P.value_Var="P.value",
+#                                Methods=c("bonferroni", "BH"))
+Multiple_Comparison_Adjusted_P=function(Vars,
+                                        Row_P_values,
+                                        Summ_Table,
+                                        P.value_Var,
+                                        Methods){
+  # specify Methods from p.adjust.methods
+  
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
+  ## or all of adjustments at once
+  p.adjust.M=p.adjust.methods
+  
+  p.adj=sapply(p.adjust.M,
+               function(meth) p.adjust(Row_P_values, meth))
+  # p.adj.60=sapply(p.adjust.M, function(meth) p.adjust(p, meth, n=60))
+  # stopifnot(identical(p.adj[,"none"], p), p.adj <= p.adj.60)
+  stopifnot(identical(p.adj[,"none"], Row_P_values))
+  p.adj=ifelse(p.adj<0.001,
+               "<0.001",
+               round(p.adj, 3))
+  
+  ## or a bit nicer:
+  # noquote(apply(p.adj, 2, format.pval, digits=3))
+  Adjusted_P_Values=as.data.table(p.adj[, Methods],
+                                  keep.rownames=TRUE)
+  colnames(Adjusted_P_Values)=c("Vars",
+                                paste0("P.value(", Methods, ")"))
+  
+  stopifnot(identical(Vars, Adjusted_P_Values$Vars))
+  
+  colnames(Summ_Table)[1]="Vars"
+  
+  return(merge(Summ_Table,
+               Adjusted_P_Values,
+               sort=FALSE))
+}
+
+
+#*************
 # Stepwise_AIC
 #*************
 # Example
@@ -6116,7 +9085,7 @@ Stepwise_AIC=function(Full_Model, ...){ # names of people should be numeric
   # run model
   AIC_Results=stepAIC(Full_Model, ...)
   
-  # IndivID_vecual Wald test and confID_vecence interval for each parameter
+  # Individual Wald test and confidence interval for each parameter
   est=esticon(AIC_Results, diag(length(coef(AIC_Results))))[-1, ]
   
   # Output
@@ -6366,4 +9335,10 @@ mclapply.hack=function(...){
 # 
 # # When you're done, clean up the cluster
 # stopImplicitCluster()
+
+
+
+
+
+
 
