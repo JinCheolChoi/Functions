@@ -2590,7 +2590,7 @@ KM_Plot=function(Data,
     }
     
     # pairwise comparisons between group levels in case there are more than 2 groups
-    pairwise_test=pairwise_survdiff(formula=fullmod, data=Data)
+    pairwise_test=pairwise_survdiff(formula=fullmod, data=as.data.frame(Data))
     
   }else{ # if the model is a null model
     Log_rank_test=""
