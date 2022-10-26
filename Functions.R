@@ -2533,7 +2533,7 @@ KM_Plot=function(Data,
                  Pred_Vars="1",
                  ...){
   # check out packages
-  lapply(c("ggplot2", "survminer"), checkpackages)
+  lapply(c("ggplot2", "survminer" , "survival"), checkpackages)
   
   #**************
   # temp function
