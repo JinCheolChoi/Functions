@@ -704,7 +704,7 @@ IPW=function(Exposure,
   
   #*****************
   # define numerator
-  # 1. unstabilized
+  # 1. unstabilized (nonstabilized)
   unstab_numerator_formula=NULL
   
   # 2. basic stabilized
@@ -1885,10 +1885,14 @@ Segmented_Regression_Model=function(Data,
   # Time : Pre-intervention slope by time
   # Level : Immediate level change after intervention
   # Trend : Trend (Slope) change after intervention
+  
   Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+  Output$summ_table$CI_LB=round(confint(gls_model_fit)[, 1], 3)
+  Output$summ_table$CI_UB=round(confint(gls_model_fit)[, 2], 3)
   Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
   Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
   Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+  Output$summ_table=Output$summ_table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
   Output$Interpretation=paste0("The outcome changes by ", Output$summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
                                "This time effect changes to ", Output$summ_table["Time", "Estimate"]+Output$summ_table["Trend", "Estimate"],
                                "(=", Output$summ_table["Time", "Estimate"], "+", Output$summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
@@ -1905,9 +1909,8 @@ Segmented_Regression_Model=function(Data,
   Output$Fitted_Value=Data[, .SD, .SDcols=c(Res_Var, Time_Var, "Time", "Level", "Trend",
                                             paste0("Fitted_", Res_Var),
                                             paste0("SE_", Res_Var))]
-  Output$Fitted_Value[, CI_Lower_Boundary:=eval(parse(text=paste0("Fitted_", Res_Var)))-qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
-  Output$Fitted_Value[, CI_Uppder_Boundary:=eval(parse(text=paste0("Fitted_", Res_Var)))+qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
-  
+  Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Lower_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))-qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
+  Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Uppder_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))+qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
   
   # plot
   Output$Fitted_Regression_Line_Plot=function(){
