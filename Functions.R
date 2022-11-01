@@ -2557,6 +2557,9 @@ KM_Plot=function(Data,
   # check out packages
   lapply(c("ggplot2", "survminer" , "survival"), checkpackages)
   
+  # Data to data.table
+  Data=as.data.table(Data)
+  
   #**************
   # temp function
   # .set_font
@@ -2566,6 +2569,11 @@ KM_Plot=function(Data,
   }
   
   # Survival_Table
+  if(sum(Pred_Vars!="1")>0){
+    legend.labs.temp=paste0(Pred_Vars, " = ", Data[, unique(eval(parse(text=Pred_Vars)))])
+  }else{
+    legend.labs.temp="All"
+  }
   Survival_Table=function(x, y, z){
     temp_table=do.call(x,
                        list(fit=survfit_output,
@@ -2578,7 +2586,7 @@ KM_Plot=function(Data,
                             fontsize=8,
                             xlim=c(0, 180),
                             break.time.by=28,
-                            legend.labs=c("Methadone", "Buprenorphine"),
+                            legend.labs=legend.labs.temp,
                             font.tickslab=20))
     temp_table=temp_table+theme(plot.subtitle=.set_font(25),
                                 plot.caption=.set_font(25),
