@@ -704,7 +704,7 @@ IPW=function(Exposure,
   
   #*****************
   # define numerator
-  # 1. unstabilized
+  # 1. unstabilized (nonstabilized)
   unstab_numerator_formula=NULL
   
   # 2. basic stabilized
@@ -1728,13 +1728,15 @@ Segmented_Regression_Model=function(Data,
                                     Period=12,
                                     AR_Order=1, # p
                                     MA_Order=1, # q
+                                    Significance_Level=0.05, # 0.05 for 95% confidence interval
                                     ...){
   # check out packages
   lapply(c("data.table",
            "car", # for durbinWatsonTest
            "seastests", # for combined_test
            
-           "nlme",
+           "nlme", # gls
+           "AICcmodavg", # confidence interval for gls
            "forecast",
            "zoo"), # to test autocorrelation
          checkpackages)
@@ -1796,9 +1798,9 @@ Segmented_Regression_Model=function(Data,
     # If there exists significant evidence of existence of seasonality from the Webel-Ollech test,
     # the seasonally adjusted model is fitted with Fourier terms (pairs of sine and cosine functions) with 12 months as the underlying period reflecting the full seasonal cycle
     # (reference : Interrupted time series regression for the evaluation of public health interventions - A tutorial)
-    model_formula=as.formula(paste(Res_Var, "~ Time + Level + Trend + harmonic(Month, 2, ", Period, ")"))
+    model_formula<<-as.formula(paste(Res_Var, "~ Time + Level + Trend + harmonic(Month, 2, ", Period, ")"))
   }else{
-    model_formula=as.formula(paste(Res_Var, "~ Time + Level + Trend"))
+    model_formula<<-as.formula(paste(Res_Var, "~ Time + Level + Trend"))
   }
   
   # handle missing data
@@ -1883,16 +1885,32 @@ Segmented_Regression_Model=function(Data,
   # Time : Pre-intervention slope by time
   # Level : Immediate level change after intervention
   # Trend : Trend (Slope) change after intervention
+  
   Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
+  Output$summ_table$CI_LB=round(confint(gls_model_fit)[, 1], 3)
+  Output$summ_table$CI_UB=round(confint(gls_model_fit)[, 2], 3)
   Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
   Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
   Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+  Output$summ_table=Output$summ_table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
   Output$Interpretation=paste0("The outcome changes by ", Output$summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
                                "This time effect changes to ", Output$summ_table["Time", "Estimate"]+Output$summ_table["Trend", "Estimate"],
                                "(=", Output$summ_table["Time", "Estimate"], "+", Output$summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
                                "After the intervention, the outcome immediately changes by ",
                                Output$summ_table["Level", "Estimate"],
                                " on average.")
+  
+  # fitted value
+  # Fitted_Values=fitted(gls_model_fit) # old one
+  Fitted_Values=predictSE.gls(gls_model_fit, newdata=Data, se.fit=TRUE)$fit
+  SE_Values=predictSE.gls(gls_model_fit, newdata=Data, se.fit=TRUE)$se.fit
+  Data[, paste0("Fitted_", Res_Var):=Fitted_Values]
+  Data[, paste0("SE_", Res_Var):=SE_Values]
+  Output$Fitted_Value=Data[, .SD, .SDcols=c(Res_Var, Time_Var, "Time", "Level", "Trend",
+                                            paste0("Fitted_", Res_Var),
+                                            paste0("SE_", Res_Var))]
+  Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Lower_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))-qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
+  Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Uppder_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))+qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
   
   # plot
   Output$Fitted_Regression_Line_Plot=function(){
@@ -1972,6 +1990,10 @@ Segmented_Regression_Model=function(Data,
     #        cex=1,
     #        text.font=1)
   }
+  
+  # remove objects used only locally that had to be assigned to the global environment with <<-
+  rm(model_formula, envir=.GlobalEnv)
+  
   return(Output)
 }
 
@@ -2533,7 +2555,7 @@ KM_Plot=function(Data,
                  Pred_Vars="1",
                  ...){
   # check out packages
-  lapply(c("ggplot2", "survminer"), checkpackages)
+  lapply(c("ggplot2", "survminer" , "survival"), checkpackages)
   
   #**************
   # temp function
