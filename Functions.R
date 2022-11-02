@@ -2584,8 +2584,8 @@ KM_Plot=function(Data,
                             cumevents.title="",
                             cumcensor.title="",
                             fontsize=8,
-                            xlim=c(0, 180),
-                            break.time.by=28,
+                            # xlim=c(0, max(Data[, eval(parse(text=Stop_Time))]), na.rm=T),
+                            break.time.by=120,
                             legend.labs=legend.labs.temp,
                             font.tickslab=20))
     temp_table=temp_table+theme(plot.subtitle=.set_font(25),
@@ -2636,8 +2636,7 @@ KM_Plot=function(Data,
     # risk.table=TRUE,
     # tables.height=0.2,
     , fontsize=10
-    , break.time.by=28
-    , xlim=c(0, 180)
+    , xlim=c(0, max(Data[, eval(parse(text=Stop_Time))], na.rm=T)+10)
     # , ggtheme=theme_bw(base_size=15)
     # , pval= Log_rank_test
     , ...
