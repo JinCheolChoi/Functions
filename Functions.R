@@ -1848,7 +1848,7 @@ Segmented_Regression_Model=function(Data,
     print("---------------------------")
     print(BG_Test$Message)
     
-    if(AR_Order==0 & MA_Order==0){
+    if(AR_Order==0 & MA_Order==0){ # ignore Corr_Structure even if there exists autocorrelation
       Corr_Structure=NULL
     }else{
       Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
