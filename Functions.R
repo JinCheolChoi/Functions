@@ -1932,14 +1932,6 @@ Segmented_Regression_Model=function(Data,
          labels=format(as.Date(Data[[Time_Var]]), "%Y-%m"),
          cex.axis=1)
     
-    # Pre_Period_End=length(Data[[Time_Var]][Data[[Int_Var]]==0])
-    Post_Period_Start=which.min(Data[[Int_Var]]==0) # the first time value of the post-intervention period
-    
-    abline(
-      v=Post_Period_Start,
-      lty=2,
-      col=1)
-    
     # indices of times with non-missing outcome that are used to fit the gls model
     Non_missing_Time=match(Data_to_fit$Time,
                            Data$Time)
@@ -1948,8 +1940,14 @@ Segmented_Regression_Model=function(Data,
     Fitted_Values=fitted(gls_model_fit)
     names(Fitted_Values)=Non_missing_Time
     
+    # Pre_Period_End=length(Data[[Time_Var]][Data[[Int_Var]]==0])
+    Post_Period_Start=min(which(Data[[Int_Var]]==1)) # the first time value of the post-intervention period
+    
     # Pre_Period_End_No_Missing : the last time index of the pre-intervention period
     Pre_Period_End_No_Missing=max(Non_missing_Time[Non_missing_Time<Post_Period_Start])
+    
+    # Post_Period_End_No_Missing : the first time index of the post-intervention period
+    Post_Period_End_No_Missing=min(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing])
     
     # pre-intervention regression line
     lines(Non_missing_Time[Non_missing_Time<=Pre_Period_End_No_Missing],
@@ -1961,10 +1959,27 @@ Segmented_Regression_Model=function(Data,
           Fitted_Values[Non_missing_Time>Pre_Period_End_No_Missing],
           col="blue", lwd=2)
     
+    # Add a box to show phase-in (or missing) period
+    if(sum(is.na(Data[[Res_Var]]))>0){
+      rect(Pre_Period_End_No_Missing+1,
+           -500,
+           Post_Period_End_No_Missing-1,
+           5000,
+           border=NA,
+           col='grey70')
+    }
+    
+    # intervention
+    abline(
+      v=Post_Period_Start,
+      lty=2,
+      lwd=3,
+      col=1)
+    
     # extrapolated regression line extended from the pre-intervention regression line
     # !!! this one only works for non-seasonally-adjusted model !!!
-    segments(1,
-             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2],
+    segments(Post_Period_End_No_Missing,
+             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*Post_Period_End_No_Missing,
              nrow(Data),
              gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*nrow(Data),
              lty=2,
