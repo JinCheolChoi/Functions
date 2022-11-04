@@ -1721,6 +1721,21 @@ SMD_difference_Plot_Example=function(){
 #                                AR_Order=1, # p
 #                                MA_Order=0)
 # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+# 
+# # generate missing data
+# df[80:100, count:=NA]
+# ITS=Segmented_Regression_Model(Data=df,
+#                                Res_Var="count",
+#                                Time_Var="time",
+#                                Int_Var="intv",
+#                                ylim=c(min(df[["count"]], na.rm=T)-5,
+#                                       max(df[["count"]], na.rm=T)+5),
+#                                # main=Sub,
+#                                ylab=paste0("Count"),
+#                                xlab="Time",
+#                                AR_Order=1, # p
+#                                MA_Order=0)
+# ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
 Segmented_Regression_Model=function(Data,
                                     Res_Var,
                                     Time_Var,
@@ -2600,7 +2615,7 @@ KM_Plot=function(Data,
                             cumcensor.title="",
                             fontsize=8,
                             # xlim=c(0, max(Data[, eval(parse(text=Stop_Time))]), na.rm=T),
-                            break.time.by=120,
+                            break.time.by=round((max(Data[[Stop_Time]])-min(Data[[Stop_Time]]))/10),
                             legend.labs=legend.labs.temp,
                             font.tickslab=20))
     temp_table=temp_table+theme(plot.subtitle=.set_font(25),
@@ -2651,7 +2666,8 @@ KM_Plot=function(Data,
     # risk.table=TRUE,
     # tables.height=0.2,
     , fontsize=10
-    , xlim=c(0, max(Data[, eval(parse(text=Stop_Time))], na.rm=T)+10)
+    , xlim=c(0, max(Data[, eval(parse(text=Stop_Time))], na.rm=T)+
+               (max(Data[, eval(parse(text=Stop_Time))], na.rm=T)-min(Data[, eval(parse(text=Stop_Time))], na.rm=T))/100)
     # , ggtheme=theme_bw(base_size=15)
     # , pval= Log_rank_test
     , ...
@@ -2866,7 +2882,8 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
                            which.family=which.family)
     Output=rbind(Output,
                  cbind(Temp$summ_table[, c(1, 2, 3, 5)],
-                       Data_Used=Temp$N_data_used))
+                       Data_Used=Temp$N_data_used),
+                 fill=T)
     
     # print out progress
     if(sum(grepl(":", Pred_Vars[i]))>0){
@@ -3685,14 +3702,16 @@ GEE_Multivariable=function(Data,
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table, # keep Estimate & Std.Error for Combine_Multiple_Results()
+                            # Output$summ_table[, c(1, 5, 4)],
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
                             # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
                             # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$summ_table=cbind(Output$summ_table, # keep Estimate & Std.Error for Combine_Multiple_Results()
+                            # Output$summ_table[, c(1, 5, 4)],
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
@@ -3878,7 +3897,7 @@ GEE_Confounder_Selection=function(Full_Model,
 # Data_to_use[sample(nrow(Data_to_use), 30), "sex"]="P"
 # Data_to_use$sex=as.factor(Data_to_use$sex)
 # 
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# Pred_Vars=c("center", "treat", "sex", "age", "baseline", "visit")
 # vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
 # levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
@@ -3902,7 +3921,6 @@ GEE_Confounder_Selection=function(Full_Model,
 # GEE_Confounder$Full_Multivariable_Model$summ_table
 # GEE_Confounder$Confounder_Steps$Confounders
 # GEE_Confounder$Confounder_Model$summ_table
-# GEE_Confounder$Confounder_Model$N_data_used
 GEE_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
@@ -3985,10 +4003,10 @@ GEE_Confounder_Model=function(Data,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # GEE.fit=GEE_Multivariable(Data=Data_to_use,
-#                                    Pred_Vars=Pred_Vars,
-#                                    Res_Var="outcome",
-#                                    Group_Var="id",
-#                                    which.family<-"binomial")
+#                           Pred_Vars=Pred_Vars,
+#                           Res_Var="outcome",
+#                           Group_Var="id",
+#                           which.family<-"binomial")
 # QIC_Selection_Steps=GEE_Backward_by_QIC(Full_Model=GEE.fit$model_fit,
 #                                         Pred_Vars=Pred_Vars)
 GEE_Backward_by_QIC=function(Full_Model,
@@ -4109,14 +4127,15 @@ GEE_Backward_by_QIC=function(Full_Model,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # GEE.fit=GEE_Multivariable(Data=Data_to_use,
-#                                    Pred_Vars=Pred_Vars,
-#                                    Res_Var="outcome",
-#                                    Group_Var="id",
-#                                    which.family<-"binomial")
+#                           Pred_Vars=Pred_Vars,
+#                           Res_Var="outcome",
+#                           Group_Var="id",
+#                           which.family<-"binomial")
 # Backward_Elimination_Steps=GEE_Backward_by_P(GEE.fit$model_fit,
 #                                              Data=Data_to_use,
 #                                              Pred_Vars=Pred_Vars)
 # # run GEE_Multivariable
+# # !!!! GEE_Backward_by_P_Katya will cause an error, so run the code internally in person
 # Backward_Elimination_Steps_Katya=GEE_Backward_by_P_Katya(Data=Data_to_use,
 #                                                          Pred_Vars=Pred_Vars,
 #                                                          Res_Var="outcome",
@@ -4508,7 +4527,7 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
 # GLMM_Bivariate
 #***************
 # Example
-# ************************************
+#************************************
 # lapply(c("geepack"), checkpackages)
 # data("respiratory")
 # Data_to_use=respiratory
@@ -4869,7 +4888,7 @@ GLMM_Multivariable=function(Data,
 # #**********************************
 # set.seed(101)
 # Data_to_use=expand.grid(f1 = factor(1:3),
-#                         f2 = LETTERS[1:2], 
+#                         f2 = LETTERS[1:2],
 #                         f3 = rep(2:5),
 #                         g=1:5, rep=1:3,
 #                         KEEP.OUT.ATTRS=FALSE)
@@ -7716,10 +7735,10 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                   interacs=FALSE # TRUE if time effects of polytime vary across the cross-section
 # )
 # # GEE using the 1st imputed data set
-# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars, Res_Var, Group_Var, which.family)$summ_table %>%
+# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars[!Pred_Vars%in%c("id")], Res_Var, Group_Var, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # GEE using the 2nd imputed data set
-# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars, Res_Var, Group_Var, which.family)$summ_table %>%
+# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars[!Pred_Vars%in%c("id")], Res_Var, Group_Var, which.family)$summ_table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
@@ -8223,7 +8242,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
 #*************************************
 # lapply(c("dplyr",
 #          "data.table",
-#          
+# 
 #          "lme4",
 #          "epitools"
 # ),
@@ -9275,7 +9294,7 @@ Joy_Plot=function(Data, X_Var, Y_Var, ...){
 # system.time({par.output=mclapply.hack(1:4,
 #                                      function(xx){
 #                                        return(wait.longer.then.square(xx)+a.global.variable)
-#                                      })})
+#                                      })}) 
 mclapply.hack=function(...){
   ## Create a cluster
   ## ... How many workers do you need?
