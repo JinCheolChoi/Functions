@@ -1886,6 +1886,7 @@ Segmented_Regression_Model=function(Data,
   
   # Output
   Output=c()
+  Output$Data=Data
   Output$N_Time_Points=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
   Output$gls_model_fit=gls_model_fit
   Output$WO_Test=WO_Test
