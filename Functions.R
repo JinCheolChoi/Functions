@@ -1987,7 +1987,7 @@ Segmented_Regression_Model=function(Data,
     
     # intervention
     abline(
-      v=Post_Period_Start,
+      v=Post_Period_Start-1,
       lty=2,
       lwd=3,
       col=1)
