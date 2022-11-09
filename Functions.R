@@ -3436,6 +3436,9 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
 #                    title="Title",
 #                    x_breaks=seq(round(min(Data$age)-5, -1), round(max(Data$age)+5, -1), by=10))
 GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab="", title="", x_breaks=0){
+  # check out packages
+  lapply(c("ggplot2"), checkpackages)
+  
   # Output
   Output=c()
   
@@ -3468,7 +3471,6 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
     #*****
     # plot
     # The following code produces the same plot as plot_model(Model, type="pred")
-    library(ggplot2)
     Output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                          
                                         y=eval(parse(text=Res_Var))
     )) + 
@@ -3492,7 +3494,6 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
     #*****
     # plot
     # The following code produces the same plot as plot_model(Model, type="pred")
-    library(ggplot2)
     Output$plot=ggplot(data=newdat, aes(x=eval(parse(text=Pred_Var)),                          
                                         y=eval(parse(text=Res_Var))
     )) + 
@@ -4431,6 +4432,9 @@ GEE_Backward_by_P_missing_Data=function(Data,
 #
 #************************
 GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.family){ ## names of people should be numeric
+  # check out packages
+  lapply(c("geepack", "MESS", "doBy"), checkpackages)
+  
   Data=as.data.frame(Data)
   Data[, Group_Var]=gsub("A", 999, Data[, Group_Var])
   Data[, Group_Var]=as.numeric(as.factor(Data[, Group_Var]))
@@ -4464,11 +4468,6 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
     rename.these=which(N.of.similar.cols>1)
     print(paste("Please, rename these columns to something unique: " , Pred_Vars[rename.these], sep=""))
   }else{
-    
-    
-    library(geepack)
-    library(MESS)
-    library(doBy) 
     
     vars=Pred_Vars
     vars.ALL=Pred_Vars
@@ -5633,7 +5632,7 @@ cv.glmmLasso=function(dat,
 #                     title="Title",
 #                     x_breaks=seq(round(min(Data_to_use$age)-5, -1), round(max(Data_to_use$age)+5, -1), by=10))
 GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, NAGQ=100, xlab="", ylab="", title="", x_breaks=0){
-  lapply(c("sjPlot", "simr"), checkpackages)
+  lapply(c("sjPlot", "simr", "ggplot2"), checkpackages)
   
   # Output
   Output=c()
@@ -5686,7 +5685,6 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
     #*****
     # plot
     # The following code produces the same plot as plot_model(Model, type="pred")
-    library(ggplot2)
     newdat[, Group_Var]=as.factor(newdat[, Group_Var])
     newdat.margin[, Group_Var]=as.factor(newdat.margin[, Group_Var])
     
@@ -5746,7 +5744,6 @@ GLMM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, Group_Var, which.family, N
     #*****
     # plot
     # The following code produces the same plot as plot_model(Model, type="pred")
-    library(ggplot2)
     newdat[, Group_Var]=as.factor(newdat[, Group_Var])
     newdat.margin[, Group_Var]=as.factor(newdat.margin[, Group_Var])
     
@@ -6174,8 +6171,8 @@ GLMM_Backward_by_P=function(Full_Model,
 #
 #*************************
 GLMM_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.family, NAGQ){
-  
-  library("lme4")
+  # check out packages
+  lapply(c("lme4"), checkpackages)
   
   vars=Pred_Vars
   vars.ALL=vars
@@ -8923,8 +8920,9 @@ Raw_Contingency_Table_Generator=function(Data,
                                          Row_Var, 
                                          Col_Var, 
                                          Value="Frequency"){
-  # library
-  library(epitools)
+  # check out packages
+  lapply(c("epitools"), checkpackages)
+  
   
   # Data as data table
   Data=as.data.frame(Data)
@@ -8991,9 +8989,13 @@ Raw_Contingency_Table_Generator=function(Data,
 Line_Graph_Generator=function(Table_Data, 
                               Y_lab="Y",
                               X_lab="X",
-                              Y_breaks=100){
+                              Y_breaks=100,
+                              ...){
+  # check out packages
+  lapply(c("ggplot2", "reshape2", "data.table"), checkpackages)
+  
   # make plot
-  Long_Table_Data=melt(Table_Data, id=c("Predictor", "Value"))
+  Long_Table_Data=reshape2::melt(Table_Data, id=c("Predictor", "Value"))
   colnames(Long_Table_Data)=c("Group", "Nothing", "X", "Y")
   Long_Table_Data=as.data.table(Long_Table_Data)
   Long_Table_Data[, Y:=as.numeric(Y)]
