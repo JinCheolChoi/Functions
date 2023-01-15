@@ -2839,6 +2839,85 @@ COX_Backward_by_AIC=function(Full_Model,
 }
 
 
+#***************
+# Incidence_Rate
+#***************
+# Example
+#********
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# # Person_Year
+# Data_to_use$Person_Year=Data_to_use$stop/365.25
+# Incidence_Rate(Data=Data_to_use,
+#                Res_Var="event",
+#                Person_Year_Var="Person_Year")
+Incidence_Rate=function(Data,
+                        Res_Var,
+                        Person_Year_Var,
+                        Conf.Level=0.95){
+  # check out packages
+  lapply(c("data.table",
+           "epiR"), # epi.conf
+         checkpackages)
+  
+  # as data.table
+  Data=as.data.table(Data)
+  
+  # number of events
+  N_Events=sum(Data[,
+                    .SD,
+                    .SDcol=c(Res_Var)])
+  
+  # N_Participants
+  N_Participants=nrow(Data)
+  
+  # Total_Observed_Time : person-years contribution of participants
+  # That is, time each person was observed, totaled for all persons
+  # In other words, the total time the population was at risk of and being watched for disease
+  Total_Observed_Time=sum(Data[,
+                               .SD,
+                               .SDcol=c(Person_Year_Var)])
+  
+  # manual calculation
+  # Incidence rate : new cases per person-year
+  N_Events/Total_Observed_Time
+  
+  # with epi.conf to obtain confidence intervals as well
+  IR_CI=epi.conf(cbind(N_Events, Total_Observed_Time),
+                 ctype="inc.rate",
+                 method="exact",
+                 N=N_Participants,
+                 design=1, 
+                 conf.level=Conf.Level)
+  
+  # Output
+  Output=data.table(
+    N_Events=N_Events, # the number of new cases identified during the period of observation
+    N_Participants=N_Participants,
+    Total_Observed_Time=Total_Observed_Time, # the total time the population was at risk of and being watched for disease
+    # unit : year
+    Incidence_Rate=IR_CI$est,
+    CI_Lower=IR_CI$lower,
+    CI_Upper=IR_CI$upper
+  )
+  
+  #**********
+  # Reference
+  # https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section2.html
+  # https://cran.r-project.org/web/packages/epiR/vignettes/epiR_descriptive.html
+  # https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
+  
+  return(Output)
+}
+
+
 #*********************
 #
 # [ --- GLM --- ] ----
