@@ -2950,7 +2950,11 @@ Incidence_Rate=function(Data,
 #                           list(c("sex", "age", "sex:age"))),
 #               Res_Var=Res_Var,
 #               which.family="binomial (link='logit')")
-GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
+GLM_Bivariate=function(Data,
+                       Pred_Vars,
+                       Res_Var,
+                       which.family,
+                       Significance_Level=0.1){ # Significance_Level : a threshold of p-value for univariable selection
   # main algorithm
   Output=c()
   List_For_Multivariable=c()
@@ -2968,7 +2972,7 @@ GLM_Bivariate=function(Data, Pred_Vars, Res_Var, which.family){
     
     # List_For_Multivariable
     if(Temp$summ_table$P.value=="<0.001"|
-       Temp$summ_table$P.value<0.1){
+       Temp$summ_table$P.value<Significance_Level){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
