@@ -2971,8 +2971,8 @@ GLM_Bivariate=function(Data,
                  fill=T)
     
     # List_For_Multivariable
-    if(Temp$summ_table$P.value=="<0.001"|
-       Temp$summ_table$P.value<Significance_Level){
+    if("<0.001"%in%(Temp$summ_table$P.value)|
+       sum(Temp$summ_table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
@@ -3026,7 +3026,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
-  #Data<<-na.exclude(Data[, c(Pred_Vars, Res_Var)])
+  Data<<-na.exclude(Data[, c(Pred_Vars, Res_Var)]) # activate if Stepwise_AIC() is used
   
   # main algorithm
   Output=c()
@@ -9237,11 +9237,11 @@ Multiple_Comparison_Adjusted_P=function(Vars,
 #                              Res_Var="outcome",
 #                              which.family<-"binomial (link='logit')")$model_fit
 # Stepwise_AIC(Full_Model)
-Stepwise_AIC=function(Full_Model, ...){ # names of people should be numeric
+Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be numeric
   lapply(c("MASS", "doBy"), checkpackages)
   
   # run model
-  AIC_Results=stepAIC(Full_Model, ...)
+  AIC_Results=stepAIC(Full_Model, trace=0, keep = dplyr::lst, ...)
   
   # Individual Wald test and confidence interval for each parameter
   est=esticon(AIC_Results, diag(length(coef(AIC_Results))))[-1, ]
@@ -9250,6 +9250,9 @@ Stepwise_AIC=function(Full_Model, ...){ # names of people should be numeric
   Output=c()
   Output$model_fit=AIC_Results
   Output$vif=car::vif(AIC_Results)
+  Output$keep=AIC_Results$keep
+  Output$filtered_variables=colnames(AIC_Results$keep["fit", ncol(AIC_Results$keep)]$fit$model)
+  Output$filtered_variables=Output$filtered_variables[Output$filtered_variables!=Res_Var]
   
   if(grepl("gaussian", which.family)){
     Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
