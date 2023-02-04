@@ -3026,7 +3026,7 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
-  Data<<-na.exclude(Data[, c(Pred_Vars, Res_Var)]) # activate if Stepwise_AIC() is used
+  # Data<<-na.exclude(Data[, c(Pred_Vars, Res_Var)]) # activate if Stepwise_AIC() is used
   
   # main algorithm
   Output=c()
@@ -4678,9 +4678,11 @@ GLMM_Bivariate=function(Data,
                         which.family,
                         NAGQ=100,
                         Compute.Power=FALSE,
-                        nsim=1000){
+                        nsim=1000,
+                        Significance_Level=0.1){
   # main algorithm
   Output=c()
+  List_For_Multivariable=c()
   for(i in 1:length(Pred_Vars)){
     #i=1
     Temp=GLMM_Multivariable(Data=Data,
@@ -4691,9 +4693,17 @@ GLMM_Bivariate=function(Data,
                             NAGQ=NAGQ,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
+
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
+    
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$summ_table$P.value)|
+       sum(Temp$summ_table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
     
     # print out progress
     if(sum(grepl(":", Pred_Vars[i]))>0){
@@ -4703,7 +4713,8 @@ GLMM_Bivariate=function(Data,
     }
   }
   
-  return(Output)
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
 }
 
 
