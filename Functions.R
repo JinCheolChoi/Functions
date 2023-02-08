@@ -2853,6 +2853,11 @@ COX_Backward_by_AIC=function(Full_Model,
 #                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
 #                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
 # Data_to_use$x3=as.factor(Data_to_use$x3)
+# 
+# # In case of counting process data layout, take the last follow-up for each individual to properly calculate pearson-years.
+# # That is, Data_to_use_LAST=Data_to_use[, .SD[STOP_DAY==max(STOP_DAY)], by=CODE]
+# # Also, 100 person-years is simply person-years multiplied by 100.
+# 
 # # Person_Year
 # Data_to_use$Person_Year=Data_to_use$stop/365.25
 # Incidence_Rate(Data=Data_to_use,
