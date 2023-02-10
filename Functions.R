@@ -499,16 +499,23 @@ Marginal_Effect_2=function(Model_Fit,
     print("Marginal_Effect_2 / Model : GEE")
   }
   
+  # type_temp
+  if(grepl("gaussian", Family)){
+    type_temp=NULL
+  }else{
+    type_temp="link"
+  }
+  
   #**********************************************
   # marginal effect of Var_1 conditional on Var_2
   List_Var_2=list(x1=Model_Fit, x2=Var_2_Levels)
   names(List_Var_2)=c("model", Var_2)
   
   Temp_Var_1=marginaleffects(Model_Fit,
-                             type="link",
+                             type=type_temp,
                              newdata=do.call(datagrid, List_Var_2))
   setnames(Temp_Var_1,
-           c("term", "dydx", "std.error"),
+           c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
   Temp_Var_1$z=Temp_Var_1$AME/Temp_Var_1$SE
   Temp_Var_1$p=round(2*(1-pnorm(abs(Temp_Var_1$z))), 4)
@@ -525,10 +532,10 @@ Marginal_Effect_2=function(Model_Fit,
   names(List_Var_1)=c("model", Var_1)
   
   Temp_Var_2=marginaleffects(Model_Fit,
-                             type="link",
+                             type=type_temp,
                              newdata=do.call(datagrid, List_Var_1))
   setnames(Temp_Var_2,
-           c("term", "dydx", "std.error"),
+           c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
   Temp_Var_2$z=Temp_Var_2$AME/Temp_Var_2$SE
   Temp_Var_2$p=round(2*(1-pnorm(abs(Temp_Var_2$z))), 4)
