@@ -4705,7 +4705,7 @@ GLMM_Bivariate=function(Data,
                             NAGQ=NAGQ,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
-
+    
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
@@ -6516,8 +6516,6 @@ GLMM_Multinomial_Bivariate=function(Data,
 #                               Group_Var="id",
 #                               maxit=10,
 #                               par.update=T)
-#********************************************
-# GLMM_Multinomial_Multivariate
 GLMM_Multinomial_Multivariate=function(Data,
                                        Pred_Vars,
                                        Res_Var,
@@ -6947,8 +6945,6 @@ CLMM_Ordinal_Bivariate=function(Data,
 #                            Res_Var<-"outcome",
 #                            Group_Var<-"id",
 #                            NAGQ=3)
-#***************************
-# CLMM_Ordinal_Multivariable
 CLMM_Ordinal_Multivariable=function(Data,
                                     Pred_Vars,
                                     Type_Odds,
