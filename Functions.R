@@ -9255,7 +9255,7 @@ Multiple_Comparison_Adjusted_P=function(Vars,
 #                              Pred_Vars=c("center", "treat", "sex", "age", "baseline"),
 #                              Res_Var="outcome",
 #                              which.family<-"binomial (link='logit')")$model_fit
-# Stepwise_AIC(Full_Model)
+# Stepwise_AIC(Full_Model, Res_Var)
 Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be numeric
   lapply(c("MASS", "doBy"), checkpackages)
   
