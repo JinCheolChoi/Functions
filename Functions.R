@@ -1627,9 +1627,9 @@ GEE_MSM=function(Outcome,
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
-                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 IRR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
                                  row.names=names(coef(model_fit))[-1]
     )
   }
@@ -1870,7 +1870,7 @@ Segmented_Regression_Model=function(Data,
     print("---------------------------")
     print(BG_Test$Message)
     
-    if(AR_Order==0 & MA_Order==0){
+    if(AR_Order==0 & MA_Order==0){ # ignore Corr_Structure even if there exists autocorrelation
       Corr_Structure=NULL
     }else{
       Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
@@ -3028,8 +3028,13 @@ GLM_Bivariate=function(Data,
 # GLM_Multivariable(Data=Data_to_use,
 #                   Pred_Vars=c("center", "sex", "age", "sex:age"),
 #                   Res_Var=Res_Var,
-#                   which.family="binomial (link='logit')")
-GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
+#                   which.family="binomial (link='logit')",
+#                   Offset_Var=NULL)
+GLM_Multivariable=function(Data,
+                           Pred_Vars,
+                           Res_Var,
+                           which.family,
+                           Offset_Var=NULL){
   # check out packages
   lapply(c("MASS", "data.table"), checkpackages)
   
@@ -3044,8 +3049,22 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   Output=c()
   #i=1
   # run model
+  # fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
+  # model_fit=glm(fullmod, family=eval(parse(text=which.family)), na.action=na.exclude, data=Data)
   fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
-  model_fit=glm(fullmod, family=eval(parse(text=which.family)), na.action=na.exclude, data=Data)
+  if(is.null(Offset_Var)){
+    model_fit=glm(fullmod,
+                  family=eval(parse(text=which.family)),
+                  na.action=na.exclude,
+                  data=Data,
+                  offset=NULL)
+  }else{
+    model_fit=glm(fullmod,
+                  family=eval(parse(text=which.family)),
+                  na.action=na.exclude,
+                  data=Data,
+                  offset=eval(parse(text=(paste0("log(" , Offset_Var, ")")))))
+  }
   
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
@@ -3058,8 +3077,8 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
   # Output
   if(grepl("gaussian", which.family)){
     # Individual Wald test and confidence interval for each parameter
-    Est.CI=cbind(OR=coef(model_fit), confint(model_fit, level=0.95))
-    colnames(Est.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
+    Est.CI=cbind(Est=coef(model_fit), confint(model_fit, level=0.95))
+    colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
     est=cbind(summary(model_fit)$coefficients, Est.CI)
     
     Output$summ_table=rbind(Output$summ_table,
@@ -3069,8 +3088,8 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                               `P-value`=ifelse(est[-1, "Pr(>|t|)"]<0.001, "<0.001",
                                                format(round2(est[-1, "Pr(>|t|)"], 3), nsmall=3)),
                               Estimate.and.CI=paste0(format(round2(est[-1, "Estimate"] , 2), nsmall=2),
-                                                     " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
-                                                     format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
+                                                     " (", format(round2(as.numeric(est[-1, "Lower Est"]), 2), nsmall=2), " - ",
+                                                     format(round2(as.numeric(est[-1, "Upper Est"]), 2), nsmall=2), ")"),
                               row.names=names(coef(model_fit))[-1]
                             )
     )
@@ -3112,9 +3131,9 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
     #   )
   }else if(grepl("poisson", which.family)){
     # Individual Wald test and confidence interval for each parameter
-    RR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
-    colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
-    est=cbind(summary(model_fit)$coefficients, RR.CI)
+    IRR.CI=exp(cbind(IRR=coef(model_fit), confint(model_fit, level=0.95)))
+    colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
+    est=cbind(summary(model_fit)$coefficients, IRR.CI)
     
     Output$summ_table=rbind(Output$summ_table,
                             data.frame(
@@ -3122,9 +3141,9 @@ GLM_Multivariable=function(Data, Pred_Vars, Res_Var, which.family){
                               Std.Error=round2(est[-1, "Std. Error"], 3),
                               `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
                                                format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
-                              RR.and.CI=paste0(format(round2(est[-1, "Rate Ratio"] , 2), nsmall=2),
-                                               " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ",
-                                               format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"),
+                              IRR.and.CI=paste0(format(round2(est[-1, "Incidence Rate Ratio"] , 2), nsmall=2),
+                                                " (", format(round2(as.numeric(est[-1, "Lower IRR"]), 2), nsmall=2), " - ",
+                                                format(round2(as.numeric(est[-1, "Upper IRR"]), 2), nsmall=2), ")"),
                               row.names=names(coef(model_fit))[-1]
                             )
     )
@@ -3423,8 +3442,8 @@ GLM_Confounder_Model=function(Data,
 #                  Pred_Vars=list("center",
 #                                 c("sex", "age", "sex:age")),
 #                  Res_Var="count_outcome",
-#                  Offset_name="visit")
-GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_name){
+#                  Offset_Var="visit")
+GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_Var){
   # main algorithm
   Output=c()
   for(i in 1:length(Pred_Vars)){
@@ -3432,7 +3451,7 @@ GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_name){
     Temp=GLM_NB_Multivariable(Data=Data,
                               Pred_Vars=unlist(Pred_Vars[i]),
                               Res_Var=Res_Var,
-                              Offset_name=Offset_name)
+                              Offset_Var=Offset_Var)
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
@@ -3470,15 +3489,18 @@ GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_name){
 # levels.of.fact[which(Pred_Vars=="treat")]="P"
 # levels.of.fact[which(Pred_Vars=="sex")]="F"
 # Data_to_use=Format_Columns(Data_to_use,
-#                     Res_Var="count_outcome",
-#                     Pred_Vars,
-#                     vector.OF.classes.num.fact,
-#                     levels.of.fact)
+#                            Res_Var="count_outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
 # GLM_NB_Multivariable(Data=Data_to_use,
 #                      Pred_Vars=c("center", "sex", "age", "sex:age"),
 #                      Res_Var="count_outcome",
-#                      Offset_name="visit")
-GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
+#                      Offset_Var="visit")
+GLM_NB_Multivariable=function(Data,
+                              Pred_Vars,
+                              Res_Var,
+                              Offset_Var=NULL){
   # check out packages
   lapply(c("MASS"), checkpackages)
   
@@ -3489,8 +3511,20 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   Origin_N_Rows=nrow(Data)
   
   # run model
-  fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+offset(log(", Offset_name, "))"))
-  model_fit=glm.nb(fullmod, data=Data, control=glm.control(maxit=25)) # maxit=25 is default
+  # fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+"), "+offset(log(", Offset_Var, "))"))
+  # model_fit=glm.nb(fullmod, data=Data, control=glm.control(maxit=25)) # maxit=25 is default
+  fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
+  if(is.null(Offset_Var)){
+    model_fit=glm.nb(fullmod,
+                     data=Data,
+                     control=glm.control(maxit=25),
+                     offset=NULL)
+  }else{
+    model_fit=glm.nb(fullmod,
+                     data=Data,
+                     control=glm.control(maxit=25),
+                     offset=eval(parse(text=(paste0("log(" , Offset_Var, ")")))))
+  }
   
   # this is to avoide an error "profiling has found a better solution, so original fit had not converged"
   class(model_fit)=c("myglm", class(model_fit))
@@ -3500,9 +3534,9 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
   Used_N_Rows=nobs(model_fit)
   
   # Individual Wald test and confidence interval for each parameter
-  RR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
-  colnames(RR.CI)=c("Rate Ratio", "Lower RR", "Upper RR")
-  est=cbind(summary(model_fit)$coefficients, RR.CI)
+  IRR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
+  colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
+  est=cbind(summary(model_fit)$coefficients, IRR.CI)
   
   # Output
   Output=c()
@@ -3516,9 +3550,9 @@ GLM_NB_Multivariable=function(Data, Pred_Vars, Res_Var, Offset_name){
                                Std.Error=round2(est[-1, "Std. Error"], 3), 
                                `P-value`=ifelse(round2(est[-1, "Pr(>|z|)"], 3)<0.001, "<0.001", 
                                                 format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
-                               RR.and.CI=paste0(format(round2(est[-1, "Rate Ratio"] , 2), nsmall=2), 
-                                                " (", format(round2(as.numeric(est[-1, "Lower RR"]), 2), nsmall=2), " - ", 
-                                                format(round2(as.numeric(est[-1, "Upper RR"]), 2), nsmall=2), ")"), 
+                               IRR.and.CI=paste0(format(round2(est[-1, "Incidence Rate Ratio"] , 2), nsmall=2), 
+                                                 " (", format(round2(as.numeric(est[-1, "Lower IRR"]), 2), nsmall=2), " - ", 
+                                                 format(round2(as.numeric(est[-1, "Upper IRR"]), 2), nsmall=2), ")"), 
                                row.names=names(coef(model_fit))[-1]
   )
   return(Output)
@@ -3798,9 +3832,9 @@ GEE_Multivariable=function(Data,
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
-                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 IRR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
                                  row.names=names(coef(model_fit))[-1]
     )
   }
@@ -4705,7 +4739,7 @@ GLMM_Bivariate=function(Data,
                             NAGQ=NAGQ,
                             Compute.Power=Compute.Power, # power can be computed for a non-gaussian distribution
                             nsim=nsim)
-
+    
     Output=rbind(Output,
                  cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
@@ -4894,9 +4928,9 @@ GLMM_Multivariable=function(Data,
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
     Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
-    Output$summ_table$RR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
-                                       " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
-                                       format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
+    Output$summ_table$IRR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
+                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
     Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
@@ -6516,8 +6550,6 @@ GLMM_Multinomial_Bivariate=function(Data,
 #                               Group_Var="id",
 #                               maxit=10,
 #                               par.update=T)
-#********************************************
-# GLMM_Multinomial_Multivariate
 GLMM_Multinomial_Multivariate=function(Data,
                                        Pred_Vars,
                                        Res_Var,
@@ -6947,8 +6979,6 @@ CLMM_Ordinal_Bivariate=function(Data,
 #                            Res_Var<-"outcome",
 #                            Group_Var<-"id",
 #                            NAGQ=3)
-#***************************
-# CLMM_Ordinal_Multivariable
 CLMM_Ordinal_Multivariable=function(Data,
                                     Pred_Vars,
                                     Type_Odds,
@@ -9259,7 +9289,7 @@ Multiple_Comparison_Adjusted_P=function(Vars,
 #                              Pred_Vars=c("center", "treat", "sex", "age", "baseline"),
 #                              Res_Var="outcome",
 #                              which.family<-"binomial (link='logit')")$model_fit
-# Stepwise_AIC(Full_Model)
+# Stepwise_AIC(Full_Model, Res_Var)
 Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be numeric
   lapply(c("MASS", "doBy"), checkpackages)
   
@@ -9303,9 +9333,9 @@ Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be num
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
-                                 RR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
+                                 IRR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
+                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
+                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
                                  row.names=names(coef(AIC_Results))[-1]
     )
   }
