@@ -2161,9 +2161,11 @@ COX_Bivariate=function(Data,
                        Strat_Vars=NULL,
                        Start_Time=NULL,
                        Stop_Time,
-                       Message="Yes"){
+                       Message="Yes",
+                       Significance_Level=0.1){ # Significance_Level : a threshold of p-value for univariable selection
   # main algorithm
   Output=c()
+  List_For_Multivariable=c()
   for(i in 1:length(Pred_Vars)){
     #i=1
     if(i>=2){
@@ -2183,11 +2185,19 @@ COX_Bivariate=function(Data,
                        N_events=Temp$N_events,
                        PH_assumption_P.value=Temp$cox.zph$table[1, "p"],
                        N_non_missing_data=Temp$N_non_missing_data))
+    
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$summ_table$P.value)|
+       sum(Temp$summ_table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
   }
   
   # print a note
   print("The PH assumption is better to be considered at the multivariable analysis level.")
-  return(Output)
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
 }
 
 
@@ -2297,7 +2307,7 @@ COX_Multivariable=function(Data,
          cex.sub=2)
     abline(0, 0, col=1, lty=3, lwd=2)
     abline(h=Output$model_fit$coef[which(names(Assumption_Table_Temp[, "p"])==Var)], col=3, lwd=2, lty=2)
-    legend("bottomright",
+    legend("topright",
            legend=c('Reference line for null effect',
                     "Average hazard over time",
                     "Time-varying hazard"),
