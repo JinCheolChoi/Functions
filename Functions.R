@@ -3053,7 +3053,7 @@ GLM_Multivariable=function(Data,
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
-  # Data<<-na.exclude(Data[, c(Pred_Vars, Res_Var)]) # activate if Stepwise_AIC() is used
+  Data<<-na.exclude(Data[, c(unique(unlist(strsplit(Pred_Vars, ":"))), Res_Var)]) # activate if Stepwise_AIC() is used
   
   # main algorithm
   Output=c()
