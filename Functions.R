@@ -1742,7 +1742,7 @@ SMD_difference_Plot_Example=function(){
 #                                xlab="Time",
 #                                AR_Order=1, # p
 #                                MA_Order=0)
-# ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+# # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
 Segmented_Regression_Model=function(Data,
                                     Res_Var,
                                     Time_Var,
@@ -1901,26 +1901,30 @@ Segmented_Regression_Model=function(Data,
   Output$DW_Test=DW_Test
   Output$Acf=function(){plot(Acf, main=Res_Var)}
   Output$Pacf=function(){plot(Pacf, main=Res_Var)}
-  Output$summ_table=as.data.frame(summary(gls_model_fit)$tTable)
-  colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+  Output$Summ_table=as.data.frame(summary(gls_model_fit)$tTable)
+  colnames(Output$Summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
   
-  # Coefficients in summ_table represent the followings.
+  # Coefficients in Summ_table represent the followings.
   # Time : Pre-intervention slope by time
   # Level : Immediate level change after intervention
   # Trend : Trend (Slope) change after intervention
   
-  Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
-  Output$summ_table$CI_LB=round(confint(gls_model_fit)[, 1], 3)
-  Output$summ_table$CI_UB=round(confint(gls_model_fit)[, 2], 3)
-  Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
-  Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
-  Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
-  Output$summ_table=Output$summ_table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
-  Output$Interpretation=paste0("The outcome changes by ", Output$summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
-                               "This time effect changes to ", Output$summ_table["Time", "Estimate"]+Output$summ_table["Trend", "Estimate"],
-                               "(=", Output$summ_table["Time", "Estimate"], "+", Output$summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
+  # CI reference : https://stat.ethz.ch/R-manual/R-devel/library/nlme/html/intervals.gls.html
+  # unlike the descriptions in the link above, intervals() appears to calculate the confidence intervals on a t distribution
+  CIs=intervals(Output$gls_model_fit)
+  
+  Output$Summ_table$Estimate=round(Output$Summ_table$Estimate, 3)
+  Output$Summ_table$CI_LB=round(CIs$coef[, "lower"], 3)
+  Output$Summ_table$CI_UB=round(CIs$coef[, "upper"], 3)
+  Output$Summ_table$Std.Error=round(Output$Summ_table$Std.Error, 3)
+  Output$Summ_table$`T-value`=round(Output$Summ_table$`T-value`, 3)
+  Output$Summ_table$`P-value`=ifelse(Output$Summ_table$`P-value`<0.001, "<0.001", round(Output$Summ_table$`P-value`, 3))
+  Output$Summ_table=Output$Summ_table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
+  Output$Interpretation=paste0("The outcome changes by ", Output$Summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
+                               "This time effect changes to ", Output$Summ_table["Time", "Estimate"]+Output$Summ_table["Trend", "Estimate"],
+                               "(=", Output$Summ_table["Time", "Estimate"], "+", Output$Summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
                                "After the intervention, the outcome immediately changes by ",
-                               Output$summ_table["Level", "Estimate"],
+                               Output$Summ_table["Level", "Estimate"],
                                " on average.")
   
   # fitted value
@@ -2034,6 +2038,7 @@ Segmented_Regression_Model=function(Data,
   
   return(Output)
 }
+
 
 
 #************************************************
@@ -3086,8 +3091,11 @@ GLM_Multivariable=function(Data,
   
   # Output
   if(grepl("gaussian", which.family)){
-    # Individual Wald test and confidence interval for each parameter
-    Est.CI=cbind(Est=coef(model_fit), confint(model_fit, level=0.95))
+    # Individual t test and confidence interval for each parameter
+    # confint.lm for the direct formulae based on t values
+    # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+    Est.CI=cbind(Est=coef(model_fit), confint.lm(model_fit, level=0.95))
+    
     colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
     est=cbind(summary(model_fit)$coefficients, Est.CI)
     
@@ -3105,7 +3113,9 @@ GLM_Multivariable=function(Data,
     )
   }else if(grepl("binomial", which.family)){ # default with the logit link function
     # Individual Wald test and confidence interval for each parameter
-    OR.CI=exp(cbind(OR=coef(model_fit), confint(model_fit, level=0.95)))
+    # confint.default for normal approximation (Wald CIs)
+    # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+    OR.CI=exp(cbind(OR=coef(model_fit), confint.default(model_fit, level=0.95)))
     colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
     est=cbind.fill(summary(model_fit)$coefficients, OR.CI)
     
@@ -3141,7 +3151,9 @@ GLM_Multivariable=function(Data,
     #   )
   }else if(grepl("poisson", which.family)){
     # Individual Wald test and confidence interval for each parameter
-    IRR.CI=exp(cbind(IRR=coef(model_fit), confint(model_fit, level=0.95)))
+    # confint.default for normal approximation (Wald CIs)
+    # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+    IRR.CI=exp(cbind(IRR=coef(model_fit), confint.default(model_fit, level=0.95)))
     colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
     est=cbind(summary(model_fit)$coefficients, IRR.CI)
     
@@ -3544,6 +3556,9 @@ GLM_NB_Multivariable=function(Data,
   Used_N_Rows=nobs(model_fit)
   
   # Individual Wald test and confidence interval for each parameter
+  # confint() used here is basically the same as confint.default() as defined earlier
+  # confint.default for normal approximation (Wald CIs)
+  # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
   IRR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
   colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
   est=cbind(summary(model_fit)$coefficients, IRR.CI)
@@ -4897,6 +4912,32 @@ GLMM_Multivariable=function(Data,
     #control=glmerControl(optimizer=c("optimx"), optCtrl=list(method="nlminbwrap"))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }
   
+  
+  #*************************
+  # define confint for class
+  #*************************
+  # define a method for class, lmerModLmerTest
+  # confint.lmerModLmerTest() for the direct formulae based on t values
+  confint.lmerModLmerTest=function(object, level=0.95){
+    Summ=summary(object)
+    Coeffs=Summ$coefficients
+    CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qt(1-(1-level)/2, Coeffs[, "df"])*Coeffs[, "Std. Error"],
+              `97.5%`=Coeffs[, "Estimate"]+qt(1-(1-level)/2, Coeffs[, "df"])*Coeffs[, "Std. Error"])
+    return(CIs)
+  }
+  
+  # glmer uses the Wald test for mostly used distribution types, including "binomial", "poisson", and "negative_binomial".
+  # However, confint.default() does not work for class, glmerMod, yet, with an error message "Error in diag(vcov(object)) : long vectors not supported yet: array.c:2192".
+  # Thus, define a method for class, glmerMod.
+  # confint.glmerMod() for normal approximation (Wald CIs)
+  confint.glmerMod=function(object, level=0.95){
+    Summ=summary(object)
+    Coeffs=Summ$coefficients
+    CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"],
+              `97.5%`=Coeffs[, "Estimate"]+qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"])
+    return(CIs)
+  }
+  
   # number of observations from a model fit
   Used_N_Rows=nobs(myfit)
   
@@ -4905,10 +4946,10 @@ GLMM_Multivariable=function(Data,
   
   Coef.ind=c()
   # confidence interval (raw)
-  CI.raw=confint(myfit, level=0.95, method="Wald")
+  CI.raw=confint(myfit, level=0.95)
   CI.raw.ind=c()
   # confidence interval (exponentiated)
-  CI=exp(confint(myfit, level=0.95, method="Wald"))
+  CI=exp(CI.raw)
   CI.ind=c()
   # power
   Var.Power=list()
