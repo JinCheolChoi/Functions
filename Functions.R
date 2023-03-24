@@ -1846,12 +1846,12 @@ Segmented_Regression_Model=function(Data,
                                 max.lag=Period,
                                 alternative="two.sided")
   
-  # acf
+  # acf (to determine MA (q))
   Acf=acf(Data[, .SD, .SDcols=Res_Var],
           plot=FALSE,
           na.action=na.pass)
   
-  # pacf
+  # pacf (to determine AR (p))
   Pacf=pacf(Data[, .SD, .SDcols=Res_Var],
             plot=FALSE,
             na.action=na.pass)
@@ -4204,7 +4204,6 @@ GEE_Backward_by_QIC=function(Full_Model,
     
     #
     Current_Full_Model_QIC=QIC(Current_Full_Model)["QIC"]
-    
     Reduced_Model_QICs=c()
     
     # run GEE excluding one variable at once
