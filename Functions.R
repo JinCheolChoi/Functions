@@ -1846,12 +1846,12 @@ Segmented_Regression_Model=function(Data,
                                 max.lag=Period,
                                 alternative="two.sided")
   
-  # acf
+  # acf (to determine MA (q))
   Acf=acf(Data[, .SD, .SDcols=Res_Var],
           plot=FALSE,
           na.action=na.pass)
   
-  # pacf
+  # pacf (to determine AR (p))
   Pacf=pacf(Data[, .SD, .SDcols=Res_Var],
             plot=FALSE,
             na.action=na.pass)
@@ -2161,9 +2161,11 @@ COX_Bivariate=function(Data,
                        Strat_Vars=NULL,
                        Start_Time=NULL,
                        Stop_Time,
-                       Message="Yes"){
+                       Message="Yes",
+                       Significance_Level=0.1){ # Significance_Level : a threshold of p-value for univariable selection
   # main algorithm
   Output=c()
+  List_For_Multivariable=c()
   for(i in 1:length(Pred_Vars)){
     #i=1
     if(i>=2){
@@ -2183,11 +2185,19 @@ COX_Bivariate=function(Data,
                        N_events=Temp$N_events,
                        PH_assumption_P.value=Temp$cox.zph$table[1, "p"],
                        N_non_missing_data=Temp$N_non_missing_data))
+    
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$summ_table$P.value)|
+       sum(Temp$summ_table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
   }
   
   # print a note
   print("The PH assumption is better to be considered at the multivariable analysis level.")
-  return(Output)
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
 }
 
 
@@ -2297,7 +2307,7 @@ COX_Multivariable=function(Data,
          cex.sub=2)
     abline(0, 0, col=1, lty=3, lwd=2)
     abline(h=Output$model_fit$coef[which(names(Assumption_Table_Temp[, "p"])==Var)], col=3, lwd=2, lty=2)
-    legend("bottomright",
+    legend("topright",
            legend=c('Reference line for null effect',
                     "Average hazard over time",
                     "Time-varying hazard"),
@@ -3043,7 +3053,7 @@ GLM_Multivariable=function(Data,
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
-  # Data<<-na.exclude(Data[, c(Pred_Vars, Res_Var)]) # activate if Stepwise_AIC() is used
+  Data<<-na.exclude(Data[, c(unique(unlist(strsplit(Pred_Vars, ":"))), Res_Var)]) # activate if Stepwise_AIC() is used
   
   # main algorithm
   Output=c()
@@ -3681,9 +3691,15 @@ GLM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #               Res_Var="outcome",
 #               Group_Var="id",
 #               which.family="binomial (link='logit')")
-GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomial"){
+GEE_Bivariate=function(Data,
+                       Pred_Vars,
+                       Res_Var,
+                       Group_Var,
+                       which.family="binomial",
+                       Significance_Level=0.1){
   # main algorithm
   Output=c()
+  List_For_Multivariable=c()
   for(i in 1:length(Pred_Vars)){
     Temp=GEE_Multivariable(Data=Data,
                            Pred_Vars=unlist(Pred_Vars[i]),
@@ -3695,6 +3711,13 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
                  cbind(Temp$summ_table,
                        Data_Used=Temp$N_data_used))
     
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$summ_table$P.value)|
+       sum(Temp$summ_table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
+    
     # print out progress
     if(sum(grepl(":", Pred_Vars[i]))>0){
       print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", unlist(Pred_Vars[i])[grepl(":", unlist(Pred_Vars[i]))], " (", i ," out of ", length(Pred_Vars), ")"))
@@ -3702,7 +3725,8 @@ GEE_Bivariate=function(Data, Pred_Vars, Res_Var, Group_Var, which.family="binomi
       print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
     }
   }
-  return(Output)
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
 }
 
 #******************
@@ -4180,7 +4204,6 @@ GEE_Backward_by_QIC=function(Full_Model,
     
     #
     Current_Full_Model_QIC=QIC(Current_Full_Model)["QIC"]
-    
     Reduced_Model_QICs=c()
     
     # run GEE excluding one variable at once
@@ -8369,9 +8392,16 @@ Contingency_Table_Generator_Conti_X=function(Data,
   colnames(Out)[1:2]=c("Variable", "Value")
   
   #
-  colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
-  colnames(Out)[(3+length(Sum_Col_Wise))]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
-  colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+5)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)", "P-value (T_test)", "P-value (ANOVA)")
+  # colnames(Out)[3:(3+length(Sum_Col_Wise)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise), " (n=", Sum_Col_Wise, ")")
+  # colnames(Out)[(3+length(Sum_Col_Wise))]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
+  # colnames(Out)[(3+length(Sum_Col_Wise)+1):(3+length(Sum_Col_Wise)+5)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)", "P-value (T_test)", "P-value (ANOVA)")
+  
+  common_columns=names(Sum_Col_Wise)%in%colnames(Out)
+  
+  colnames(Out)[3:(3+sum(common_columns)-1)]=paste0(Col_Var, "=", names(Sum_Col_Wise[common_columns]), " (n=", Sum_Col_Wise[common_columns], ")")
+  colnames(Out)[(3+sum(common_columns))]=paste0("Total (n=", sum(Sum_Col_Wise), ")")
+  colnames(Out)[(3+sum(common_columns)+1):(3+sum(common_columns)+5)]=c("OR (95% CI)", "P-value (GLM)", "P-value (Mann_Whitney)", "P-value (T_test)", "P-value (ANOVA)")
+  
   
   # return
   return(as.data.table(Out))
