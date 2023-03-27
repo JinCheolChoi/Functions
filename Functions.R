@@ -315,6 +315,46 @@ Align_plots=function(...){
   grid::grid.draw(combined)
 }
 
+#**********
+# confint_t
+#**********
+# the direct formulae based on t values
+confint_t=function(object, level=0.95){
+  Summ=summary(object)
+  Coeffs=Summ$coefficients
+  
+  switch(as.character(is.null(Summ$df.residual)),
+         
+         # for mixed models (i.e. GLMM)
+         "TRUE"={
+           DF=Summ$coefficients[, "df"]
+         },
+         
+         # for fixed models (i.e. GLM)
+         "FALSE"={
+           DF=Summ$df.residual
+         },
+         
+         # default
+         stop("as.character(is.null(Summ$df.residual)) is something else"))
+  
+  CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qt(1-(1-level)/2, DF)*Coeffs[, "Std. Error"],
+            `97.5%`=Coeffs[, "Estimate"]+qt(1-(1-level)/2, DF)*Coeffs[, "Std. Error"])
+  return(CIs)
+}
+
+#*************
+# confint_wald
+#*************
+# normal approximation (Wald CIs)
+confint_wald=function(object, level=0.95){
+  Summ=summary(object)
+  Coeffs=Summ$coefficients
+  CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"],
+            `97.5%`=Coeffs[, "Estimate"]+qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"])
+  return(CIs)
+}
+
 
 #*********************************
 #
@@ -3089,14 +3129,36 @@ GLM_Multivariable=function(Data,
   # vif
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
   
+  # determine whether p-value is calculated based on t or Wald
+  Value_Label=colnames(summary(model_fit)$coefficients)[grep("value", colnames(summary(model_fit)$coefficients))]
+  if(grepl("z", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
   # Output
   if(grepl("gaussian", which.family)){
-    # Individual t test and confidence interval for each parameter
-    # confint.lm for the direct formulae based on t values
-    # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
-    Est.CI=cbind(Est=coef(model_fit), confint.lm(model_fit, level=0.95))
+    # # Individual t test and confidence interval for each parameter
+    # # confint.lm for the direct formulae based on t values
+    # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+    # Est.CI=cbind(Est=coef(model_fit), confint.lm(model_fit, level=0.95))
     
+    switch(CI_Type,
+           
+           # t-distribution-based confidence interval using a function written in person
+           "t"={Est.CI=cbind(Est=coef(model_fit), confint_t(model_fit, level=0.95))},
+           
+           # Wald confidence interval using a function written in person
+           "z"={Est.CI=cbind(Est=coef(model_fit), confint_wald(model_fit, level=0.95))},
+           
+           # default
+           stop("CI_Type = Nothing")
+    )
     colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
+    
     est=cbind(summary(model_fit)$coefficients, Est.CI)
     
     Output$summ_table=rbind(Output$summ_table,
@@ -3112,11 +3174,24 @@ GLM_Multivariable=function(Data,
                             )
     )
   }else if(grepl("binomial", which.family)){ # default with the logit link function
-    # Individual Wald test and confidence interval for each parameter
-    # confint.default for normal approximation (Wald CIs)
-    # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
-    OR.CI=exp(cbind(OR=coef(model_fit), confint.default(model_fit, level=0.95)))
+    # # Individual Wald test and confidence interval for each parameter
+    # # confint.default for normal approximation (Wald CIs)
+    # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+    # OR.CI=exp(cbind(OR=coef(model_fit), confint.default(model_fit, level=0.95)))
+    
+    switch(CI_Type,
+           
+           # t-distribution-based confidence interval using a function written in person
+           "t"={OR.CI=exp(cbind(OR=coef(model_fit), confint_t(model_fit, level=0.95)))},
+           
+           # Wald confidence interval using a function written in person
+           "z"={OR.CI=exp(cbind(OR=coef(model_fit), confint_wald(model_fit, level=0.95)))},
+           
+           # default
+           stop("CI_Type = Nothing")
+    )
     colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
+    
     est=cbind.fill(summary(model_fit)$coefficients, OR.CI)
     
     Output$summ_table=rbind(Output$summ_table,
@@ -3150,10 +3225,22 @@ GLM_Multivariable=function(Data,
     #                           )
     #   )
   }else if(grepl("poisson", which.family)){
-    # Individual Wald test and confidence interval for each parameter
-    # confint.default for normal approximation (Wald CIs)
-    # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
-    IRR.CI=exp(cbind(IRR=coef(model_fit), confint.default(model_fit, level=0.95)))
+    # # Individual Wald test and confidence interval for each parameter
+    # # confint.default for normal approximation (Wald CIs)
+    # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+    # IRR.CI=exp(cbind(IRR=coef(model_fit), confint.default(model_fit, level=0.95)))
+    
+    switch(CI_Type,
+           
+           # t-distribution-based confidence interval using a function written in person
+           "t"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_t(model_fit, level=0.95)))},
+           
+           # Wald confidence interval using a function written in person
+           "z"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_wald(model_fit, level=0.95)))},
+           
+           # default
+           stop("CI_Type = Nothing")
+    )
     colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
     est=cbind(summary(model_fit)$coefficients, IRR.CI)
     
@@ -3548,19 +3635,42 @@ GLM_NB_Multivariable=function(Data,
                      offset=eval(parse(text=(paste0("log(" , Offset_Var, ")")))))
   }
   
-  # this is to avoide an error "profiling has found a better solution, so original fit had not converged"
-  class(model_fit)=c("myglm", class(model_fit))
-  confint.myglm=confint.default
+  # # this is to avoide an error "profiling has found a better solution, so original fit had not converged"
+  # class(model_fit)=c("myglm", class(model_fit))
+  # confint.myglm=confint.default
   
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
-  # Individual Wald test and confidence interval for each parameter
-  # confint() used here is basically the same as confint.default() as defined earlier
-  # confint.default for normal approximation (Wald CIs)
-  # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
-  IRR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
+  # # Individual Wald test and confidence interval for each parameter
+  # # confint() used here is basically the same as confint.default() as defined earlier
+  # # confint.default for normal approximation (Wald CIs)
+  # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+  # IRR.CI=exp(cbind(RR=coef(model_fit), confint(model_fit, level=0.95)))
+  
+  # determine whether p-value is calculated based on t or Wald
+  Value_Label=colnames(summary(model_fit)$coefficients)[grep("value", colnames(summary(model_fit)$coefficients))]
+  if(grepl("z", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
+  switch(CI_Type,
+         
+         # t-distribution-based confidence interval using a function written in person
+         "t"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_t(model_fit, level=0.95)))},
+         
+         # Wald confidence interval using a function written in person
+         "z"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_wald(model_fit, level=0.95)))},
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
   colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
+  
   est=cbind(summary(model_fit)$coefficients, IRR.CI)
   
   # Output
@@ -4826,7 +4936,7 @@ GLMM_Bivariate=function(Data,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
 # #Two arguments (which.family and NAGQ) must be declared with '<-' in a function when estimating power!
-# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use, Data_to_use),
+# GLMM_Mult_model=GLMM_Multivariable(Data=rbind(Data_to_use),
 #                                    Pred_Vars=c("center", "sex", "age", "sex:age"),
 #                                    Res_Var="outcome",
 #                                    Group_Var="id",
@@ -4912,45 +5022,42 @@ GLMM_Multivariable=function(Data,
     #control=glmerControl(optimizer=c("optimx"), optCtrl=list(method="nlminbwrap"))) # try "bobyqa" or "Nelder_Mead" if the algorithm fails to converge.
   }
   
-  
-  #*************************
-  # define confint for class
-  #*************************
-  # define a method for class, lmerModLmerTest
-  # confint.lmerModLmerTest() for the direct formulae based on t values
-  confint.lmerModLmerTest=function(object, level=0.95){
-    Summ=summary(object)
-    Coeffs=Summ$coefficients
-    CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qt(1-(1-level)/2, Coeffs[, "df"])*Coeffs[, "Std. Error"],
-              `97.5%`=Coeffs[, "Estimate"]+qt(1-(1-level)/2, Coeffs[, "df"])*Coeffs[, "Std. Error"])
-    return(CIs)
-  }
-  
-  # glmer uses the Wald test for mostly used distribution types, including "binomial", "poisson", and "negative_binomial".
-  # However, confint.default() does not work for class, glmerMod, yet, with an error message "Error in diag(vcov(object)) : long vectors not supported yet: array.c:2192".
-  # Thus, define a method for class, glmerMod.
-  # confint.glmerMod() for normal approximation (Wald CIs)
-  confint.glmerMod=function(object, level=0.95){
-    Summ=summary(object)
-    Coeffs=Summ$coefficients
-    CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"],
-              `97.5%`=Coeffs[, "Estimate"]+qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"])
-    return(CIs)
-  }
-  
   # number of observations from a model fit
   Used_N_Rows=nobs(myfit)
   
   # coefficient
   Coef=summary(myfit)$coefficients
-  
   Coef.ind=c()
+  
+  # determine whether p-value is calculated based on t or Wald
+  Value_Label=colnames(summary(myfit)$coefficients)[grep("value", colnames(summary(myfit)$coefficients))]
+  if(grepl("z", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
   # confidence interval (raw)
-  CI.raw=confint(myfit, level=0.95)
+  # CI.raw=confint(myfit, level=0.95)
+  switch(CI_Type,
+         
+         # t-distribution-based confidence interval using a function written in person
+         "t"={CI.raw=cbind(confint_t(myfit, level=0.95))},
+         
+         # Wald confidence interval using a function written in person
+         "z"={CI.raw=cbind(confint_wald(myfit, level=0.95))},
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
   CI.raw.ind=c()
+  
   # confidence interval (exponentiated)
   CI=exp(CI.raw)
   CI.ind=c()
+  
   # power
   Var.Power=list()
   Estimates=row.names(Coef)[-1]
@@ -8211,7 +8318,7 @@ Contingency_Table_Generator=function(Data,
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
       oddsratio(method="wald")
-    Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2), 
+    Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 5), 
                                 " (", 
                                 round(Odds_ratio$measure[, 2], 2), 
                                 " - ", 
