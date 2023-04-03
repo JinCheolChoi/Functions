@@ -1642,7 +1642,7 @@ GEE_MSM=function(Outcome,
   #Output$vif=HH::vif(model_fit)
   
   if(grepl("gaussian", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -1652,7 +1652,7 @@ GEE_MSM=function(Outcome,
                                  row.names=names(coef(model_fit))[-1]
     )
   }else if(grepl("binomial", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -1663,7 +1663,7 @@ GEE_MSM=function(Outcome,
     )
     
   }else if(grepl("poisson", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -1673,7 +1673,7 @@ GEE_MSM=function(Outcome,
                                  row.names=names(coef(model_fit))[-1]
     )
   }
-  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  Output$Summ_Table=as.data.table(Output$Summ_Table, keep.rownames=TRUE)
   return(Output)
 }
 
@@ -1941,10 +1941,10 @@ Segmented_Regression_Model=function(Data,
   Output$DW_Test=DW_Test
   Output$Acf=function(){plot(Acf, main=Res_Var)}
   Output$Pacf=function(){plot(Pacf, main=Res_Var)}
-  Output$Summ_table=as.data.frame(summary(gls_model_fit)$tTable)
-  colnames(Output$Summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
+  Output$Summ_Table=as.data.frame(summary(gls_model_fit)$tTable)
+  colnames(Output$Summ_Table)=c("Estimate", "Std.Error", "T-value", "P-value")
   
-  # Coefficients in Summ_table represent the followings.
+  # Coefficients in Summ_Table represent the followings.
   # Time : Pre-intervention slope by time
   # Level : Immediate level change after intervention
   # Trend : Trend (Slope) change after intervention
@@ -1953,18 +1953,18 @@ Segmented_Regression_Model=function(Data,
   # unlike the descriptions in the link above, intervals() appears to calculate the confidence intervals on a t distribution
   CIs=intervals(Output$gls_model_fit)
   
-  Output$Summ_table$Estimate=round(Output$Summ_table$Estimate, 3)
-  Output$Summ_table$CI_LB=round(CIs$coef[, "lower"], 3)
-  Output$Summ_table$CI_UB=round(CIs$coef[, "upper"], 3)
-  Output$Summ_table$Std.Error=round(Output$Summ_table$Std.Error, 3)
-  Output$Summ_table$`T-value`=round(Output$Summ_table$`T-value`, 3)
-  Output$Summ_table$`P-value`=ifelse(Output$Summ_table$`P-value`<0.001, "<0.001", round(Output$Summ_table$`P-value`, 3))
-  Output$Summ_table=Output$Summ_table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
-  Output$Interpretation=paste0("The outcome changes by ", Output$Summ_table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
-                               "This time effect changes to ", Output$Summ_table["Time", "Estimate"]+Output$Summ_table["Trend", "Estimate"],
-                               "(=", Output$Summ_table["Time", "Estimate"], "+", Output$Summ_table["Trend", "Estimate"], ") in the post-intervention period. ",
+  Output$Summ_Table$Estimate=round(Output$Summ_Table$Estimate, 3)
+  Output$Summ_Table$CI_LB=round(CIs$coef[, "lower"], 3)
+  Output$Summ_Table$CI_UB=round(CIs$coef[, "upper"], 3)
+  Output$Summ_Table$Std.Error=round(Output$Summ_Table$Std.Error, 3)
+  Output$Summ_Table$`T-value`=round(Output$Summ_Table$`T-value`, 3)
+  Output$Summ_Table$`P-value`=ifelse(Output$Summ_Table$`P-value`<0.001, "<0.001", round(Output$Summ_Table$`P-value`, 3))
+  Output$Summ_Table=Output$Summ_Table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
+  Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
+                               "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend", "Estimate"],
+                               "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend", "Estimate"], ") in the post-intervention period. ",
                                "After the intervention, the outcome immediately changes by ",
-                               Output$Summ_table["Level", "Estimate"],
+                               Output$Summ_Table["Level", "Estimate"],
                                " on average.")
   
   # fitted value
@@ -2134,12 +2134,12 @@ Segmented_Regression_Model=function(Data,
 #   Output=c()
 #   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)")
 #   Output$model_fit=model_fit
-#   Output$summ_table=as.data.frame(summary(model_fit)$coefficients)
-#   colnames(Output$summ_table)=c("Estimate", "Std.Error", "T-value", "P-value")
-#   Output$summ_table$Estimate=round(Output$summ_table$Estimate, 3)
-#   Output$summ_table$Std.Error=round(Output$summ_table$Std.Error, 3)
-#   Output$summ_table$`T-value`=round(Output$summ_table$`T-value`, 3)
-#   Output$summ_table$`P-value`=ifelse(Output$summ_table$`P-value`<0.001, "<0.001", round(Output$summ_table$`P-value`, 3))
+#   Output$Summ_Table=as.data.frame(summary(model_fit)$coefficients)
+#   colnames(Output$Summ_Table)=c("Estimate", "Std.Error", "T-value", "P-value")
+#   Output$Summ_Table$Estimate=round(Output$Summ_Table$Estimate, 3)
+#   Output$Summ_Table$Std.Error=round(Output$Summ_Table$Std.Error, 3)
+#   Output$Summ_Table$`T-value`=round(Output$Summ_Table$`T-value`, 3)
+#   Output$Summ_Table$`P-value`=ifelse(Output$Summ_Table$`P-value`<0.001, "<0.001", round(Output$Summ_Table$`P-value`, 3))
 # 
 #   return(Output)
 # }
@@ -2226,14 +2226,14 @@ COX_Bivariate=function(Data,
                            Stop_Time=Stop_Time,
                            Message=Message)
     Output=rbind(Output,
-                 cbind(Temp$summ_table,
+                 cbind(Temp$Summ_Table,
                        N_events=Temp$N_events,
                        PH_assumption_P.value=Temp$cox.zph$table[1, "p"],
                        N_non_missing_data=Temp$N_non_missing_data))
     
     # List_For_Multivariable
-    if("<0.001"%in%(Temp$summ_table$P.value)|
-       sum(Temp$summ_table$P.value<Significance_Level)>0){
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
@@ -2284,6 +2284,11 @@ COX_Multivariable=function(Data,
   Data=as.data.frame(Data)
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
+  Data=Data[Data[, Stop_Time]!=0, ]
+  if(!is.null(Start_Time)){
+    Data=Data[Data[, Start_Time]<Data[, Stop_Time],]
+  }
+  
   Origin_N_Rows=nrow(Data)
   Analyzed_Data<<-Data # for COX_Backward_by_AIC
   
@@ -2372,7 +2377,7 @@ COX_Multivariable=function(Data,
   }else{ # if cluster (group) is specified, report robust standard errors
     Std.Error=round2(HR.Coefficients[, "robust se"], 3)  }
   
-  Output$summ_table=rbind(Output$summ_table, 
+  Output$Summ_Table=rbind(Output$Summ_Table, 
                           data.frame(
                             Estimate=round2(HR.Coefficients[, "coef"], 3),
                             Std.Error=Std.Error,
@@ -2490,7 +2495,7 @@ COX_Confounder_Selection=function(Full_Model,
     }
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
@@ -2513,7 +2518,7 @@ COX_Confounder_Selection=function(Full_Model,
           Delta="",
           Rank=""
         )
-        Out$summ_table[[step]]=Temp_Table
+        Out$Summ_Table[[step]]=Temp_Table
         loop.key=1
       }
     }
@@ -2521,7 +2526,7 @@ COX_Confounder_Selection=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  Out$Confounders=c(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var)])
   
   return(Out)
 }
@@ -2554,9 +2559,9 @@ COX_Confounder_Selection=function(Full_Model,
 #                                     Stop_Time="stop",
 #                                     Min.Change.Percentage=5,
 #                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
-# COX_Confounder$Full_Multivariable_Model$summ_table
+# COX_Confounder$Full_Multivariable_Model$Summ_Table
 # COX_Confounder$Confounder_Steps$Confounders
-# COX_Confounder$Confounder_Model$summ_table
+# COX_Confounder$Confounder_Model$Summ_Table
 COX_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
@@ -2661,12 +2666,12 @@ KM_Plot=function(Data,
     ggtext::element_markdown(size=font$size, face=font$face, colour=font$color)
   }
   
-  # Survival_Table
-  if(sum(Pred_Vars!="1")>0){
-    legend.labs.temp=paste0(Pred_Vars, " = ", Data[, unique(eval(parse(text=Pred_Vars)))])
-  }else{
-    legend.labs.temp="All"
-  }
+  # # Survival_Table
+  # if(sum(Pred_Vars!="1")>0){
+  #   legend.labs.temp=paste0(Pred_Vars, " = ", Data[, unique(eval(parse(text=Pred_Vars)))])
+  # }else{
+  #   legend.labs.temp="All"
+  # }
   Survival_Table=function(x, y, z){
     temp_table=do.call(x,
                        list(fit=survfit_output,
@@ -2678,8 +2683,8 @@ KM_Plot=function(Data,
                             cumcensor.title="",
                             fontsize=8,
                             # xlim=c(0, max(Data[, eval(parse(text=Stop_Time))]), na.rm=T),
-                            break.time.by=round((max(Data[[Stop_Time]])-min(Data[[Stop_Time]]))/10),
-                            legend.labs=legend.labs.temp,
+                            break.time.by=as.numeric(round((max(Data[[Stop_Time]])-min(Data[[Stop_Time]]))/10)),
+                            # legend.labs=legend.labs.temp,
                             font.tickslab=20))
     temp_table=temp_table+theme(plot.subtitle=.set_font(25),
                                 plot.caption=.set_font(25),
@@ -2773,7 +2778,7 @@ KM_Plot=function(Data,
   output$survfit_output=survfit_output
   output$ggsurv_plot=ggsurv_plot
   output$pairwise_test=pairwise_test
-  output$summ_tables=Tables
+  output$Summ_Tables=Tables
   
   # return output
   return(output)
@@ -2863,7 +2868,7 @@ COX_Backward_by_AIC=function(Full_Model,
     Temp_Table=Temp_Table[order(AIC), ]
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
@@ -2887,7 +2892,7 @@ COX_Backward_by_AIC=function(Full_Model,
       #     Delta="",
       #     Rank=""
       #   )
-      #   Out$summ_table[[step]]=Temp_Table
+      #   Out$Summ_Table[[step]]=Temp_Table
       #   loop.key=1
       # }
     }
@@ -3033,13 +3038,13 @@ GLM_Bivariate=function(Data,
                            Res_Var=Res_Var,
                            which.family=which.family)
     Output=rbind(Output,
-                 cbind(Temp$summ_table[, c(1, 2, 3, 5)],
+                 cbind(Temp$Summ_Table[, c(1, 2, 3, 5)],
                        Data_Used=Temp$N_data_used),
                  fill=T)
     
     # List_For_Multivariable
-    if("<0.001"%in%(Temp$summ_table$P.value)|
-       sum(Temp$summ_table$P.value<Significance_Level)>0){
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
@@ -3161,7 +3166,7 @@ GLM_Multivariable=function(Data,
     
     est=cbind(summary(model_fit)$coefficients, Est.CI)
     
-    Output$summ_table=rbind(Output$summ_table,
+    Output$Summ_Table=rbind(Output$Summ_Table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
                               Std.Error=round2(est[-1, "Std. Error"], 3),
@@ -3194,7 +3199,7 @@ GLM_Multivariable=function(Data,
     
     est=cbind.fill(summary(model_fit)$coefficients, OR.CI)
     
-    Output$summ_table=rbind(Output$summ_table,
+    Output$Summ_Table=rbind(Output$Summ_Table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
                               Std.Error=round2(est[-1, "Std. Error"], 3),
@@ -3212,7 +3217,7 @@ GLM_Multivariable=function(Data,
     #   colnames(RR.CI)=c("Odds Ratio", "Lower RR", "Upper RR")
     #   est=cbind(summary(model_fit)$coefficients, RR.CI)
     #   
-    #   Output$summ_table=rbind(Output$summ_table,
+    #   Output$Summ_Table=rbind(Output$Summ_Table,
     #                           data.frame(
     #                             Estimate=round2(est[-1, "Estimate"], 3),
     #                             Std.Error=round2(est[-1, "Std. Error"], 3),
@@ -3244,7 +3249,7 @@ GLM_Multivariable=function(Data,
     colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
     est=cbind(summary(model_fit)$coefficients, IRR.CI)
     
-    Output$summ_table=rbind(Output$summ_table,
+    Output$Summ_Table=rbind(Output$Summ_Table,
                             data.frame(
                               Estimate=round2(est[-1, "Estimate"], 3),
                               Std.Error=round2(est[-1, "Std. Error"], 3),
@@ -3258,10 +3263,10 @@ GLM_Multivariable=function(Data,
     )
   }
   
-  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  Output$Summ_Table=as.data.table(Output$Summ_Table, keep.rownames=TRUE)
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$Summ_Table=cbind(Output$Summ_Table[, c(1, 5, 4)],
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
                             # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
@@ -3269,7 +3274,7 @@ GLM_Multivariable=function(Data,
                             N_data_used=N_data_used)
     
   }else{
-    Output$summ_table=cbind(Output$summ_table[, c(1, 5, 4)],
+    Output$Summ_Table=cbind(Output$Summ_Table[, c(1, 5, 4)],
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
@@ -3279,8 +3284,8 @@ GLM_Multivariable=function(Data,
   LRT_pvalues=LRT_results$`Pr(>Chi)`
   LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
                      format(round2(LRT_pvalues, 7), nsmall=3))
-  Output$summ_table$`P.value(LRT)`=rep(LRT_pvalues[-1], LRT_results$Df[-1])
-  Output$summ_table$`P.value(LRT)`[duplicated(rep(rownames(LRT_results)[-1], LRT_results$Df[-1]))]=""
+  Output$Summ_Table$`P.value(LRT)`=rep(LRT_pvalues[-1], LRT_results$Df[-1])
+  Output$Summ_Table$`P.value(LRT)`[duplicated(rep(rownames(LRT_results)[-1], LRT_results$Df[-1]))]=""
   
   return(Output)
 }
@@ -3409,7 +3414,7 @@ GLM_Confounder_Selection=function(Full_Model,
     }
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
@@ -3431,7 +3436,7 @@ GLM_Confounder_Selection=function(Full_Model,
           Delta="",
           Rank=""
         )
-        Out$summ_table[[step]]=Temp_Table
+        Out$Summ_Table[[step]]=Temp_Table
         loop.key=1
       }
     }
@@ -3439,7 +3444,7 @@ GLM_Confounder_Selection=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  Out$Confounders=c(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var)])
   
   return(Out)
 }
@@ -3480,9 +3485,9 @@ GLM_Confounder_Selection=function(Full_Model,
 #                                     which.family="binomial (link='logit')", # gaussian, binomial, poisson
 #                                     Min.Change.Percentage=5,
 #                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
-# GLM_Confounder$Full_Multivariable_Model$summ_table
+# GLM_Confounder$Full_Multivariable_Model$Summ_Table
 # GLM_Confounder$Confounder_Steps$Confounders
-# GLM_Confounder$Confounder_Model$summ_table
+# GLM_Confounder$Confounder_Model$Summ_Table
 GLM_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
@@ -3562,7 +3567,7 @@ GLM_NB_Bivariate=function(Data, Pred_Vars, Res_Var, Offset_Var){
                               Res_Var=Res_Var,
                               Offset_Var=Offset_Var)
     Output=rbind(Output,
-                 cbind(Temp$summ_table,
+                 cbind(Temp$Summ_Table,
                        Data_Used=Temp$N_data_used))
     
     # print out progress
@@ -3681,7 +3686,7 @@ GLM_NB_Multivariable=function(Data,
   
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
-  Output$summ_table=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
+  Output$Summ_Table=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
                                Std.Error=round2(est[-1, "Std. Error"], 3), 
                                `P-value`=ifelse(round2(est[-1, "Pr(>|z|)"], 3)<0.001, "<0.001", 
                                                 format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
@@ -3833,12 +3838,12 @@ GEE_Bivariate=function(Data,
                            which.family=which.family)
     
     Output=rbind(Output,
-                 cbind(Temp$summ_table,
+                 cbind(Temp$Summ_Table,
                        Data_Used=Temp$N_data_used))
     
     # List_For_Multivariable
-    if("<0.001"%in%(Temp$summ_table$P.value)|
-       sum(Temp$summ_table$P.value<Significance_Level)>0){
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
@@ -3957,7 +3962,7 @@ GEE_Multivariable=function(Data,
   # if(length(Pred_Vars)==1 & is.numeric(Data[, Pred_Vars])){Output$vif=""} # if the only variable is numeric, don't compute vif
   
   if(grepl("gaussian", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -3967,7 +3972,7 @@ GEE_Multivariable=function(Data,
                                  row.names=names(coef(model_fit))[-1]
     )
   }else if(grepl("binomial", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -3977,7 +3982,7 @@ GEE_Multivariable=function(Data,
                                  row.names=names(coef(model_fit))[-1]
     )
   }else if(grepl("poisson", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -3987,20 +3992,20 @@ GEE_Multivariable=function(Data,
                                  row.names=names(coef(model_fit))[-1]
     )
   }
-  Output$summ_table=as.data.table(Output$summ_table, keep.rownames=TRUE)
+  Output$Summ_Table=as.data.table(Output$Summ_Table, keep.rownames=TRUE)
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table, # keep Estimate & Std.Error for Combine_Multiple_Results()
-                            # Output$summ_table[, c(1, 5, 4)],
+    Output$Summ_Table=cbind(Output$Summ_Table, # keep Estimate & Std.Error for Combine_Multiple_Results()
+                            # Output$Summ_Table[, c(1, 5, 4)],
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
                             # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
                             # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table, # keep Estimate & Std.Error for Combine_Multiple_Results()
-                            # Output$summ_table[, c(1, 5, 4)],
+    Output$Summ_Table=cbind(Output$Summ_Table, # keep Estimate & Std.Error for Combine_Multiple_Results()
+                            # Output$Summ_Table[, c(1, 5, 4)],
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
@@ -4055,8 +4060,8 @@ GEE_Multivariable=function(Data,
 #                                    Res_Var<-Res_Var,
 #                                    Group_Var<-Group_Var,
 #                                    which.family<-"binomial (link='logit')")
-# GEE.fit$summ_table
-# GEE.confound.fit$summ_table
+# GEE.fit$Summ_Table
+# GEE.confound.fit$Summ_Table
 GEE_Confounder_Selection=function(Full_Model, 
                                   Main_Pred_Var, 
                                   Potential_Con_Vars, 
@@ -4138,7 +4143,7 @@ GEE_Confounder_Selection=function(Full_Model,
     }
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
@@ -4161,7 +4166,7 @@ GEE_Confounder_Selection=function(Full_Model,
           Delta="",
           Rank=""
         )
-        Out$summ_table[[step]]=Temp_Table
+        Out$Summ_Table[[step]]=Temp_Table
         loop.key=1
       }
     }
@@ -4169,7 +4174,7 @@ GEE_Confounder_Selection=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  Out$Confounders=c(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var)])
   
   return(Out)
 }
@@ -4207,9 +4212,9 @@ GEE_Confounder_Selection=function(Full_Model,
 #                                     which.family="binomial (link='logit')", # gaussian, binomial, poisson
 #                                     Min.Change.Percentage=15,
 #                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
-# GEE_Confounder$Full_Multivariable_Model$summ_table
+# GEE_Confounder$Full_Multivariable_Model$Summ_Table
 # GEE_Confounder$Confounder_Steps$Confounders
-# GEE_Confounder$Confounder_Model$summ_table
+# GEE_Confounder$Confounder_Model$Summ_Table
 GEE_Confounder_Model=function(Data,
                               Main_Pred_Var,
                               Potential_Con_Vars,
@@ -4353,7 +4358,7 @@ GEE_Backward_by_QIC=function(Full_Model,
     Temp_Table=Temp_Table[order(QIC), ]
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
@@ -4377,7 +4382,7 @@ GEE_Backward_by_QIC=function(Full_Model,
       #     Delta="",
       #     Rank=""
       #   )
-      #   Out$summ_table[[step]]=Temp_Table
+      #   Out$Summ_Table[[step]]=Temp_Table
       #   loop.key=1
       # }
     }
@@ -4488,7 +4493,7 @@ GEE_Backward_by_P=function(Full_Model,
     Temp_Table=Temp_Table[order(Pvalue, decreasing=T), ]
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(nrow(Temp_Table)==1){
       loop.key=1
@@ -4517,7 +4522,7 @@ GEE_Backward_by_P=function(Full_Model,
       #     Delta="",
       #     Rank=""
       #   )
-      #   Out$summ_table[[step]]=Temp_Table
+      #   Out$Summ_Table[[step]]=Temp_Table
       #   loop.key=1
       # }
     }
@@ -4525,7 +4530,7 @@ GEE_Backward_by_P=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Temp_Vars=Out$summ_table[[which(Out$Model_QIC==min(Out$Model_QIC))]]$Var
+  Temp_Vars=Out$Summ_Table[[which(Out$Model_QIC==min(Out$Model_QIC))]]$Var
   Selected_Vars=c()
   for(j in 1:length(Temp_Vars)){
     for(i in 1:length(Pred_Vars)){
@@ -4604,7 +4609,7 @@ GEE_Backward_by_P_2=function(Full_Model,
   Out$Model[[Step+1]]=Current_Full_Model
   
   # Out
-  Out$summ_table=Summ_Table
+  Out$Summ_Table=Summ_Table
   Out$QIC_Table=Temp_Table
   # the final model with the lowest QIC
   Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
@@ -4661,7 +4666,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
     QIC=QIC(Current_Full_Model$model_fit)["QIC"])
   
   Out$Model[[1]]=Current_Full_Model$model_fit
-  Summ_Table[[1]]=Current_Full_Model$summ_table[order(P.value, decreasing=TRUE)]
+  Summ_Table[[1]]=Current_Full_Model$Summ_Table[order(P.value, decreasing=TRUE)]
   # run GEE excluding one variable with the highest p-valuse in the current model
   for(Step in 1:length(Pred_Vars)){
     #Step=1
@@ -4690,7 +4695,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
     
     # save info
     Out$Model[[Step+1]]=Current_Full_Model$model_fit
-    Summ_Table[[Step+1]]=Current_Full_Model$summ_table[order(P.value, decreasing=TRUE)]
+    Summ_Table[[Step+1]]=Current_Full_Model$Summ_Table[order(P.value, decreasing=TRUE)]
     Temp_Table=rbind(Temp_Table,
                      data.table(
                        Step=Step+1,
@@ -4702,7 +4707,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
   Out$Model[[Step+1]]=Current_Full_Model
   
   # Out
-  Out$summ_table=Summ_Table
+  Out$Summ_Table=Summ_Table
   Out$QIC_Table=Temp_Table
   # the final model with the lowest QIC
   Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
@@ -4889,12 +4894,12 @@ GLMM_Bivariate=function(Data,
                             nsim=nsim)
     
     Output=rbind(Output,
-                 cbind(Temp$summ_table,
+                 cbind(Temp$Summ_Table,
                        Data_Used=Temp$N_data_used))
     
     # List_For_Multivariable
-    if("<0.001"%in%(Temp$summ_table$P.value)|
-       sum(Temp$summ_table$P.value<Significance_Level)>0){
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
@@ -5087,42 +5092,42 @@ GLMM_Multivariable=function(Data,
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
   
   # summary table
-  Output$summ_table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
-  Output$summ_table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
+  Output$Summ_Table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
+  Output$Summ_Table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
   
   if(grepl("gaussian", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
-    Output$summ_table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
+    Output$Summ_Table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
-    Output$summ_table$IRR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+    Output$Summ_Table$IRR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                         " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                         format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
-    Output$summ_table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
-    Output$summ_table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
+    Output$Summ_Table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
   
   
-  Output$summ_table=as.data.frame(Output$summ_table) %>% as.data.table(keep.rownames=TRUE)
+  Output$Summ_Table=as.data.frame(Output$Summ_Table) %>% as.data.table(keep.rownames=TRUE)
   
   
   if(!is.null(dim(Output_vif))){
-    Output$summ_table=cbind(Output$summ_table,
+    Output$Summ_Table=cbind(Output$Summ_Table,
                             `GVIF^(1/(2*Df))`=rep(Output_vif[, 3], Output_vif[, 2]),
                             `GVIF^(1/(2*Df))_Threshold`=sqrt(10), # threshold is sqrt(10) for now
                             # https://rdrr.io/cran/pedometrics/src/R/stepVIF.R
                             # https://stats.stackexchange.com/questions/70679/which-variance-inflation-factor-should-i-be-using-textgvif-or-textgvif/96584#96584
                             N_data_used=N_data_used)
   }else{
-    Output$summ_table=cbind(Output$summ_table,
+    Output$Summ_Table=cbind(Output$Summ_Table,
                             VIF=Output_vif,
                             N_data_used=N_data_used)
   }
@@ -5134,13 +5139,13 @@ GLMM_Multivariable=function(Data,
     LRT_pvalues=LRT_results$`Pr(>F)`
     LRT_pvalues=ifelse(LRT_pvalues<0.001, "<0.001", 
                        format(round2(LRT_pvalues, 7), nsmall=3))
-    Output$summ_table$`P.value(F-test)`=rep(LRT_pvalues, LRT_results$NumDF)
-    Output$summ_table$`P.value(F-test)`[duplicated(rep(rownames(LRT_results), LRT_results$NumDF))]=""
+    Output$Summ_Table$`P.value(F-test)`=rep(LRT_pvalues, LRT_results$NumDF)
+    Output$Summ_Table$`P.value(F-test)`[duplicated(rep(rownames(LRT_results), LRT_results$NumDF))]=""
   }
   
   # power
   if(Compute.Power==T){
-    Output$summ_table$power=sapply(Var.Power, function(x) paste0(
+    Output$Summ_Table$power=sapply(Var.Power, function(x) paste0(
       paste0(round(summary(x)["mean"]*100, 2), "%"),
       " (",
       round(summary(x)["lower"]*100, 2),
@@ -5325,7 +5330,7 @@ GLMM_Confounder_Selection=function(Full_Model,
     }
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
@@ -5347,7 +5352,7 @@ GLMM_Confounder_Selection=function(Full_Model,
           Delta="",
           Rank=""
         )
-        Out$summ_table[[step]]=Temp_Table
+        Out$Summ_Table[[step]]=Temp_Table
         loop.key=1
       }
     }
@@ -5355,7 +5360,7 @@ GLMM_Confounder_Selection=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  Out$Confounders=c(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var)])
   
   return(Out)
 }
@@ -5397,9 +5402,9 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=5,
 #                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
-# GLMM_Confounder$Full_Multivariable_Model$summ_table
+# GLMM_Confounder$Full_Multivariable_Model$Summ_Table
 # GLMM_Confounder$Confounder_Steps$Confounders
-# GLMM_Confounder$Confounder_Model$summ_table
+# GLMM_Confounder$Confounder_Model$Summ_Table
 # 
 #
 # #**********************************
@@ -5434,9 +5439,9 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=5,
 #                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
-# GLMM_Confounder$Full_Multivariable_Model$summ_table
+# GLMM_Confounder$Full_Multivariable_Model$Summ_Table
 # GLMM_Confounder$Confounder_Steps$Confounders
-# GLMM_Confounder$Confounder_Model$summ_table
+# GLMM_Confounder$Confounder_Model$Summ_Table
 GLMM_Confounder_Model=function(Data,
                                Main_Pred_Var,
                                Potential_Con_Vars,
@@ -6291,7 +6296,7 @@ GLMM_Backward_by_AIC=function(Full_Model,
     Temp_Table=Temp_Table[order(AIC), ]
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(Temp_Table$Var[1]=="(none)"){
       loop.key=1
@@ -6315,7 +6320,7 @@ GLMM_Backward_by_AIC=function(Full_Model,
       #     Delta="",
       #     Rank=""
       #   )
-      #   Out$summ_table[[step]]=Temp_Table
+      #   Out$Summ_Table[[step]]=Temp_Table
       #   loop.key=1
       # }
     }
@@ -6432,7 +6437,7 @@ GLMM_Backward_by_P=function(Full_Model,
     Temp_Table=Temp_Table[order(Pvalue, decreasing=T), ]
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(nrow(Temp_Table)==1){
       loop.key=1
@@ -6461,7 +6466,7 @@ GLMM_Backward_by_P=function(Full_Model,
       #     Delta="",
       #     Rank=""
       #   )
-      #   Out$summ_table[[step]]=Temp_Table
+      #   Out$Summ_Table[[step]]=Temp_Table
       #   loop.key=1
       # }
     }
@@ -6469,7 +6474,7 @@ GLMM_Backward_by_P=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Temp_Vars=Out$summ_table[[which(Out$Model_AIC==min(Out$Model_AIC))]]$Var
+  Temp_Vars=Out$Summ_Table[[which(Out$Model_AIC==min(Out$Model_AIC))]]$Var
   Selected_Vars=c()
   for(j in 1:length(Temp_Vars)){
     for(i in 1:length(Pred_Vars)){
@@ -6665,7 +6670,7 @@ GLMM_Multinomial_Bivariate=function(Data,
                                        maxit=maxit,
                                        par.update=par.update)
     
-    Output=rbind(Output, Temp$summ_table)
+    Output=rbind(Output, Temp$Summ_Table)
     
     # print out progress
     if(sum(grepl(":", Pred_Vars[i]))>0){
@@ -6849,19 +6854,19 @@ GLMM_Multinomial_Multivariate=function(Data,
   rownames(`P-value`)=row_names
   rownames(OR.and.CI)=row_names
   
-  # summ_table
-  summ_table=c()
+  # Summ_Table
+  Summ_Table=c()
   for(ind in 1:ncol(Estimate)){
     Temp_Summ=cbind(OR.and.CI[, ind],
                     `P-value`[, ind])
     colnames(Temp_Summ)=paste0(colnames(Estimate)[ind], c(" (OR.and.CI)", " (P-value)"))
     
-    summ_table=cbind(summ_table, Temp_Summ)
+    Summ_Table=cbind(Summ_Table, Temp_Summ)
   }
-  rownames(summ_table)=rownames(OR.and.CI)
-  summ_table=cbind(summ_table, N_data_used)
+  rownames(Summ_Table)=rownames(OR.and.CI)
+  Summ_Table=cbind(Summ_Table, N_data_used)
   
-  Output$summ_table=as.data.table(summ_table,
+  Output$Summ_Table=as.data.table(Summ_Table,
                                   keep.rownames=TRUE)
   
   return(Output)
@@ -7497,7 +7502,7 @@ CLMM_Confounder_Selection=function(Full_Model,
     }
     
     # save summary table at the current step
-    Out$summ_table[[step]]=Temp_Table
+    Out$Summ_Table[[step]]=Temp_Table
     
     if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
       loop.key=1
@@ -7542,7 +7547,7 @@ CLMM_Confounder_Selection=function(Full_Model,
           Delta="",
           Rank=""
         )
-        Out$summ_table[[step]]=Temp_Table
+        Out$Summ_Table[[step]]=Temp_Table
         loop.key=1
       }
     }
@@ -7550,7 +7555,7 @@ CLMM_Confounder_Selection=function(Full_Model,
   } # while - end
   
   # get the list of primary predictor and confounders
-  Out$Confounders=c(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$summ_table[[step]]$Removed_Var)])
+  Out$Confounders=c(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var)])
   
   return(Out)
 }
@@ -8049,10 +8054,10 @@ GAM_Bivariate_Plot=function(Data, Pred_Var, Res_Var, which.family, xlab="", ylab
 #                   interacs=FALSE # TRUE if time effects of polytime vary across the cross-section
 # )
 # # GEE using the 1st imputed data set
-# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars[!Pred_Vars%in%c("id")], Res_Var, Group_Var, which.family)$summ_table %>%
+# GEE.result.1=GEE_Multivariable(amelia.imp$imputations$imp1, Pred_Vars[!Pred_Vars%in%c("id")], Res_Var, Group_Var, which.family)$Summ_Table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # GEE using the 2nd imputed data set
-# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars[!Pred_Vars%in%c("id")], Res_Var, Group_Var, which.family)$summ_table %>%
+# GEE.result.2=GEE_Multivariable(amelia.imp$imputations$imp2, Pred_Vars[!Pred_Vars%in%c("id")], Res_Var, Group_Var, which.family)$Summ_Table %>%
 #   as.data.table(keep.rownames=TRUE)
 # # combine results
 # GEE.combined.result=Combine_Multiple_Results(Input_Data_Names=c("GEE.result.1", "GEE.result.2"))
@@ -9140,7 +9145,7 @@ Contingency_Table_Univariable=function(Data, Var, Missing="Not_Include"){
 Contingency_Table_Univariable_Conti_X=function(Data, Var, Form=1){
   Data=as.data.frame(Data)
   
-  Table=round(summary(Data[, Var]), 2)
+  Table=round(summary(as.numeric(Data[, Var])), 2)
   
   if(Form==1){
     Out=cbind(Var,
@@ -9411,7 +9416,7 @@ rwmetro=function(target, N, x, VCOV, burnin=0){
 #                                             which.family="binomial (link='logit')")
 # Multiple_Comparison_Adjusted_P(Vars=rownames(summary(GLM_Multivariable_Results$model_fit)$coefficients)[-1],
 #                                Row_P_values=summary(GLM_Multivariable_Results$model_fit)$coefficients[-1, 4],
-#                                Summ_Table=GLM_Multivariable_Results$summ_table,
+#                                Summ_Table=GLM_Multivariable_Results$Summ_Table,
 #                                P.value_Var="P.value",
 #                                Methods=c("bonferroni", "BH"))
 Multiple_Comparison_Adjusted_P=function(Vars,
@@ -9486,7 +9491,7 @@ Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be num
   Output$filtered_variables=Output$filtered_variables[Output$filtered_variables!=Res_Var]
   
   if(grepl("gaussian", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -9496,7 +9501,7 @@ Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be num
                                  row.names=names(coef(AIC_Results))[-1]
     )
   }else if(grepl("binomial", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
@@ -9507,7 +9512,7 @@ Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be num
     )
     
   }else if(grepl("poisson", which.family)){
-    Output$summ_table=data.frame(Estimate=round2(est$estimate, 3), 
+    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
                                  Std.Error=round2(est$std.error, 3), 
                                  `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
                                                   format(round2(est$p.value, 3), nsmall=3)), 
