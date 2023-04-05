@@ -4979,7 +4979,7 @@ GLMM_Bivariate=function(Data,
 #                                    Group_Var="id",
 #                                    which.family<-"binomial (link='logit')", # gaussian, binomial, poisson
 #                                    NAGQ<-1,
-#                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                    Compute.Power=F, # (currently not working) power can be computed for a non-gaussian distribution
 #                                    nsim=5)
 # GLMM_Mult_model$Summ_Table
 # 
@@ -5008,7 +5008,7 @@ GLMM_Bivariate=function(Data,
 #                                    Group_Var="g",
 #                                    which.family<-"negative_binomial", # gaussian, binomial, poisson
 #                                    NAGQ<-1,
-#                                    Compute.Power=T, # power can be computed for a non-gaussian distribution
+#                                    Compute.Power=F, # (currently not working) power can be computed for a non-gaussian distribution
 #                                    nsim=5)
 # GLMM_Mult_model$Summ_Table
 GLMM_Multivariable=function(Data,
@@ -5017,7 +5017,7 @@ GLMM_Multivariable=function(Data,
                             Group_Var, 
                             which.family,
                             NAGQ=100,
-                            Compute.Power=FALSE,
+                            Compute.Power=FALSE, # the part of computing power needs to be retouched as it doesn't work once "simr" has been updated
                             nsim=1000){
   # check out packages
   lapply(c("lme4", "simr",
