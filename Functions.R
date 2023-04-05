@@ -338,6 +338,8 @@ CI_Calculator=function(object, level=0.95, CI_Type){
 # the direct formulae based on t values
 confint_t=function(object, level=0.95){
   # this function works the same as confint.lm(object, level=0.95)
+  # For GLMM, confint.lm() doesn't work.
+  # Instead, confint() and confint(model_fit, level=0.95, method="Wald") work, but the confidence intervals from these two functions don't seem to be based on t-values.
   
   Summ=summary(object)
   Coeffs=Summ$coefficients
@@ -376,6 +378,7 @@ confint_t=function(object, level=0.95){
 # normal approximation (Wald CIs)
 confint_wald=function(object, level=0.95){
   # this function works the same as confint.default(object, level=0.95)
+  # For GLMM, confint.default() doesn't work. Instead, confint(model_fit, level=0.95, method="Wald") can be used, which is the approach originally used in my codes.
   
   Summ=summary(object)
   Coeffs=Summ$coefficients
