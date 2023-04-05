@@ -315,13 +315,34 @@ Align_plots=function(...){
   grid::grid.draw(combined)
 }
 
+#**************
+# CI_Calculator
+#**************
+CI_Calculator=function(object, level=0.95, CI_Type){
+  switch(CI_Type,
+         
+         # t-distribution-based confidence interval using a function written in person
+         "t"={Est.CI=confint_t(object, level=level)},
+         
+         # Wald confidence interval using a function written in person
+         "z"={Est.CI=confint_wald(object, level=level)},
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
+}
+
 #**********
 # confint_t
 #**********
 # the direct formulae based on t values
 confint_t=function(object, level=0.95){
+  # this function works the same as confint.lm(object, level=0.95)
+  
   Summ=summary(object)
   Coeffs=Summ$coefficients
+  Coeffs=as.data.frame(Coeffs)
+  Coeffs=Coeffs[-1, ] # remove (Intercept)
   
   switch(as.character(is.null(Summ$df.residual)),
          
@@ -338,8 +359,14 @@ confint_t=function(object, level=0.95){
          # default
          stop("as.character(is.null(Summ$df.residual)) is something else"))
   
+  if(length(DF)>1){
+    DF=DF[-1]
+  }
+  
   CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qt(1-(1-level)/2, DF)*Coeffs[, "Std. Error"],
             `97.5%`=Coeffs[, "Estimate"]+qt(1-(1-level)/2, DF)*Coeffs[, "Std. Error"])
+  rownames(CIs)=rownames(Coeffs)
+  
   return(CIs)
 }
 
@@ -348,10 +375,22 @@ confint_t=function(object, level=0.95){
 #*************
 # normal approximation (Wald CIs)
 confint_wald=function(object, level=0.95){
+  # this function works the same as confint.default(object, level=0.95)
+  
   Summ=summary(object)
   Coeffs=Summ$coefficients
-  CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"],
-            `97.5%`=Coeffs[, "Estimate"]+qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"])
+  Coeffs=as.data.frame(Coeffs)
+  Coeffs=Coeffs[-1, ] # remove (Intercept)
+  
+  if(!is.null(Coeffs[["Std. Error"]])){ # for GLM, GLM_NB, and GLMM
+    CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"],
+              `97.5%`=Coeffs[, "Estimate"]+qnorm(1-(1-level)/2)*Coeffs[, "Std. Error"])
+  }else if(!is.null(Coeffs[["Std.err"]])){ # for GEE
+    CIs=cbind(`2.5%`=Coeffs[, "Estimate"]-qnorm(1-(1-level)/2)*Coeffs[, "Std.err"],
+              `97.5%`=Coeffs[, "Estimate"]+qnorm(1-(1-level)/2)*Coeffs[, "Std.err"])
+  }
+  rownames(CIs)=rownames(Coeffs)
+  
   return(CIs)
 }
 
@@ -2653,7 +2692,7 @@ KM_Plot=function(Data,
                  Pred_Vars="1",
                  ...){
   # check out packages
-  lapply(c("ggplot2", "survminer" , "survival"), checkpackages)
+  lapply(c("ggplot2", "survminer" , "survival", "data.table"), checkpackages)
   
   # Data to data.table
   Data=as.data.table(Data)
@@ -3065,36 +3104,37 @@ GLM_Bivariate=function(Data,
 #******************
 # GLM_Multivariable
 #******************
-# lapply(c("stats", "geepack", "doBy"), checkpackages)
-# require(dplyr)
-# data("respiratory")
-# Data_to_use=respiratory %>%
-#   group_by(id) %>%
-#   filter(visit==min(visit))
-# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
-# Res_Var="outcome"
-# Data_to_use$sex=as.character(Data_to_use$sex)
-# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
-# Data_to_use$sex=as.factor(Data_to_use$sex)
-# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
-# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-# levels.of.fact[which(Pred_Vars=="treat")]="P"
-# levels.of.fact[which(Pred_Vars=="sex")]="F"
-# Data_to_use=Format_Columns(Data_to_use,
-#                            Res_Var="outcome",
-#                            Pred_Vars,
-#                            vector.OF.classes.num.fact,
-#                            levels.of.fact)
-# GLM_Multivariable(Data=Data_to_use,
-#                   Pred_Vars=c("center", "sex", "age", "sex:age"),
-#                   Res_Var=Res_Var,
-#                   which.family="binomial (link='logit')",
-#                   Offset_Var=NULL)
+lapply(c("stats", "geepack", "doBy"), checkpackages)
+require(dplyr)
+data("respiratory")
+Data_to_use=respiratory %>%
+  group_by(id) %>%
+  filter(visit==min(visit))
+Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+Res_Var="outcome"
+Data_to_use$sex=as.character(Data_to_use$sex)
+Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+Data_to_use$sex=as.factor(Data_to_use$sex)
+vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+levels.of.fact[which(Pred_Vars=="treat")]="P"
+levels.of.fact[which(Pred_Vars=="sex")]="F"
+Data_to_use=Format_Columns(Data_to_use,
+                           Res_Var="outcome",
+                           Pred_Vars,
+                           vector.OF.classes.num.fact,
+                           levels.of.fact)
+GLM_Multivariable(Data=Data_to_use,
+                  Pred_Vars=c("center", "sex", "age", "sex:age"),
+                  Res_Var=Res_Var,
+                  which.family="binomial (link='logit')",
+                  Offset_Var=NULL)
 GLM_Multivariable=function(Data,
                            Pred_Vars,
                            Res_Var,
                            which.family,
-                           Offset_Var=NULL){
+                           Offset_Var=NULL,
+                           Use_Stepwise_AIC=FALSE){
   # check out packages
   lapply(c("MASS", "data.table"), checkpackages)
   
@@ -3103,7 +3143,9 @@ GLM_Multivariable=function(Data,
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
-  Data<<-na.exclude(Data[, c(unique(unlist(strsplit(Pred_Vars, ":"))), Res_Var)]) # activate if Stepwise_AIC() is used
+  if(Use_Stepwise_AIC==TRUE){
+    Data<<-na.exclude(Data[, c(unique(unlist(strsplit(Pred_Vars, ":"))), Res_Var)]) # activate if Stepwise_AIC() is used
+  }
   
   # main algorithm
   Output=c()
@@ -3150,66 +3192,42 @@ GLM_Multivariable=function(Data,
     # # confint.lm for the direct formulae based on t values
     # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
     # Est.CI=cbind(Est=coef(model_fit), confint.lm(model_fit, level=0.95))
-    
-    switch(CI_Type,
-           
-           # t-distribution-based confidence interval using a function written in person
-           "t"={Est.CI=cbind(Est=coef(model_fit), confint_t(model_fit, level=0.95))},
-           
-           # Wald confidence interval using a function written in person
-           "z"={Est.CI=cbind(Est=coef(model_fit), confint_wald(model_fit, level=0.95))},
-           
-           # default
-           stop("CI_Type = Nothing")
-    )
+    Est.CI=cbind(coef(model_fit)[-1],
+                 CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
     colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
     
-    est=cbind(summary(model_fit)$coefficients, Est.CI)
+    est=cbind.fill(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
     
-    Output$Summ_Table=rbind(Output$Summ_Table,
-                            data.frame(
-                              Estimate=round2(est[-1, "Estimate"], 3),
-                              Std.Error=round2(est[-1, "Std. Error"], 3),
-                              `P-value`=ifelse(est[-1, "Pr(>|t|)"]<0.001, "<0.001",
-                                               format(round2(est[-1, "Pr(>|t|)"], 3), nsmall=3)),
-                              Estimate.and.CI=paste0(format(round2(est[-1, "Estimate"] , 2), nsmall=2),
-                                                     " (", format(round2(as.numeric(est[-1, "Lower Est"]), 2), nsmall=2), " - ",
-                                                     format(round2(as.numeric(est[-1, "Upper Est"]), 2), nsmall=2), ")"),
-                              row.names=names(coef(model_fit))[-1]
-                            )
+    Output$Summ_Table=data.frame(
+      Estimate=round2(est[, "Estimate"], 3),
+      Std.Error=round2(est[, "Std. Error"], 3),
+      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
+                       format(round2(est[, 4], 3), nsmall=3)),
+      Estimate.and.CI=paste0(format(round2(est[, "Estimate"] , 2), nsmall=2),
+                             " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
+                             format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
+      row.names=names(coef(model_fit))[-1]
     )
   }else if(grepl("binomial", which.family)){ # default with the logit link function
     # # Individual Wald test and confidence interval for each parameter
     # # confint.default for normal approximation (Wald CIs)
     # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
     # OR.CI=exp(cbind(OR=coef(model_fit), confint.default(model_fit, level=0.95)))
+    Est.CI=cbind(coef(model_fit)[-1],
+                 CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
+    colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
     
-    switch(CI_Type,
-           
-           # t-distribution-based confidence interval using a function written in person
-           "t"={OR.CI=exp(cbind(OR=coef(model_fit), confint_t(model_fit, level=0.95)))},
-           
-           # Wald confidence interval using a function written in person
-           "z"={OR.CI=exp(cbind(OR=coef(model_fit), confint_wald(model_fit, level=0.95)))},
-           
-           # default
-           stop("CI_Type = Nothing")
-    )
-    colnames(OR.CI)=c("Odds Ratio", "Lower OR", "Upper OR")
+    est=cbind.fill(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
     
-    est=cbind.fill(summary(model_fit)$coefficients, OR.CI)
-    
-    Output$Summ_Table=rbind(Output$Summ_Table,
-                            data.frame(
-                              Estimate=round2(est[-1, "Estimate"], 3),
-                              Std.Error=round2(est[-1, "Std. Error"], 3),
-                              `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
-                                               format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
-                              OR.and.CI=paste0(format(round2(est[-1, "Odds Ratio"] , 2), nsmall=2),
-                                               " (", format(round2(as.numeric(est[-1, "Lower OR"]), 2), nsmall=2), " - ",
-                                               format(round2(as.numeric(est[-1, "Upper OR"]), 2), nsmall=2), ")"),
-                              row.names=names(coef(model_fit))[-1]
-                            )
+    Output$Summ_Table=data.frame(
+      Estimate=round2(est[, "Estimate"], 3),
+      Std.Error=round2(est[, "Std. Error"], 3),
+      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
+                       format(round2(est[, 4], 3), nsmall=3)),
+      OR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
+                       " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
+                       format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
+      row.names=names(coef(model_fit))[-1]
     )
     # }else if(which.family=="binomial (link='log')"){ # log-binomial regression with the log link function
     #   # Individual Wald test and confidence interval for each parameter
@@ -3235,31 +3253,21 @@ GLM_Multivariable=function(Data,
     # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
     # IRR.CI=exp(cbind(IRR=coef(model_fit), confint.default(model_fit, level=0.95)))
     
-    switch(CI_Type,
-           
-           # t-distribution-based confidence interval using a function written in person
-           "t"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_t(model_fit, level=0.95)))},
-           
-           # Wald confidence interval using a function written in person
-           "z"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_wald(model_fit, level=0.95)))},
-           
-           # default
-           stop("CI_Type = Nothing")
-    )
-    colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
-    est=cbind(summary(model_fit)$coefficients, IRR.CI)
+    Est.CI=cbind(coef(model_fit)[-1],
+                 CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
+    colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
     
-    Output$Summ_Table=rbind(Output$Summ_Table,
-                            data.frame(
-                              Estimate=round2(est[-1, "Estimate"], 3),
-                              Std.Error=round2(est[-1, "Std. Error"], 3),
-                              `P-value`=ifelse(est[-1, "Pr(>|z|)"]<0.001, "<0.001",
-                                               format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)),
-                              IRR.and.CI=paste0(format(round2(est[-1, "Incidence Rate Ratio"] , 2), nsmall=2),
-                                                " (", format(round2(as.numeric(est[-1, "Lower IRR"]), 2), nsmall=2), " - ",
-                                                format(round2(as.numeric(est[-1, "Upper IRR"]), 2), nsmall=2), ")"),
-                              row.names=names(coef(model_fit))[-1]
-                            )
+    est=cbind.fill(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
+    
+    Output$Summ_Table=data.frame(
+      Estimate=round2(est[, "Estimate"], 3),
+      Std.Error=round2(est[, "Std. Error"], 3),
+      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
+                       format(round2(est[, 4], 3), nsmall=3)),
+      IRR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
+                        " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
+                        format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
+      row.names=names(coef(model_fit))[-1]
     )
   }
   
@@ -3663,20 +3671,11 @@ GLM_NB_Multivariable=function(Data,
     CI_Type="nothing"
   }
   
-  switch(CI_Type,
-         
-         # t-distribution-based confidence interval using a function written in person
-         "t"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_t(model_fit, level=0.95)))},
-         
-         # Wald confidence interval using a function written in person
-         "z"={IRR.CI=exp(cbind(IRR=coef(model_fit), confint_wald(model_fit, level=0.95)))},
-         
-         # default
-         stop("CI_Type = Nothing")
-  )
-  colnames(IRR.CI)=c("Incidence Rate Ratio", "Lower IRR", "Upper IRR")
+  Est.CI=cbind(coef(model_fit)[-1],
+               CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
+  colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
   
-  est=cbind(summary(model_fit)$coefficients, IRR.CI)
+  est=cbind(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
   
   # Output
   Output=c()
@@ -3686,13 +3685,13 @@ GLM_NB_Multivariable=function(Data,
   
   Output$N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$model_fit=model_fit
-  Output$Summ_Table=data.frame(Estimate=round2(est[-1, "Estimate"], 3), 
-                               Std.Error=round2(est[-1, "Std. Error"], 3), 
-                               `P-value`=ifelse(round2(est[-1, "Pr(>|z|)"], 3)<0.001, "<0.001", 
-                                                format(round2(est[-1, "Pr(>|z|)"], 3), nsmall=3)), 
-                               IRR.and.CI=paste0(format(round2(est[-1, "Incidence Rate Ratio"] , 2), nsmall=2), 
-                                                 " (", format(round2(as.numeric(est[-1, "Lower IRR"]), 2), nsmall=2), " - ", 
-                                                 format(round2(as.numeric(est[-1, "Upper IRR"]), 2), nsmall=2), ")"), 
+  Output$Summ_Table=data.frame(Estimate=round2(est[, "Estimate"], 3), 
+                               Std.Error=round2(est[, "Std. Error"], 3), 
+                               `P-value`=ifelse(round2(est[, 4], 3)<0.001, "<0.001", 
+                                                format(round2(est[, 4], 3), nsmall=3)), 
+                               IRR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2), 
+                                                 " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ", 
+                                                 format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"), 
                                row.names=names(coef(model_fit))[-1]
   )
   return(Output)
@@ -3941,9 +3940,6 @@ GEE_Multivariable=function(Data,
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   
-  # Individual Wald test and confidence interval for each parameter
-  est=esticon(model_fit, diag(length(coef(model_fit))))[-1, ]
-  
   # Output
   Output=c()
   N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
@@ -3957,39 +3953,74 @@ GEE_Multivariable=function(Data,
   
   Output$model_fit=model_fit
   
+  # vif
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
   # if(length(Pred_Vars)==1 & !is.numeric(Data[, Pred_Vars])){Output$vif=car::vif(model_fit)} # if the only variable is not numeric (that's, if it is categorical), compute vif
   # if(length(Pred_Vars)==1 & is.numeric(Data[, Pred_Vars])){Output$vif=""} # if the only variable is numeric, don't compute vif
   
+  # determine whether p-value is calculated based on t or Wald
+  Value_Label=colnames(summary(model_fit)$coefficients)[grep("Wald", colnames(summary(model_fit)$coefficients))]
+  if(grepl("Wald", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
   if(grepl("gaussian", which.family)){
-    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 Estimate.and.CI=paste0(format(round2(est$estimate, 2), nsmall=2), 
-                                                        " (", format(round2(est$estimate-qnorm(0.975)*est$std.error, 2), nsmall=2), " - ", 
-                                                        format(round2(est$estimate+qnorm(0.975)*est$std.error, 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
+    Est.CI=cbind(coef(model_fit)[-1],
+                 CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
+    colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
+    
+    # Individual Wald test and confidence interval for each parameter
+    est=cbind(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
+    
+    Output$Summ_Table=data.frame(
+      Estimate=round2(est[, "Estimate"], 3),
+      Std.Error=round2(est[, "Std.err"], 3),
+      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
+                       format(round2(est[, 4], 3), nsmall=3)),
+      Estimate.and.CI=paste0(format(round2(est[, "Estimate"], 2), nsmall=2),
+                             " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
+                             format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
+      row.names=names(coef(model_fit))[-1]
     )
   }else if(grepl("binomial", which.family)){
-    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 OR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                  " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                  format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
+    Est.CI=cbind(coef(model_fit)[-1],
+                 CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
+    colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
+    
+    # Individual Wald test and confidence interval for each parameter
+    est=cbind.fill(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
+    
+    Output$Summ_Table=data.frame(
+      Estimate=round2(est[, "Estimate"], 3),
+      Std.Error=round2(est[, "Std.err"], 3),
+      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
+                       format(round2(est[, 4], 3), nsmall=3)),
+      OR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
+                       " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
+                       format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
+      row.names=names(coef(model_fit))[-1]
     )
   }else if(grepl("poisson", which.family)){
-    Output$Summ_Table=data.frame(Estimate=round2(est$estimate, 3), 
-                                 Std.Error=round2(est$std.error, 3), 
-                                 `P-value`=ifelse(round2(est$p.value, 3)<0.001, "<0.001", 
-                                                  format(round2(est$p.value, 3), nsmall=3)), 
-                                 IRR.and.CI=paste0(format(round2(exp(est$estimate), 2), nsmall=2), 
-                                                   " (", format(round2(exp(est$estimate-qnorm(0.975)*est$std.error), 2), nsmall=2), " - ", 
-                                                   format(round2(exp(est$estimate+qnorm(0.975)*est$std.error), 2), nsmall=2), ")"), 
-                                 row.names=names(coef(model_fit))[-1]
+    Est.CI=cbind(coef(model_fit)[-1],
+                 CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type))
+    colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
+    
+    # Individual Wald test and confidence interval for each parameter
+    est=cbind.fill(as.data.frame(summary(model_fit)$coefficients)[-1, ], Est.CI)
+    
+    Output$Summ_Table=data.frame(
+      Estimate=round2(est[, "Estimate"], 3),
+      Std.Error=round2(est[, "Std.err"], 3),
+      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
+                       format(round2(est[, 4], 3), nsmall=3)),
+      IRR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
+                        " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
+                        format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
+      row.names=names(coef(model_fit))[-1]
     )
   }
   Output$Summ_Table=as.data.table(Output$Summ_Table, keep.rownames=TRUE)
@@ -4870,6 +4901,7 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
 #                                NAGQ<-1,
 #                                Compute.Power=F, # power can be computed for a non-gaussian distribution
 #                                nsim=5)
+# GLMM_Mult_model
 GLMM_Bivariate=function(Data,
                         Pred_Vars,
                         Res_Var,
@@ -4949,6 +4981,7 @@ GLMM_Bivariate=function(Data,
 #                                    NAGQ<-1,
 #                                    Compute.Power=F, # power can be computed for a non-gaussian distribution
 #                                    nsim=5)
+# GLMM_Mult_model$Summ_Table
 # 
 # #**********************************
 # # Example - (2) : negative binomial
@@ -4977,6 +5010,7 @@ GLMM_Bivariate=function(Data,
 #                                    NAGQ<-1,
 #                                    Compute.Power=T, # power can be computed for a non-gaussian distribution
 #                                    nsim=5)
+# GLMM_Mult_model$Summ_Table
 GLMM_Multivariable=function(Data,
                             Pred_Vars,
                             Res_Var,
@@ -5031,7 +5065,7 @@ GLMM_Multivariable=function(Data,
   Used_N_Rows=nobs(model_fit)
   
   # coefficient
-  Coef=summary(model_fit)$coefficients
+  Coef=as.data.frame(summary(model_fit)$coefficients)[-1, ]
   Coef.ind=c()
   
   # determine whether p-value is calculated based on t or Wald
@@ -5046,26 +5080,20 @@ GLMM_Multivariable=function(Data,
   
   # confidence interval (raw)
   # CI.raw=confint(model_fit, level=0.95)
-  switch(CI_Type,
-         
-         # t-distribution-based confidence interval using a function written in person
-         "t"={CI.raw=cbind(confint_t(model_fit, level=0.95))},
-         
-         # Wald confidence interval using a function written in person
-         "z"={CI.raw=cbind(confint_wald(model_fit, level=0.95))},
-         
-         # default
-         stop("CI_Type = Nothing")
-  )
+  CI.raw=CI_Calculator(object=model_fit, level=0.95, CI_Type=CI_Type)
+  
   CI.raw.ind=c()
   
   # confidence interval (exponentiated)
+  CI.raw=as.data.frame(CI.raw)
+  
   CI=exp(CI.raw)
+  
   CI.ind=c()
   
   # power
   Var.Power=list()
-  Estimates=row.names(Coef)[-1]
+  Estimates=row.names(Coef)
   for(i in 1:length(Estimates)){
     Coef.ind=c(Coef.ind, which(grepl(Estimates[i], row.names(Coef))))
     CI.raw.ind=c(CI.raw.ind, which(grepl(Estimates[i], row.names(CI.raw))))
@@ -5096,25 +5124,24 @@ GLMM_Multivariable=function(Data,
   Output$Summ_Table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
   
   if(grepl("gaussian", which.family)){
-    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, 4][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$Summ_Table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
-    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, 4][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$Summ_Table$IRR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                         " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                         format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
-    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, 4][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$Summ_Table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
-  
   
   Output$Summ_Table=as.data.frame(Output$Summ_Table) %>% as.data.table(keep.rownames=TRUE)
   
@@ -8354,9 +8381,9 @@ Contingency_Table_Generator=function(Data,
     Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value<0.001,
                                                              "<0.001",
                                                              paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value, 3)))
-    Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value<0.001,
+    Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value<0.001,
                                                                  "<0.001",
-                                                                 paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ])$p.value, 3)))  # return
+                                                                 paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value, 3)))  # return
   }
   
   return(Out[order(match(Out$Value, Row_Levels)), ])
