@@ -3104,31 +3104,31 @@ GLM_Bivariate=function(Data,
 #******************
 # GLM_Multivariable
 #******************
-lapply(c("stats", "geepack", "doBy"), checkpackages)
-require(dplyr)
-data("respiratory")
-Data_to_use=respiratory %>%
-  group_by(id) %>%
-  filter(visit==min(visit))
-Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
-Res_Var="outcome"
-Data_to_use$sex=as.character(Data_to_use$sex)
-Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
-Data_to_use$sex=as.factor(Data_to_use$sex)
-vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
-levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
-levels.of.fact[which(Pred_Vars=="treat")]="P"
-levels.of.fact[which(Pred_Vars=="sex")]="F"
-Data_to_use=Format_Columns(Data_to_use,
-                           Res_Var="outcome",
-                           Pred_Vars,
-                           vector.OF.classes.num.fact,
-                           levels.of.fact)
-GLM_Multivariable(Data=Data_to_use,
-                  Pred_Vars=c("center", "sex", "age", "sex:age"),
-                  Res_Var=Res_Var,
-                  which.family="binomial (link='logit')",
-                  Offset_Var=NULL)
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# GLM_Multivariable(Data=Data_to_use,
+#                   Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                   Res_Var=Res_Var,
+#                   which.family="binomial (link='logit')",
+#                   Offset_Var=NULL)
 GLM_Multivariable=function(Data,
                            Pred_Vars,
                            Res_Var,
