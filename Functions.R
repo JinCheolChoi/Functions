@@ -294,6 +294,10 @@ SURVEY_Number_Updater=function(Data,
     Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
            "2022-12-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2023-06-01", 
          paste0(Survey_Var, "_NEW"):=34]
+    
+    Data[eval(parse(text=Survey_Var))%in%c(0, 5) & 
+           "2023-06-01"<=eval(parse(text=Int_Date_Var)) & eval(parse(text=Int_Date_Var))<"2023-12-01", 
+         paste0(Survey_Var, "_NEW"):=35]
   }
   
   return(as.data.table(Data))
@@ -4896,15 +4900,15 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
 #                            Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# GLMM_Mult_model=GLMM_Bivariate(Data=Data_to_use,
-#                                Pred_Vars=list(c("f1" ,"f2", "f1:f2")),
-#                                Res_Var="y",
-#                                Group_Var="g",
-#                                which.family<-"negative_binomial", # gaussian, binomial, poisson
-#                                NAGQ<-1,
-#                                Compute.Power=F, # power can be computed for a non-gaussian distribution
-#                                nsim=5)
-# GLMM_Mult_model
+# GLMM_Bivariate_model=GLMM_Bivariate(Data=Data_to_use,
+#                                     Pred_Vars=list(c("f1" ,"f2", "f1:f2")),
+#                                     Res_Var="y",
+#                                     Group_Var="g",
+#                                     which.family<-"negative_binomial", # gaussian, binomial, poisson
+#                                     NAGQ<-1,
+#                                     Compute.Power=F, # power can be computed for a non-gaussian distribution
+#                                     nsim=5)
+# GLMM_Bivariate_model
 GLMM_Bivariate=function(Data,
                         Pred_Vars,
                         Res_Var,
@@ -8353,7 +8357,7 @@ Contingency_Table_Generator=function(Data,
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
       oddsratio(method="wald")
-    Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 5), 
+    Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2), 
                                 " (", 
                                 round(Odds_ratio$measure[, 2], 2), 
                                 " - ", 
