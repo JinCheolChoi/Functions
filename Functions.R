@@ -4651,7 +4651,7 @@ GEE_Backward_by_P_2=function(Full_Model,
     
     Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove]
     
-    #####################
+    #*****************
     # update the model
     Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Var_To_Remove, collapse="-"))))
     Current_Full_Model=Current_Reduced_Model
