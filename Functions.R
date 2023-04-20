@@ -1781,6 +1781,9 @@ SMD_difference_Plot_Example=function(){
 #*************************************************
 # Segmented_Regression_Model
 #***************************
+# Note : A sufficient number of time points before and after the intervention is needed to conduct segmented regression analysis. A general recommendation
+# is for 12 data points before and 12 data points after the intervention. (p.301; Wagner AK, Soumerai SB, Zhang F, Ross-Degnan D. Segmented regression analysis of interrupted time series studies in medication use research. J Clin Pharm Ther. 2002 Aug;27(4):299-309. doi: 10.1046/j.1365-2710.2002.00430.x. PMID: 12174032.)
+#********
 # Example
 #********
 # lapply(c("ggplot2",
@@ -4462,9 +4465,12 @@ GEE_Backward_by_QIC=function(Full_Model,
 #                           Res_Var="outcome",
 #                           Group_Var="id",
 #                           which.family<-"binomial")
-# Backward_Elimination_Steps=GEE_Backward_by_P(GEE.fit$model_fit,
-#                                              Data=Data_to_use,
-#                                              Pred_Vars=Pred_Vars)
+# Backward_Elimination_Steps_1=GEE_Backward_by_P(Full_Model=GEE.fit$model_fit,
+#                                                Data=Data_to_use,
+#                                                Pred_Vars=Pred_Vars)
+# Backward_Elimination_Steps_2=GEE_Backward_by_P_2(Full_Model=GEE.fit$model_fit,
+#                                                  Data=Data_to_use,
+#                                                  Pred_Vars=Pred_Vars)
 # # run GEE_Multivariable
 # # !!!! GEE_Backward_by_P_Katya will cause an error, so run the code internally in person
 # Backward_Elimination_Steps_Katya=GEE_Backward_by_P_Katya(Data=Data_to_use,
@@ -4587,6 +4593,7 @@ GEE_Backward_by_P=function(Full_Model,
 #********************
 # GEE_Backward_by_P_2 is basically the same as GEE_Backward_by_P
 GEE_Backward_by_P_2=function(Full_Model,
+                             Data,
                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
   # Full_Model=GEE.fit$model_fit
   # Pred_Vars
@@ -4604,6 +4611,13 @@ GEE_Backward_by_P_2=function(Full_Model,
   # initial settings
   Current_Full_Model=Full_Model
   
+  Data=as.data.table(Data)
+  
+  Name_Dictionary=list()
+  for(i in 1:length(Pred_Vars)){
+    Name_Dictionary[[Pred_Vars[i]]]=paste0(colnames(Data[, .SD, .SDcols=Pred_Vars[i]]), Data[, levels(unlist(.SD)), .SDcols=Pred_Vars[i]])
+  }
+  
   #***************
   # main algorithm
   #***************
@@ -4618,19 +4632,26 @@ GEE_Backward_by_P_2=function(Full_Model,
   
   # run GEE excluding one variable with the highest p-valuse in the current model
   for(Step in 1:length(Pred_Vars)){
-    #Step=2
+    #Step=1
     Out$Model[[Step]]=Current_Full_Model
     Current_Coefficients=coef(Current_Full_Model)
-    Current_Summ_Table=data.table(names=c("(Intercept)", Pred_Vars_Temp),
-                                  esticon(Current_Full_Model, diag(length(Current_Coefficients)))[, c("estimate", "std.error", "p.value")])
+    Current_Summ_Table=data.table(names=rownames(summary(Current_Full_Model)$coefficients),
+                                  as.data.table(esticon(Current_Full_Model, diag(length(Current_Coefficients))))[, c("estimate", "std.error", "p.value")])
     
     # save info of the current model
     Summ_Table[[Step]]=Current_Summ_Table[order(p.value, decreasing=TRUE)]
     
     # identify the variable to remove by p-value
     Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[-1, p.value]))]
+    for(i in 1:length(Pred_Vars)){
+      if(sum(Var_To_Remove==Name_Dictionary[[Pred_Vars[[i]]]])>0){
+        Var_To_Remove=Pred_Vars[[i]]
+      }
+    }
+    
     Pred_Vars_Temp=Pred_Vars_Temp[Pred_Vars_Temp!=Var_To_Remove]
     
+    #####################
     # update the model
     Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Var_To_Remove, collapse="-"))))
     Current_Full_Model=Current_Reduced_Model
@@ -5127,6 +5148,7 @@ GLMM_Multivariable=function(Data,
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
   
   # summary table
+  Output$Summ_Table$rn=rownames(Coef)
   Output$Summ_Table$Estimate=round2(Coef[, "Estimate"][Coef.ind], 3)
   Output$Summ_Table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
   
@@ -5150,8 +5172,7 @@ GLMM_Multivariable=function(Data,
                                        format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }
   
-  Output$Summ_Table=as.data.frame(Output$Summ_Table) %>% as.data.table(keep.rownames=TRUE)
-  
+  Output$Summ_Table=as.data.table(Output$Summ_Table)
   
   if(!is.null(dim(Output_vif))){
     Output$Summ_Table=cbind(Output$Summ_Table,
