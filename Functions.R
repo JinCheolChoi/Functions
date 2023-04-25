@@ -4877,7 +4877,7 @@ GEE_Confounder_Model=function(Data,
 #                           Res_Var="outcome",
 #                           Group_Var="id",
 #                           which.family<-"binomial")
-# QIC_Selection_Steps=GEE_Backward_by_QIC(Full_Model=GEE.fit$model_fit,
+# QIC_Selection_Steps=GEE_Backward_by_geepack::QIC(Full_Model=GEE.fit$model_fit,
 #                                         Pred_Vars=Pred_Vars)
 GEE_Backward_by_QIC=function(Full_Model,
                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
@@ -4885,7 +4885,7 @@ GEE_Backward_by_QIC=function(Full_Model,
   # Pred_Vars
   
   # check packages
-  lapply(c("dplyr", "data.table"), checkpackages)
+  lapply(c("dplyr", "data.table", "geepack"), checkpackages)
   
   # Full_Model=GEE.example$model_fit
   # Main_Pred_Var="sex"
@@ -4909,7 +4909,7 @@ GEE_Backward_by_QIC=function(Full_Model,
     print(paste0("Step : ", step))
     
     #
-    Current_Full_Model_QIC=QIC(Current_Full_Model)["QIC"]
+    Current_Full_Model_QIC=geepack::QIC(Current_Full_Model)["QIC"]
     Reduced_Model_QICs=c()
     
     # run GEE excluding one variable at once
@@ -4919,7 +4919,7 @@ GEE_Backward_by_QIC=function(Full_Model,
       for(i in 1:length(Pred_Vars[Include_Index])){
         #i=1
         Current_Reduced_Model=update(Current_Full_Model, formula(paste0(".~.-", paste(Pred_Vars[Include_Index][i], collapse="-"))))
-        Reduced_Model_QICs[i]=QIC(Current_Reduced_Model)["QIC"]
+        Reduced_Model_QICs[i]=geepack::QIC(Current_Reduced_Model)["QIC"]
         print(paste0("Step : ", step, " - Vars : ", i, "/", length(Pred_Vars[Include_Index])))
       }
     }
@@ -4954,7 +4954,7 @@ GEE_Backward_by_QIC=function(Full_Model,
       # if(length(Include_Index)==0){
       #   Temp_Table=data.table(
       #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
-      #     Estimate=c(QIC(Current_Full_Model)[-1]),
+      #     Estimate=c(geepack::QIC(Current_Full_Model)[-1]),
       #     Delta="",
       #     Rank=""
       #   )
@@ -5059,7 +5059,7 @@ GEE_Backward_by_P=function(Full_Model,
     }
     
     # save QIC of the current model
-    Out$Model_QIC[step]=QIC(Current_Full_Model)["QIC"]
+    Out$Model_QIC[step]=geepack::QIC(Current_Full_Model)["QIC"]
     
     # p-values of multivariable model excluding each variable
     Temp_Summary=summary(Current_Full_Model)
@@ -5097,7 +5097,7 @@ GEE_Backward_by_P=function(Full_Model,
       # if(length(Include_Index)==0){
       #   Temp_Table=data.table(
       #     Removed_Var=c("Full", Pred_Vars[Include_Index]),
-      #     Estimate=c(QIC(Current_Full_Model)[-1]),
+      #     Estimate=c(geepack::QIC(Current_Full_Model)[-1]),
       #     Delta="",
       #     Rank=""
       #   )
@@ -5163,7 +5163,7 @@ GEE_Backward_by_P_2=function(Full_Model,
   Temp_Table=data.table(
     Step=1,
     Further_Excluded_Var="(none)",
-    QIC=QIC(Current_Full_Model)["QIC"])
+    QIC=geepack::QIC(Current_Full_Model)["QIC"])
   
   # run GEE excluding one variable with the highest p-valuse in the current model
   for(Step in 1:length(Pred_Vars)){
@@ -5196,7 +5196,7 @@ GEE_Backward_by_P_2=function(Full_Model,
                      data.table(
                        Step=Step+1,
                        Further_Excluded_Var=Var_To_Remove,
-                       QIC=QIC(Current_Full_Model)["QIC"]))
+                       QIC=geepack::QIC(Current_Full_Model)["QIC"]))
     
     print(paste0("Step : ", Step, "/", length(Pred_Vars)))
   }
@@ -5257,7 +5257,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
   Temp_Table=data.table(
     Step=1,
     Further_Excluded_Var="(none)",
-    QIC=QIC(Current_Full_Model$model_fit)["QIC"])
+    QIC=geepack::QIC(Current_Full_Model$model_fit)["QIC"])
   
   Out$Model[[1]]=Current_Full_Model$model_fit
   Summ_Table[[1]]=Current_Full_Model$Summ_Table[order(P.value, decreasing=TRUE)]
@@ -5294,7 +5294,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
                      data.table(
                        Step=Step+1,
                        Further_Excluded_Var=Var_To_Remove_Original_Name,
-                       QIC=QIC(Current_Reduced_Model$model_fit)["QIC"]))
+                       QIC=geepack::QIC(Current_Reduced_Model$model_fit)["QIC"]))
     
     print(paste0("Step : ", Step, "/", length(Pred_Vars)))
   }
@@ -5365,7 +5365,7 @@ GEE_Backward_by_P_Katya=function(Data, Pred_Vars, Res_Var, Group_Var, which.fami
     for(i in 1:(length(vars)-1)){
       fullmod=as.formula( paste( Res_Var, " ~ ", paste(vars, collapse = "+")))
       r1=geeglm(fullmod, data=Data, id=Data[, Group_Var], family=which.family, corstr="exchangeable")
-      QIC.RES[i+1]=QIC(r1)[1]
+      QIC.RES[i+1]=geepack::QIC(r1)[1]
       remove.this.id.name=names(which(as.matrix(summary(r1)$coefficients)[-1, 4]==max(as.matrix(summary(r1)$coefficients)[-1, 4])))
       remove.this.id.name=remove.this.id.name[1]
       QIC.RES_p=c(QIC.RES_p, round2(max(as.matrix(summary(r1)$coefficients)[-1, 4]), 2))
@@ -10062,7 +10062,7 @@ Multiple_Comparison_Adjusted_P=function(Vars,
 #                              Pred_Vars=c("center", "treat", "sex", "age", "baseline"),
 #                              Res_Var="outcome",
 #                              which.family<-"binomial (link='logit')")$model_fit
-# Stepwise_AIC(Full_Model, Res_Var)
+# Stepwise_AIC(Full_Model, Res_Var="outcome")
 Stepwise_AIC=function(Full_Model, Res_Var, ...){ # names of people should be numeric
   lapply(c("MASS", "doBy"), checkpackages)
   
