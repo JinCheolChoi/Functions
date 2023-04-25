@@ -3547,7 +3547,9 @@ Competing_Risk_Confounder_Model=function(Data,
                                                        Group_Vars=Group_Vars,
                                                        Strat_Vars=Strat_Vars,
                                                        Start_Time=Start_Time,
-                                                       Stop_Time=Stop_Time)
+                                                       Stop_Time=Stop_Time,
+                                                       Min.Change.Percentage=Min.Change.Percentage,
+                                                       Estimate=Estimate)
   Output$Confounder_Steps=Confounder_Steps
   Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
   
