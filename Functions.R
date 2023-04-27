@@ -3039,6 +3039,543 @@ Incidence_Rate=function(Data,
 }
 
 
+
+#********************************
+#
+# [ --- Competing Risk --- ] ----
+#
+#********************************
+# Competing_Risk_Bivariate
+#*************************
+# Example
+#********
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,2,1,2,1,2,1,0,0,0,1,2,0,0,1,0,1,2,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(2,1,1,1,1,0,1,0,1,0,0,1,2,0,2,1,1,2,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2),
+#                  x4=c(0,0,0,0,0,1,0,1,0,0,1,0,1,0,0,0,1,0,1,0),
+#                  x5=c(1,1,1,1,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,1))
+# Data_to_use$x1=as.factor(Data_to_use$x1)
+# Data_to_use$x2=as.factor(Data_to_use$x2)
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# Data_to_use$x4=as.factor(Data_to_use$x4)
+# Data_to_use$x5=as.factor(Data_to_use$x5)
+# 
+# Competing_Risk_Bivariate(Data=Data_to_use,
+#                          Pred_Vars=c("x1", "x2", "x4", "x5"),
+#                          Res_Var="event",
+#                          Failcode="1",
+#                          Cencode="0",
+#                          # Group_Vars="ENTITY_ID"
+#                          Group_Vars=NULL,
+#                          Strat_Vars=NULL,
+#                          Start_Time=NULL,
+#                          Stop_Time="stop",
+#                          Message="Yes")
+Competing_Risk_Bivariate=function(Data,
+                                  Pred_Vars,
+                                  Res_Var,
+                                  Failcode,
+                                  Cencode,
+                                  Group_Vars=NULL,
+                                  Strat_Vars=NULL,
+                                  Start_Time=NULL,
+                                  Stop_Time,
+                                  Message="Yes",
+                                  Significance_Level=0.1){ # Significance_Level : a threshold of p-value for univariable selection
+  # main algorithm
+  Output=c()
+  List_For_Multivariable=c()
+  for(i in 1:length(Pred_Vars)){
+    #i=1
+    if(i>=2){
+      Message="No"
+    }
+    # run model
+    Temp=Competing_Risk_Multivariable(Data=Data,
+                                      Pred_Vars=unlist(Pred_Vars[i]),
+                                      Res_Var=Res_Var,
+                                      Failcode=Failcode,
+                                      Cencode=Cencode,
+                                      Group_Vars=Group_Vars,
+                                      Strat_Vars=Strat_Vars,
+                                      Start_Time=Start_Time,
+                                      Stop_Time=Stop_Time,
+                                      Message=Message)
+    Output=rbind(Output,
+                 cbind(Temp$Summ_Table,
+                       N_events=Temp$N_events,
+                       PH_assumption_P.value="Not available",
+                       N_non_missing_data=Temp$N_non_missing_data))
+    
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
+  }
+  
+  # print a note
+  print("The PH assumption is better to be considered at the multivariable analysis level.")
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
+}
+
+
+#*****************************
+# Competing_Risk_Multivariable
+#*****************************
+# Example
+#********
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,2,1,2,1,2,1,0,0,0,1,2,0,0,1,0,1,2,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(2,1,1,1,1,0,1,0,1,0,0,1,2,0,2,1,1,2,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2),
+#                  x4=c(0,0,0,0,0,1,0,1,0,0,1,0,1,0,0,0,1,0,1,0),
+#                  x5=c(1,1,1,1,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,1))
+# Data_to_use$x1=as.factor(Data_to_use$x1)
+# Data_to_use$x2=as.factor(Data_to_use$x2)
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# Data_to_use$x4=as.factor(Data_to_use$x4)
+# Data_to_use$x5=as.factor(Data_to_use$x5)
+# 
+# Competing_Risk_Multivariable(Data=Data_to_use,
+#                              Pred_Vars=c("x1", "x2", "x4", "x5"),
+#                              Res_Var="event",
+#                              Failcode="1",
+#                              Cencode="0",
+#                              # Group_Vars="ENTITY_ID"
+#                              Group_Vars=NULL,
+#                              Strat_Vars=NULL,
+#                              Start_Time=NULL,
+#                              Stop_Time="stop",
+#                              Message="Yes")
+Competing_Risk_Multivariable=function(Data,
+                                      Pred_Vars,
+                                      Res_Var,
+                                      Failcode,
+                                      Cencode,
+                                      Group_Vars=NULL,
+                                      Strat_Vars=NULL,
+                                      Start_Time=NULL,
+                                      Stop_Time,
+                                      Message="Yes"){
+  # check out packages
+  lapply(c("survival",
+           "data.table",
+           "riskRegression",
+           "tidycmprsk"), checkpackages)
+  
+  # generate variables required
+  Data=as.data.table(Data_to_use)
+  Data[, Event:="2"]
+  Data[eval(parse(text=Res_Var))==Cencode, Event:="0"] # censored should be coded 0
+  Data[eval(parse(text=Res_Var))==Failcode, Event:="1"] # event should be coded 1, or it can be specified with "failcode" in the function
+  Data[, Event:=as.factor(Event)]
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+  Data=Data[Non_Missing_Outcome_Obs, ]
+  Data=Data[Data[, Stop_Time]!=0, ]
+  if(!is.null(Start_Time)){
+    Data=Data[Data[, Start_Time]<Data[, Stop_Time],]
+  }
+  
+  Origin_N_Rows=nrow(Data)
+  
+  # main algorithm
+  Output=c()
+  #i=1
+  # run model
+  if(!is.null(Group_Vars)){
+    Group_Parts=paste0("+", paste0(" cluster(", Group_Vars, ")", collapse=" +"))
+  }else{Group_Parts=""}
+  if(!is.null(Strat_Vars)){
+    Strat_Parts=paste0("+", paste0(" strata(", Strat_Vars, ")", collapse=" +"))
+  }else{Strat_Parts=""}
+  
+  if(is.null(Start_Time)){
+    fullmod=as.formula(paste("Surv(", Stop_Time, ", Event) ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
+  }else{
+    fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ", Event) ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
+  }
+  
+  model_fit=tidycmprsk::crr(fullmod, data = Data)
+  
+  # number of events from a model fit
+  Used_N_Rows=sum(Data$Event=="1")
+  
+  # number of non-missing observations
+  Used_Non_Missing_N=nrow(na.omit(Data[, c(Res_Var,
+                                           Pred_Vars,
+                                           Group_Vars,
+                                           Strat_Vars)]))
+  
+  
+  Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
+  Output$fullmod=fullmod
+  Output$model_fit=model_fit
+  
+  # For the goodness-of-fit test, we can use prop.crr() in the "goftte" package.
+  # However, the function didn't work properly when I tried.
+  Summ_Table=as.data.table(model_fit$tidy)
+  
+  # Output
+  Summ_Table$HR.and.CI=paste0(format(round2(exp(Summ_Table$estimate), 2), nsmall=2),
+                              " (", format(round2(exp(Summ_Table$conf.low), 2), nsmall=2), " - ",
+                              format(round2(exp(Summ_Table$conf.high), 2), nsmall=2), ")")
+  
+  colnames(Summ_Table)=c("rn",
+                         "Estimate",
+                         "Std.Error",
+                         "Statistic",
+                         "P-value",
+                         "Conf.low",
+                         "Conf.high",
+                         "HR.and.CI")
+  
+  Output$Summ_Table=rbind(Output$Summ_Table, 
+                          data.frame(
+                            Estimate=round2(Summ_Table$Estimate, 3),
+                            Std.Error=Summ_Table$Std.Error,
+                            `P-value`=Summ_Table$`P-value`,
+                            HR.and.CI=Summ_Table$HR.and.CI,
+                            row.names=names(coef(model_fit))
+                          )
+  )
+  
+  # print a note
+  if(Message=="Yes"){
+    # The proportional hazards assumption is no longer satisfied when using the extended Cox model. (That is, the assumption check is not necessary!)
+    # If time-dependent variables are considered, the Cox model form may still be used, but such a model no longer satisfies the PH assumption, and is called the extended Cox model.
+    # (p.109, Survival Analysis: A Self-Learning Text, Third Edition (Statistics for Biology and Health))
+    print("Note : PH Assumption is not necessary for the extended Cox model that includes time-variant variables (so, the data is formatted in the counting process layout).")
+  }
+  return(Output)
+}
+
+#************************************
+# Competing_Risk_Confounder_Selection
+#************************************
+# Example
+#********
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,2,1,2,1,2,1,0,0,0,1,2,0,0,1,0,1,2,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(2,1,1,1,1,0,1,0,1,0,0,1,2,0,2,1,1,2,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2),
+#                  x4=c(0,0,0,0,0,1,0,1,0,0,1,0,1,0,0,0,1,0,1,0),
+#                  x5=c(1,1,1,1,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,1))
+# Data_to_use$x1=as.factor(Data_to_use$x1)
+# Data_to_use$x2=as.factor(Data_to_use$x2)
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# Data_to_use$x4=as.factor(Data_to_use$x4)
+# Data_to_use$x5=as.factor(Data_to_use$x5)
+# 
+# Competing_Risk_Confounder_Selection(Data=Data_to_use,
+#                                     Res_Var="event",
+#                                     Failcode="1",
+#                                     Cencode="0",
+#                                     Main_Pred_Var="x2",
+#                                     Potential_Con_Vars=c("x1", "x4", "x5"),
+#                                     # Group_Vars="ENTITY_ID"
+#                                     Group_Vars=NULL,
+#                                     Strat_Vars=NULL,
+#                                     Start_Time=NULL,
+#                                     Stop_Time="stop",
+# 
+#                                     Min.Change.Percentage=5,
+#                                     Estimate="raw_estimate")
+Competing_Risk_Confounder_Selection=function(Data,
+                                             Main_Pred_Var,
+                                             Potential_Con_Vars,
+                                             Res_Var,
+                                             Failcode,
+                                             Cencode,
+                                             # Group_Vars="ENTITY_ID"
+                                             Group_Vars=NULL,
+                                             Strat_Vars=NULL,
+                                             Start_Time=NULL,
+                                             Stop_Time,
+                                             Min.Change.Percentage=5,
+                                             Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+  
+  # check packages
+  lapply(c("dplyr", "data.table"), checkpackages)
+  
+  # Out
+  Out=c()
+  
+  # initial settings
+  step=1
+  loop.key=0
+  Current_Full_Model_Vars=c(Main_Pred_Var, Potential_Con_Vars)
+  Current_Full_Model=Competing_Risk_Multivariable(Data=Data,
+                                                  Res_Var=Res_Var,
+                                                  Failcode=Failcode,
+                                                  Cencode=Cencode,
+                                                  Pred_Vars=Current_Full_Model_Vars,
+                                                  # Group_Vars="ENTITY_ID"
+                                                  Group_Vars=Group_Vars,
+                                                  Strat_Vars=Strat_Vars,
+                                                  Start_Time=Start_Time,
+                                                  Stop_Time=Stop_Time,
+                                                  Message="No")
+  
+  #Current_Potential_Con_Vars=Potential_Con_Vars
+  Include_Index=c(1:length(Potential_Con_Vars))
+  
+  #***************
+  # main algorithm
+  #***************
+  while(loop.key==0){ # while - start
+    # indicate how many steps have been processed
+    print(paste0("Step : ", step))
+    
+    #
+    Fixed_Effects_Current_Full_Model=coef(Current_Full_Model$model_fit)
+    Main_Effects_Current_Full_Model=Fixed_Effects_Current_Full_Model[grep(Main_Pred_Var, names(Fixed_Effects_Current_Full_Model))]
+    
+    # # Main_Effects_Current_Full_Model
+    # Pred_Vars_Temp=c(Main_Pred_Var, Potential_Con_Vars)
+    # Data_Temp=Data[, .SD, .SDcols=Pred_Vars_Temp]
+    # for(i in 1:length(Pred_Vars_Temp)){
+    #   X=Data_Temp[[i]]
+    #   if(Pred_Vars_Temp[i]==Main_Pred_Var){
+    #     if(is.factor(X)){
+    #       X_Levels=levels(X)
+    #       row_names=paste0(Pred_Vars_Temp[i], X_Levels[-1])
+    #     }else if(is.numeric(X)){
+    #       row_names=Pred_Vars_Temp[i]
+    #     }
+    #     
+    #     Main_Effects_Current_Full_Model=Current_Full_Model$Summ_Table[row_names, "Estimate"]
+    #   }
+    # }
+    
+    
+    # when indep_var is factor, we pick max coef of its levels
+    Main_Cov_Level=names(which.max(abs(Main_Effects_Current_Full_Model)))
+    Main_Effect_Current_Full_Model=Main_Effects_Current_Full_Model[Main_Cov_Level]
+    Main_Effect_Current_Reduced_Model=c()
+    
+    # run COX_PH model excluding one variable at once
+    for(i in 1:length(Potential_Con_Vars[Include_Index])){
+      #i=1
+      Current_Reduced_Model_Vars=c(Main_Pred_Var, Potential_Con_Vars[-i])
+      Current_Reduced_Model=Competing_Risk_Multivariable(Data=Data,
+                                                         Res_Var=Res_Var,
+                                                         Failcode=Failcode,
+                                                         Cencode=Cencode,
+                                                         Pred_Vars=Current_Reduced_Model_Vars,
+                                                         # Group_Vars="ENTITY_ID"
+                                                         Group_Vars=Group_Vars,
+                                                         Strat_Vars=Strat_Vars,
+                                                         Start_Time=Start_Time,
+                                                         Stop_Time=Stop_Time,
+                                                         Message="No")
+      
+      Fixed_Effects_Current_Reduced_Model=coef(Current_Reduced_Model$model_fit)
+      Main_Effect_Current_Reduced_Model[i]=Fixed_Effects_Current_Reduced_Model[Main_Cov_Level]
+      
+      print(paste0("Step : ", step, " - Vars : ", i, "/", length(Potential_Con_Vars[Include_Index])))
+    }
+    
+    if(Estimate=="raw_estimate"){
+      #**** refer to the raw coefficient estimate ****
+      Temp_Table=data.table(
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+        Estimate=c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model),
+        Delta=c("", abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }else if(Estimate=="converted_estimate"){
+      # summary table
+      Temp_Table=data.table(
+        Removed_Var=c(paste0("Full (", Main_Cov_Level, ")"), Potential_Con_Vars[Include_Index]),
+        Est_HR=exp(c(Main_Effect_Current_Full_Model, Main_Effect_Current_Reduced_Model)),
+        Delta=c("", abs(exp(Main_Effect_Current_Reduced_Model)/exp(Main_Effect_Current_Full_Model)-1)*100),
+        Rank=as.numeric(c("", rank(abs(Main_Effect_Current_Reduced_Model/Main_Effect_Current_Full_Model-1)*100)))
+      )
+    }
+    
+    # save summary table at the current step
+    Out$Summ_Table[[step]]=Temp_Table
+    
+    if(min(as.numeric(Temp_Table$Delta[-1]))>Min.Change.Percentage){ # if the minimum change-in-estimate is larger than Min.Change.Percentage, terminate the while loop
+      loop.key=1
+      
+    }else{
+      # decide the variable to remove
+      Var_to_Remove=Temp_Table[Rank==min(Rank, na.rm=T), Removed_Var]
+      # update Include_Index
+      Include_Index=Include_Index[Include_Index!=which(Potential_Con_Vars==Var_to_Remove)]
+      # update the current full model
+      Current_Full_Model_Vars=c(Main_Pred_Var, Potential_Con_Vars[Include_Index])
+      Current_Full_Model=Competing_Risk_Multivariable(Data=Data,
+                                                      Res_Var=Res_Var,
+                                                      Failcode=Failcode,
+                                                      Cencode=Cencode,
+                                                      Pred_Vars=Current_Full_Model_Vars,
+                                                      # Group_Vars="ENTITY_ID"
+                                                      Group_Vars=Group_Vars,
+                                                      Strat_Vars=Strat_Vars,
+                                                      Start_Time=Start_Time,
+                                                      Stop_Time=Stop_Time,
+                                                      Message="No")
+      
+      # increase step
+      step=step+1
+      
+      # if there's no more variable left
+      if(length(Include_Index)==0){
+        Temp_Table=data.table(
+          Removed_Var=c(paste0("Full (", names(Current_Full_Model$coefficients)[-1], ")"), Potential_Con_Vars[Include_Index]),
+          Estimate=c(coef(Current_Full_Model)[-1]),
+          Delta="",
+          Rank=""
+        )
+        Out$Summ_Table[[step]]=Temp_Table
+        loop.key=1
+      }
+    }
+    
+  } # while - end
+  
+  # get the list of primary predictor and confounders
+  Out$Confounders=c(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var[-grep(Main_Pred_Var, Out$Summ_Table[[step]]$Removed_Var)])
+  
+  return(Out)
+}
+
+
+#********************************
+# Competing_Risk_Confounder_Model
+#********************************
+# Example
+#********
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,2,1,2,1,2,1,0,0,0,1,2,0,0,1,0,1,2,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(2,1,1,1,1,0,1,0,1,0,0,1,2,0,2,1,1,2,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2),
+#                  x4=c(0,0,0,0,0,1,0,1,0,0,1,0,1,0,0,0,1,0,1,0),
+#                  x5=c(1,1,1,1,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,1))
+# Data_to_use$x1=as.factor(Data_to_use$x1)
+# Data_to_use$x2=as.factor(Data_to_use$x2)
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# Data_to_use$x4=as.factor(Data_to_use$x4)
+# Data_to_use$x5=as.factor(Data_to_use$x5)
+# 
+# Competing_Risk_Confounder_Model(Data=Data_to_use,
+#                                 Res_Var="event",
+#                                 Failcode="1",
+#                                 Cencode="0",
+#                                 Main_Pred_Var="x2",
+#                                 Potential_Con_Vars=c("x1", "x4", "x5"),
+#                                 # Group_Vars="ENTITY_ID"
+#                                 Group_Vars=NULL,
+#                                 Strat_Vars=NULL,
+#                                 Start_Time=NULL,
+#                                 Stop_Time="stop",
+#                                 Min.Change.Percentage=5,
+#                                 Estimate="raw_estimate")
+Competing_Risk_Confounder_Model=function(Data,
+                                         Main_Pred_Var,
+                                         Potential_Con_Vars,
+                                         Res_Var,
+                                         Failcode,
+                                         Cencode,
+                                         # Group_Vars="ENTITY_ID"
+                                         Group_Vars=NULL,
+                                         Strat_Vars=NULL,
+                                         Start_Time=NULL,
+                                         Stop_Time,
+                                         Message="Yes",
+                                         Min.Change.Percentage=5,
+                                         Estimate="raw_estimate"){
+  
+  # check out packages
+  lapply(c("data.table"), checkpackages)
+  
+  # Output
+  Output=c()
+  
+  # convert Data to data frame
+  Data=as.data.frame(Data)
+  
+  # Full multivariable model
+  Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
+  
+  Output$Full_Multivariable_Model=Competing_Risk_Multivariable(Data=Data,
+                                                               Pred_Vars=Pred_Vars,
+                                                               Res_Var=Res_Var,
+                                                               Failcode=Failcode,
+                                                               Cencode=Cencode,
+                                                               # Group_Vars="ENTITY_ID"
+                                                               Group_Vars=Group_Vars,
+                                                               Strat_Vars=Strat_Vars,
+                                                               Start_Time=Start_Time,
+                                                               Stop_Time=Stop_Time,
+                                                               Message=Message)
+  
+  # Confounder selection
+  Confounder_Steps=Competing_Risk_Confounder_Selection(Data=Data,
+                                                       Main_Pred_Var=Main_Pred_Var,
+                                                       Potential_Con_Vars=Potential_Con_Vars,
+                                                       Res_Var=Res_Var,
+                                                       Failcode=Failcode,
+                                                       Cencode=Cencode,
+                                                       # Group_Vars="ENTITY_ID"
+                                                       Group_Vars=Group_Vars,
+                                                       Strat_Vars=Strat_Vars,
+                                                       Start_Time=Start_Time,
+                                                       Stop_Time=Stop_Time,
+                                                       Min.Change.Percentage=Min.Change.Percentage,
+                                                       Estimate=Estimate)
+  Output$Confounder_Steps=Confounder_Steps
+  Confounder_Ind=which(Pred_Vars%in%Output$Confounder_Steps$Confounders)
+  
+  # Data=Remove_missing(Data, # remove missing data
+  #                     c(Pred_Vars[Confounder_Ind],
+  #                       Res_Var,
+  #                       Group_Vars))
+  
+  # Multivariable model with confounders
+  Output$Confounder_Model=Competing_Risk_Multivariable(Data=Data,
+                                                       Pred_Vars=Pred_Vars[Confounder_Ind],
+                                                       Res_Var=Res_Var,
+                                                       Failcode=Failcode,
+                                                       Cencode=Cencode,
+                                                       # Group_Vars="ENTITY_ID"
+                                                       Group_Vars=Group_Vars,
+                                                       Strat_Vars=Strat_Vars,
+                                                       Start_Time=Start_Time,
+                                                       Stop_Time=Stop_Time,
+                                                       Message=Message)
+  
+  return(Output)
+}
+
+
+
 #*********************
 #
 # [ --- GLM --- ] ----
