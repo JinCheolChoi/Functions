@@ -2327,7 +2327,7 @@ COX_Multivariable=function(Data,
                            Stop_Time,
                            Message="Yes"){
   # check out packages
-  lapply(c("survival", "data.table", "riskRegression"), checkpackages)
+  lapply(c("survival", "data.table", "car", "riskRegression"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -2370,6 +2370,10 @@ COX_Multivariable=function(Data,
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
   Output$fullmod=fullmod
   Output$model_fit=model_fit
+  
+  # vif
+  if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
+  Output$vif=Output_vif
   
   # Examine the proportional hazards assumption that hazard ratio is constant over time, 
   # or equivalently, that the hazard for one individual is proportional to the hard for any other individual, 
@@ -3221,7 +3225,6 @@ Competing_Risk_Multivariable=function(Data,
                                            Group_Vars,
                                            Strat_Vars)]))
   
-  
   Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
   Output$fullmod=fullmod
@@ -3683,7 +3686,7 @@ GLM_Multivariable=function(Data,
                            Offset_Var=NULL,
                            Use_Stepwise_AIC=FALSE){
   # check out packages
-  lapply(c("MASS", "data.table"), checkpackages)
+  lapply(c("MASS", "data.table", "car"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -5495,7 +5498,7 @@ GLMM_Bivariate=function(Data,
                        Data_Used=Temp$N_data_used))
     
     # List_For_Multivariable
-    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+    if("<0.001"%in%(Temp$Summ_Table$`P-value`)|
        sum(Temp$Summ_Table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
