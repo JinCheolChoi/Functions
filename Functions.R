@@ -2327,7 +2327,7 @@ COX_Multivariable=function(Data,
                            Stop_Time,
                            Message="Yes"){
   # check out packages
-  lapply(c("survival", "data.table", "riskRegression"), checkpackages)
+  lapply(c("survival", "data.table", "car", "riskRegression"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -2370,6 +2370,10 @@ COX_Multivariable=function(Data,
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
   Output$fullmod=fullmod
   Output$model_fit=model_fit
+  
+  # vif
+  if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
+  Output$vif=Output_vif
   
   # Examine the proportional hazards assumption that hazard ratio is constant over time, 
   # or equivalently, that the hazard for one individual is proportional to the hard for any other individual, 
@@ -3221,7 +3225,6 @@ Competing_Risk_Multivariable=function(Data,
                                            Group_Vars,
                                            Strat_Vars)]))
   
-  
   Output$N_events=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
   Output$N_non_missing_data=paste0(Used_Non_Missing_N, "/", Origin_N_Rows, " (", round(Used_Non_Missing_N/Origin_N_Rows*100, 2), "%)") 
   Output$fullmod=fullmod
@@ -3683,7 +3686,7 @@ GLM_Multivariable=function(Data,
                            Offset_Var=NULL,
                            Use_Stepwise_AIC=FALSE){
   # check out packages
-  lapply(c("MASS", "data.table"), checkpackages)
+  lapply(c("MASS", "data.table", "car"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -3748,8 +3751,8 @@ GLM_Multivariable=function(Data,
     Output$Summ_Table=data.frame(
       Estimate=round2(est[, "Estimate"], 3),
       Std.Error=round2(est[, "Std. Error"], 3),
-      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
-                       format(round2(est[, 4], 3), nsmall=3)),
+      `P-value`=ifelse(est[, "Pr(>|t|)"]<0.001, "<0.001",
+                       format(round2(est[, "Pr(>|t|)"], 3), nsmall=3)),
       Estimate.and.CI=paste0(format(round2(est[, "Estimate"] , 2), nsmall=2),
                              " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
                              format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
@@ -3769,8 +3772,8 @@ GLM_Multivariable=function(Data,
     Output$Summ_Table=data.frame(
       Estimate=round2(est[, "Estimate"], 3),
       Std.Error=round2(est[, "Std. Error"], 3),
-      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
-                       format(round2(est[, 4], 3), nsmall=3)),
+      `P-value`=ifelse(est[, "Pr(>|z|)"]<0.001, "<0.001",
+                       format(round2(est[, "Pr(>|z|)"], 3), nsmall=3)),
       OR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
                        " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
                        format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
@@ -3809,8 +3812,8 @@ GLM_Multivariable=function(Data,
     Output$Summ_Table=data.frame(
       Estimate=round2(est[, "Estimate"], 3),
       Std.Error=round2(est[, "Std. Error"], 3),
-      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
-                       format(round2(est[, 4], 3), nsmall=3)),
+      `P-value`=ifelse(est[, "Pr(>|z|)"]<0.001, "<0.001",
+                       format(round2(est[, "Pr(>|z|)"], 3), nsmall=3)),
       IRR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
                         " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
                         format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
@@ -4234,8 +4237,8 @@ GLM_NB_Multivariable=function(Data,
   Output$model_fit=model_fit
   Output$Summ_Table=data.frame(Estimate=round2(est[, "Estimate"], 3), 
                                Std.Error=round2(est[, "Std. Error"], 3), 
-                               `P-value`=ifelse(round2(est[, 4], 3)<0.001, "<0.001", 
-                                                format(round2(est[, 4], 3), nsmall=3)), 
+                               `P-value`=ifelse(round2(est[, "Pr(>|z|)"], 3)<0.001, "<0.001", 
+                                                format(round2(est[, "Pr(>|z|)"], 3), nsmall=3)), 
                                IRR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2), 
                                                  " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ", 
                                                  format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"), 
@@ -4526,8 +4529,8 @@ GEE_Multivariable=function(Data,
     Output$Summ_Table=data.frame(
       Estimate=round2(est[, "Estimate"], 3),
       Std.Error=round2(est[, "Std.err"], 3),
-      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
-                       format(round2(est[, 4], 3), nsmall=3)),
+      `P-value`=ifelse(est[, "Pr(>|W|)"]<0.001, "<0.001",
+                       format(round2(est[, "Pr(>|W|)"], 3), nsmall=3)),
       Estimate.and.CI=paste0(format(round2(est[, "Estimate"], 2), nsmall=2),
                              " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
                              format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
@@ -4544,8 +4547,8 @@ GEE_Multivariable=function(Data,
     Output$Summ_Table=data.frame(
       Estimate=round2(est[, "Estimate"], 3),
       Std.Error=round2(est[, "Std.err"], 3),
-      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
-                       format(round2(est[, 4], 3), nsmall=3)),
+      `P-value`=ifelse(est[, "Pr(>|W|)"]<0.001, "<0.001",
+                       format(round2(est[, "Pr(>|W|)"], 3), nsmall=3)),
       OR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
                        " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
                        format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
@@ -4562,8 +4565,8 @@ GEE_Multivariable=function(Data,
     Output$Summ_Table=data.frame(
       Estimate=round2(est[, "Estimate"], 3),
       Std.Error=round2(est[, "Std.err"], 3),
-      `P-value`=ifelse(est[, 4]<0.001, "<0.001",
-                       format(round2(est[, 4], 3), nsmall=3)),
+      `P-value`=ifelse(est[, "Pr(>|W|)"]<0.001, "<0.001",
+                       format(round2(est[, "Pr(>|W|)"], 3), nsmall=3)),
       IRR.and.CI=paste0(format(round2(exp(est[, "Estimate"]), 2), nsmall=2),
                         " (", format(round2(exp(as.numeric(est[, "Lower Est"])), 2), nsmall=2), " - ",
                         format(round2(exp(as.numeric(est[, "Upper Est"])), 2), nsmall=2), ")"),
@@ -5495,7 +5498,7 @@ GLMM_Bivariate=function(Data,
                        Data_Used=Temp$N_data_used))
     
     # List_For_Multivariable
-    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+    if("<0.001"%in%(Temp$Summ_Table$`P-value`)|
        sum(Temp$Summ_Table$P.value<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
@@ -5690,19 +5693,19 @@ GLMM_Multivariable=function(Data,
   Output$Summ_Table$Std.Error=round2(Coef[, "Std. Error"][Coef.ind], 3)
   
   if(grepl("gaussian", which.family)){
-    Output$Summ_Table$`P-value`=ifelse(Coef[, 4][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|t|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$Summ_Table$Estimate.and.CI=paste0(format(round2(Coef[, "Estimate"][Coef.ind], 2), nsmall=2), 
                                              " (", format(round2(CI.raw[CI.raw.ind, 1], 2), nsmall=2), " - ", 
                                              format(round2(CI.raw[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("poisson", which.family) | grepl("negative_binomial", which.family)){
-    Output$Summ_Table$`P-value`=ifelse(Coef[, 4][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$Summ_Table$IRR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                         " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
                                         format(round2(CI[CI.ind, 2], 2), nsmall=2), ")")
   }else if(grepl("binomial", which.family)){
-    Output$Summ_Table$`P-value`=ifelse(Coef[, 4][Coef.ind]<0.001, "<0.001", 
+    Output$Summ_Table$`P-value`=ifelse(Coef[, "Pr(>|z|)"][Coef.ind]<0.001, "<0.001", 
                                        format(round2(Coef[, ncol(Coef)][Coef.ind], 7), nsmall=3))
     Output$Summ_Table$OR.and.CI=paste0(format(round2(exp(Coef[, "Estimate"][Coef.ind]), 2), nsmall=2), 
                                        " (", format(round2(CI[CI.ind, 1], 2), nsmall=2), " - ", 
