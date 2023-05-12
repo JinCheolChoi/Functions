@@ -2482,13 +2482,13 @@ COX_Multivariable=function(Data,
 #                                           Main_Pred_Var="x1",
 #                                           Potential_Con_Vars=Pred_Vars[Pred_Vars!="x1"], # for now, algorithm works with no interaction term
 #                                           Min.Change.Percentage=5,
-#                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                           Estimate="converted_estimate") # raw_estimate, converted_estimate
 # Confounder_Steps$Confounders
 COX_Confounder_Selection=function(Full_Model, 
                                   Main_Pred_Var, 
                                   Potential_Con_Vars, 
                                   Min.Change.Percentage=5,
-                                  Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                  Estimate="converted_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
   
@@ -2611,7 +2611,7 @@ COX_Confounder_Selection=function(Full_Model,
 #                                     Start_Time="start",
 #                                     Stop_Time="stop",
 #                                     Min.Change.Percentage=5,
-#                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                     Estimate="converted_estimate") # raw_estimate, converted_estimate
 # COX_Confounder$Full_Multivariable_Model$Summ_Table
 # COX_Confounder$Confounder_Steps$Confounders
 # COX_Confounder$Confounder_Model$Summ_Table
@@ -2624,7 +2624,7 @@ COX_Confounder_Model=function(Data,
                               Start_Time=NULL,
                               Stop_Time="End_Time",
                               Min.Change.Percentage=5,
-                              Estimate="raw_estimate"){
+                              Estimate="converted_estimate"){
   # check out packages
   lapply(c("data.table"), checkpackages)
   
@@ -3302,7 +3302,7 @@ Competing_Risk_Multivariable=function(Data,
 #                                     Stop_Time="stop",
 # 
 #                                     Min.Change.Percentage=5,
-#                                     Estimate="raw_estimate")
+#                                     Estimate="converted_estimate")
 Competing_Risk_Confounder_Selection=function(Data,
                                              Main_Pred_Var,
                                              Potential_Con_Vars,
@@ -3315,7 +3315,7 @@ Competing_Risk_Confounder_Selection=function(Data,
                                              Start_Time=NULL,
                                              Stop_Time,
                                              Min.Change.Percentage=5,
-                                             Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                             Estimate="converted_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
@@ -3499,7 +3499,7 @@ Competing_Risk_Confounder_Selection=function(Data,
 #                                 Start_Time=NULL,
 #                                 Stop_Time="stop",
 #                                 Min.Change.Percentage=5,
-#                                 Estimate="raw_estimate")
+#                                 Estimate="converted_estimate")
 Competing_Risk_Confounder_Model=function(Data,
                                          Main_Pred_Var,
                                          Potential_Con_Vars,
@@ -3513,7 +3513,7 @@ Competing_Risk_Confounder_Model=function(Data,
                                          Stop_Time,
                                          Message="Yes",
                                          Min.Change.Percentage=5,
-                                         Estimate="raw_estimate"){
+                                         Estimate="converted_estimate"){
   
   # check out packages
   lapply(c("data.table"), checkpackages)
@@ -3884,14 +3884,14 @@ GLM_Multivariable=function(Data,
 #                                           which.family="binomial (link='logit')", # distribution of the response variable
 #                                                                                   # this must be identical to that used in GLM_Multivariable
 #                                           Min.Change.Percentage=5,
-#                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                           Estimate="converted_estimate") # raw_estimate, converted_estimate
 # Confounder_Steps$Confounders
 GLM_Confounder_Selection=function(Full_Model, 
                                   Main_Pred_Var, 
                                   Potential_Con_Vars, 
                                   which.family="binomial",
                                   Min.Change.Percentage=5,
-                                  Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                  Estimate="converted_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
   
@@ -4042,7 +4042,7 @@ GLM_Confounder_Selection=function(Full_Model,
 #                                     Res_Var="outcome",
 #                                     which.family="binomial (link='logit')", # gaussian, binomial, poisson
 #                                     Min.Change.Percentage=5,
-#                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                     Estimate="converted_estimate") # raw_estimate, converted_estimate
 # GLM_Confounder$Full_Multivariable_Model$Summ_Table
 # GLM_Confounder$Confounder_Steps$Confounders
 # GLM_Confounder$Confounder_Model$Summ_Table
@@ -4052,7 +4052,7 @@ GLM_Confounder_Model=function(Data,
                               Res_Var,
                               which.family,
                               Min.Change.Percentage=5,
-                              Estimate="raw_estimate"){
+                              Estimate="converted_estimate"){
   Output=c()
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
@@ -4634,7 +4634,7 @@ GEE_Multivariable=function(Data,
 #                                           Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"], # for now, algorithm works with no interaction term
 #                                           which.family="binomial (link='logit')", # distribution of the response variable
 #                                           Min.Change.Percentage=5,
-#                                           Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                           Estimate="converted_estimate") # raw_estimate, converted_estimate
 # Confounder_Ind=which(Pred_Vars%in%Confounder_Steps$Confounders)
 # GEE.confound.fit=GEE_Multivariable(Data<-Data_to_use,
 #                                    Pred_Vars<-Pred_Vars[Confounder_Ind],
@@ -4648,7 +4648,7 @@ GEE_Confounder_Selection=function(Full_Model,
                                   Potential_Con_Vars, 
                                   which.family="binomial",
                                   Min.Change.Percentage=5,
-                                  Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                  Estimate="converted_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
   
@@ -4792,7 +4792,7 @@ GEE_Confounder_Selection=function(Full_Model,
 #                                     Group_Var="id",
 #                                     which.family="binomial (link='logit')", # gaussian, binomial, poisson
 #                                     Min.Change.Percentage=15,
-#                                     Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                     Estimate="converted_estimate") # raw_estimate, converted_estimate
 # GEE_Confounder$Full_Multivariable_Model$Summ_Table
 # GEE_Confounder$Confounder_Steps$Confounders
 # GEE_Confounder$Confounder_Model$Summ_Table
@@ -4803,7 +4803,7 @@ GEE_Confounder_Model=function(Data,
                               Group_Var,
                               which.family,
                               Min.Change.Percentage=5,
-                              Estimate="raw_estimate"){
+                              Estimate="converted_estimate"){
   # check out packages
   lapply(c("data.table"), checkpackages)
   
@@ -5800,7 +5800,7 @@ GLMM_Multivariable=function(Data,
 #                                            which.family="binomial (link='logit')", # distribution of the response variable
 #                                            # !! Unlike GEE_Confounder_Selection, this which.family is not applied when the model is updated (update()) as the process of building the confounding model.
 #                                            Min.Change.Percentage=5,
-#                                            Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                            Estimate="converted_estimate") # raw_estimate, converted_estimate
 # Confounder_Steps$Confounders
 # 
 # #**********************************
@@ -5838,14 +5838,14 @@ GLMM_Multivariable=function(Data,
 #                                            which.family="negative_binomial", # distribution of the response variable
 #                                            # !! Unlike GEE_Confounder_Selection, this which.family is not applied when the model is updated (update()) as the process of building the confounding model.
 #                                            Min.Change.Percentage=5,
-#                                            Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                            Estimate="converted_estimate") # raw_estimate, converted_estimate
 # Confounder_Steps$Confounders
 GLMM_Confounder_Selection=function(Full_Model, 
                                    Main_Pred_Var, 
                                    Potential_Con_Vars, 
                                    which.family="binomial",
                                    Min.Change.Percentage=5,
-                                   Estimate="raw_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
+                                   Estimate="converted_estimate"){ # minimum percentage of change-in-estimate to terminate the algorithm
   
   # check packages
   lapply(c("dplyr", "data.table"), checkpackages)
@@ -5996,7 +5996,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       which.family="binomial (link='logit')", # gaussian, binomial, poisson
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=5,
-#                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                       Estimate="converted_estimate") # raw_estimate, converted_estimate
 # GLMM_Confounder$Full_Multivariable_Model$Summ_Table
 # GLMM_Confounder$Confounder_Steps$Confounders
 # GLMM_Confounder$Confounder_Model$Summ_Table
@@ -6033,7 +6033,7 @@ GLMM_Confounder_Selection=function(Full_Model,
 #                                       which.family="negative_binomial", # gaussian, binomial, poisson
 #                                       NAGQ=1,
 #                                       Min.Change.Percentage=5,
-#                                       Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                       Estimate="converted_estimate") # raw_estimate, converted_estimate
 # GLMM_Confounder$Full_Multivariable_Model$Summ_Table
 # GLMM_Confounder$Confounder_Steps$Confounders
 # GLMM_Confounder$Confounder_Model$Summ_Table
@@ -6045,7 +6045,7 @@ GLMM_Confounder_Model=function(Data,
                                which.family,
                                NAGQ=100,
                                Min.Change.Percentage=5,
-                               Estimate="raw_estimate"){
+                               Estimate="converted_estimate"){
   Output=c()
   # Full multivariable model
   Pred_Vars=c(Main_Pred_Var, Potential_Con_Vars)
@@ -7989,7 +7989,7 @@ CLMM_Ordinal_Multivariable=function(Data,
 #                                            Potential_Con_Vars=Pred_Vars[Pred_Vars!="sex"], # for now, algorithm works with no interaction term
 #                                            Potential_Con_Vars_Type_Odds<-Type_Odds[Pred_Vars!="sex"],
 #                                            Min.Change.Percentage=5,
-#                                            Estimate="raw_estimate") # raw_estimate, converted_estimate
+#                                            Estimate="converted_estimate") # raw_estimate, converted_estimate
 # Confounder_Steps$Confounders
 CLMM_Confounder_Selection=function(Full_Model,
                                    Main_Pred_Var,
@@ -7997,7 +7997,7 @@ CLMM_Confounder_Selection=function(Full_Model,
                                    Potential_Con_Vars,
                                    Potential_Con_Vars_Type_Odds,
                                    Min.Change.Percentage=5, # minimum percentage of change-in-estimate to terminate the algorithm
-                                   Estimate="raw_estimate"){
+                                   Estimate="converted_estimate"){
   #*****
   # Note
   #*****
@@ -8204,7 +8204,7 @@ CLMM_Confounder_Model=function(Data,
                                Group_Var,
                                NAGQ=3,
                                Min.Change.Percentage=5,
-                               Estimate="raw_estimate"){
+                               Estimate="converted_estimate"){
   Output=c()
   # proportional odds assumption test
   Proportional_Assumption=Proportional_Odds_Assumption_Test(Data<-Data,
