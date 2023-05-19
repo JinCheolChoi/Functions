@@ -5499,7 +5499,7 @@ GLMM_Bivariate=function(Data,
     
     # List_For_Multivariable
     if("<0.001"%in%(Temp$Summ_Table$`P-value`)|
-       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
+       sum(Temp$Summ_Table$`P-value`<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
