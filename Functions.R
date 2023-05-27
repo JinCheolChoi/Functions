@@ -411,6 +411,10 @@ confint_wald=function(object, level=0.95){
 #
 # (based on 'margins')
 #*********************
+#
+# Marginal_Effect_2() is more accurate and preferable in that it calculates confidence intervals based on t-distribution for models with a gaussian distribution for error.
+#
+#*********************
 # This function is based on 'margins' (Version 0.3.26, Date 2021-01-10), which is available for the following object classes:
 #   
 # "betareg", see betareg
@@ -581,8 +585,11 @@ Marginal_Effect_2=function(Model_Fit,
   # (ignore) Still (and weirdly), the name of data used when fitted by geeglm is checked if a value named the same exists in the global environment.
   # (ignore) If there is no value matched the same in the global environment, an error is entailed.
   if(Model=="GEE"){
+    Value_Label=colnames(summary(Model_Fit)$coefficients)[grep("Wald", colnames(summary(Model_Fit)$coefficients))]
     Non_Missing_Data<<-Model_Fit$data
     print("Marginal_Effect_2 / Model : GEE")
+  }else{
+    Value_Label=colnames(summary(Model_Fit)$coefficients)[grep("value", colnames(summary(Model_Fit)$coefficients))]
   }
   
   # type_temp
@@ -592,14 +599,53 @@ Marginal_Effect_2=function(Model_Fit,
     type_temp="link"
   }
   
+  # determine whether p-value is calculated based on t or Wald
+  if(grepl("z", Value_Label)|
+     grepl("Wald", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
   #**********************************************
   # marginal effect of Var_1 conditional on Var_2
   List_Var_2=list(x1=Model_Fit, x2=Var_2_Levels)
   names(List_Var_2)=c("model", Var_2)
   
+  # identify df for confidence interval
+  if(CI_Type=="z"){
+    df_temp=Inf
+  }else if(CI_Type=="t"){
+    
+    Summ=summary(Model_Fit)
+    
+    switch(as.character(is.null(Summ$df.residual)),
+           
+           # for mixed models (i.e. GLMM)
+           "TRUE"={
+             
+             dfs_temp=Summ$coefficients[-1, "df"]
+             
+             df_temp=dfs_temp[setdiff(grep(Var_1, names(dfs_temp)),
+                                      grep(":", names(dfs_temp)))]
+             
+           },
+           
+           # for fixed models (i.e. GLM)
+           "FALSE"={
+             df_temp=Summ$df.residual
+           },
+           
+           # default
+           stop("as.character(is.null(Summ$df.residual)) is something else"))
+  }
+  
   Temp_Var_1=marginaleffects(Model_Fit,
                              type=type_temp,
-                             newdata=do.call(datagrid, List_Var_2))
+                             newdata=do.call(datagrid, List_Var_2),
+                             df=df_temp)
   setnames(Temp_Var_1,
            c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
@@ -617,9 +663,38 @@ Marginal_Effect_2=function(Model_Fit,
   List_Var_1=list(x1=Model_Fit, x2=Var_1_Levels)
   names(List_Var_1)=c("model", Var_1)
   
+  # identify df for confidence interval
+  if(CI_Type=="z"){
+    df_temp=Inf
+  }else if(CI_Type=="t"){
+    
+    Summ=summary(Model_Fit)
+    
+    switch(as.character(is.null(Summ$df.residual)),
+           
+           # for mixed models (i.e. GLMM)
+           "TRUE"={
+             
+             dfs_temp=Summ$coefficients[-1, "df"]
+             
+             df_temp=dfs_temp[setdiff(grep(Var_2, names(dfs_temp)),
+                                      grep(":", names(dfs_temp)))]
+             
+           },
+           
+           # for fixed models (i.e. GLM)
+           "FALSE"={
+             df_temp=Summ$df.residual
+           },
+           
+           # default
+           stop("as.character(is.null(Summ$df.residual)) is something else"))
+  }
+  
   Temp_Var_2=marginaleffects(Model_Fit,
                              type=type_temp,
-                             newdata=do.call(datagrid, List_Var_1))
+                             newdata=do.call(datagrid, List_Var_1),
+                             df=df_temp)
   setnames(Temp_Var_2,
            c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
@@ -639,11 +714,11 @@ Marginal_Effect_2=function(Model_Fit,
   
   if(Family=="gaussian"){
     Out$Estimate.and.CI=c(paste0(round(Marginal_Summ_Var_1[, "AME"], 3), " (", 
-                                 round(Marginal_Summ_Var_1[, "lower"], 3), " - ", 
-                                 round(Marginal_Summ_Var_1[, "upper"], 3), ")"),
+                                 round(Marginal_Summ_Var_1[, "conf.low"], 3), " - ", 
+                                 round(Marginal_Summ_Var_1[, "conf.high"], 3), ")"),
                           paste0(round(Marginal_Summ_Var_2[, "AME"], 3), " (", 
-                                 round(Marginal_Summ_Var_2[, "lower"], 3), " - ", 
-                                 round(Marginal_Summ_Var_2[, "upper"], 3), ")"))
+                                 round(Marginal_Summ_Var_2[, "conf.low"], 3), " - ", 
+                                 round(Marginal_Summ_Var_2[, "conf.high"], 3), ")"))
     colnames(Out)=c("Estimate", "Std.Error", "P.value", "Estimate.and.CI")
     
     Out[, Variable:=c(paste0(paste0(Marginal_Summ_Var_1$factor, Marginal_Summ_Var_1$contrast), ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
@@ -654,11 +729,11 @@ Marginal_Effect_2=function(Model_Fit,
                   "Estimate", "Std.Error", "P.value", "Estimate.and.CI"))
   }else if(Family=="binomial"){
     Out$OR.and.CI=c(paste0(round(exp(Marginal_Summ_Var_1[, "AME"]), 3), " (", 
-                           round(exp(Marginal_Summ_Var_1[, "lower"]), 3), " - ", 
-                           round(exp(Marginal_Summ_Var_1[, "upper"]), 3), ")"),
+                           round(exp(Marginal_Summ_Var_1[, "conf.low"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_1[, "conf.high"]), 3), ")"),
                     paste0(round(exp(Marginal_Summ_Var_2[, "AME"]), 3), " (", 
-                           round(exp(Marginal_Summ_Var_2[, "lower"]), 3), " - ", 
-                           round(exp(Marginal_Summ_Var_2[, "upper"]), 3), ")"))
+                           round(exp(Marginal_Summ_Var_2[, "conf.low"]), 3), " - ", 
+                           round(exp(Marginal_Summ_Var_2[, "conf.high"]), 3), ")"))
     colnames(Out)=c("Estimate", "Std.Error", "P.value", "OR.and.CI")
     
     Out[, Variable:=c(paste0(paste0(Marginal_Summ_Var_1$factor, Marginal_Summ_Var_1$contrast), ":", Var_2, "=", Marginal_Summ_Var_1[, Var_2]),
@@ -5499,7 +5574,7 @@ GLMM_Bivariate=function(Data,
     
     # List_For_Multivariable
     if("<0.001"%in%(Temp$Summ_Table$`P-value`)|
-       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
+       sum(Temp$Summ_Table$`P-value`<Significance_Level)>0){
       List_For_Multivariable=c(List_For_Multivariable,
                                Pred_Vars[i])
     }
