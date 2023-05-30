@@ -9090,8 +9090,15 @@ Contingency_Table_Generator_Conti_X=function(Data,
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
     #
     Levels=levels(as.factor(Data[, Col_Var]))
-    Data[, Col_Var]=as.numeric(as.character(Data[, Col_Var]))
+    if(sum(is.na(as.numeric(as.character(Data[, Col_Var]))))==nrow(Data)){
+      Data$Col_Var_Temp=1
+      Data$Col_Var_Temp[Data[, Col_Var]==Levels[1]]=0
+      Data[, Col_Var]=Data$Col_Var_Temp
+    }else{
+      Data[, Col_Var]=as.numeric(as.character(Data[, Col_Var]))
+    }
     Data[, Row_Var]=as.numeric(as.character(Data[, Row_Var]))
+    
     #
     if(Missing=="Include"){
       useNA="always"
@@ -9187,6 +9194,10 @@ Contingency_Table_Generator_Conti_X=function(Data,
       summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
     )), 2)
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
+  
+  if(length(unique(Data[[Col_Var]]))==2){
+    colnames(Sum_Stat)=c(Levels, "")
+  }
   
   # merge all results
   Out=c()
