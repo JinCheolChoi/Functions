@@ -9018,7 +9018,7 @@ Contingency_Table_Generator=function(Data,
     Out[Value=="NA", c("OR (95% CI)")]=""
   }
   
-  # 
+  # calculate p-values for the fisher's exact test and the chisq test
   Out=as.data.table(Out)
   if(sum(rownames(Contingency_Table)!="NA")>1 & sum(colnames(Contingency_Table)!="NA")>1){
     Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value<0.001,
@@ -9031,7 +9031,6 @@ Contingency_Table_Generator=function(Data,
   
   return(Out[order(match(Out$Value, Row_Levels)), ])
 }
-
 
 #************************************
 #
