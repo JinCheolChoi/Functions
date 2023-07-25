@@ -1912,8 +1912,8 @@ Segmented_Regression_Model=function(Data,
                                     Time_Var,
                                     Int_Var,
                                     Period=12,
-                                    AR_Order=1, # p
-                                    MA_Order=1, # q
+                                    AR_Order=0, # p
+                                    MA_Order=0, # q
                                     Significance_Level=0.05, # 0.05 for 95% confidence interval
                                     ...){
   # check out packages
@@ -2037,7 +2037,7 @@ Segmented_Regression_Model=function(Data,
     if(AR_Order==0 & MA_Order==0){ # ignore Corr_Structure even if there exists autocorrelation
       Corr_Structure=NULL
     }else{
-      Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
+      Corr_Structure=corARMA(p=AR_Order, # default for p and q are 0
                              q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
                              form=~Time)
     }
