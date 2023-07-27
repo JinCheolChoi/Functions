@@ -2775,9 +2775,11 @@ COX_Confounder_Model=function(Data,
 #         conf.int=T,
 #         palette=c("red3", "green3"))
 KM_Plot=function(Data,
+                 Res_Var,
+                 Group_Vars=NULL,
+                 Strat_Vars=NULL,
                  Start_Time=NULL,
                  Stop_Time,
-                 Res_Var,
                  Pred_Vars="1",
                  ...){
   # check out packages
@@ -2827,15 +2829,25 @@ KM_Plot=function(Data,
   }
   
   #
-  if(!is.null(Start_Time)){
-    fullmod=as.formula(paste("Surv(", Start_Time, ", ", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+  if(!is.null(Group_Vars)){
+    Group_Parts=paste0("+", paste0(" cluster(", Group_Vars, ")", collapse=" +"))
+  }else{Group_Parts=""}
+  if(!is.null(Strat_Vars)){
+    Strat_Parts=paste0("+", paste0(" strata(", Strat_Vars, ")", collapse=" +"))
+  }else{Strat_Parts=""}
+  
+  if(is.null(Start_Time)){
+    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
   }else{
-    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+    fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
   }
+  
+  
   
   # conduct Log-rank test if the model is not a null model
   if(sum(Pred_Vars!="1")>0){
-    surv_diff=do.call(survdiff, args=list(formula=fullmod, data=Data))
+    # Right censored data only, so as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+    surv_diff=do.call(survdiff, args=list(formula=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+"))), data=Data))
     p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
     p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
     
@@ -2846,7 +2858,8 @@ KM_Plot=function(Data,
     }
     
     # pairwise comparisons between group levels in case there are more than 2 groups
-    pairwise_test=pairwise_survdiff(formula=fullmod, data=as.data.frame(Data))
+    # Right censored data only, so as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
+    pairwise_test=pairwise_survdiff(formula=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+"))), data=as.data.frame(Data))
     
   }else{ # if the model is a null model
     Log_rank_test=""
