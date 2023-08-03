@@ -2838,33 +2838,54 @@ KM_Plot=function(Data,
   
   if(is.null(Start_Time)){
     fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
-  }else{
-    fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
-  }
-  
-  
-  
-  # conduct Log-rank test if the model is not a null model
-  if(sum(Pred_Vars!="1")>0){
-    # Right censored data only, so as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
-    surv_diff=do.call(survdiff, args=list(formula=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+"))), data=Data))
-    p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
-    p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
     
-    if(p.val=="< 0.001"){
-      Log_rank_test=paste0("Log rank p ", p.val)
-    }else{
-      Log_rank_test=paste0("Log rank p = ", p.val)
+    # conduct Log-rank test if the model is not a null model
+    if(sum(Pred_Vars!="1")>0){
+      surv_diff=do.call(survdiff, args=list(formula=fullmod, data=Data))
+      p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
+      p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
+      
+      if(p.val=="< 0.001"){
+        Log_rank_test=paste0("Log rank p ", p.val)
+      }else{
+        Log_rank_test=paste0("Log rank p = ", p.val)
+      }
+      
+      # pairwise comparisons between group levels in case there are more than 2 groups
+      # undefined columns selected, so remove the cluster() part
+      # as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+")))
+      pairwise_test=pairwise_survdiff(formula=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"))), data=as.data.frame(Data))
+      
+    }else{ # if the model is a null model
+      Log_rank_test=""
+      pairwise_test=""
     }
     
-    # pairwise comparisons between group levels in case there are more than 2 groups
-    # Right censored data only, so as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
-    pairwise_test=pairwise_survdiff(formula=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+"))), data=as.data.frame(Data))
+  }else{ # Right censored data only, so calculate p-value from bivariate model
+    fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
     
-  }else{ # if the model is a null model
-    Log_rank_test=""
-    pairwise_test=""
+    if(sum(Pred_Vars!="1")>0){
+      coxph_output=do.call(coxph, args=list(formula=fullmod, data=Data))
+      p.val=max(0.001, round(summary(coxph_output)$coefficients[, "Pr(>|z|)"], 3))
+      p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
+      
+      if(p.val=="< 0.001"){
+        Log_rank_test=paste0("p-value ", p.val)
+      }else{
+        Log_rank_test=paste0("p-value = ", p.val)
+      }
+      
+      # (need to work on this part!) pairwise comparisons between group levels in case there are more than 2 groups
+      # Right censored data only, so as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+")))
+      # Data[, (Group_Vars):=as.factor(eval(parse(text=Group_Vars)))]
+      pairwise_test=""
+      
+    }else{
+      Log_rank_test=""
+      pairwise_test=""
+    }
   }
+  
   
   # survfit_output
   survfit_output=do.call(survfit, args=list(formula=fullmod, data=Data))
@@ -5243,6 +5264,9 @@ GEE_Backward_by_P_2=function(Full_Model,
   
   Name_Dictionary=list()
   for(i in 1:length(Pred_Vars)){
+    if(class(Data[[Pred_Vars[i]]])=="character"){
+      Data[, (Pred_Vars[i]):=as.factor(eval(parse(text=Pred_Vars[i])))]
+    }
     Name_Dictionary[[Pred_Vars[i]]]=paste0(colnames(Data[, .SD, .SDcols=Pred_Vars[i]]), Data[, levels(unlist(.SD)), .SDcols=Pred_Vars[i]])
   }
   
@@ -5270,7 +5294,9 @@ GEE_Backward_by_P_2=function(Full_Model,
     Summ_Table[[Step]]=Current_Summ_Table[order(p.value, decreasing=TRUE)]
     
     # identify the variable to remove by p-value
-    Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[-1, p.value]))]
+    Current_Summ_Table=Current_Summ_Table[-1, ] # remove (Intercept)
+    Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[, p.value]))]
+    Var_To_Remove=Var_To_Remove[1]
     for(i in 1:length(Pred_Vars)){
       if(sum(Var_To_Remove==Name_Dictionary[[Pred_Vars[[i]]]])>0){
         Var_To_Remove=Pred_Vars[[i]]
@@ -5299,7 +5325,12 @@ GEE_Backward_by_P_2=function(Full_Model,
   Out$Summ_Table=Summ_Table
   Out$QIC_Table=Temp_Table
   # the final model with the lowest QIC
-  Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  if(which.min(Temp_Table[, QIC])==nrow(Temp_Table)){
+    print(warning("Null model has the lowest QIC."))
+    Out$Selected_Vars="1"
+  }else{
+    Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  }
   
   return(Out)
 }
