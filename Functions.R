@@ -1874,16 +1874,23 @@ SMD_difference_Plot_Example=function(){
 #   ),
 #   month=rep(factor(month.name, levels=month.name), length=132)
 # )
-# df[, intv:=ifelse(time >= int, 1, 0)]
+# df[, intv_1:=ifelse(time >= int-70, 1, 0)]
+# df[, intv_2:=ifelse(time >= int-50, 1, 0)]
+# df[, intv_3:=ifelse(time >= int-30, 1, 0)]
+# df[, intv_4:=ifelse(time >= int-10, 1, 0)]
+# df[, intv_5:=ifelse(time >= int+10, 1, 0)]
 # df[, intv_trend:=c(rep(0, (int - 1)), 1:(length(unique(time)) - (int - 1)))]
 # # Add a grouping variable manually
-# df[, group:=ifelse(intv==1, "Intervention", "Control")]
+# df[, group:=ifelse(intv_1==1, "Intervention", "Control")]
 # # time
 # df[, time:=as.Date(time, origin="2020-01-01")]
+# 
 # ITS=Segmented_Regression_Model(Data=df,
 #                                Res_Var="count",
 #                                Time_Var="time",
-#                                Int_Var="intv",
+#                                Int_Var=c("intv_1",
+#                                          "intv_3",
+#                                          "intv_5"),
 #                                ylim=c(min(df[["count"]], na.rm=T)-5,
 #                                       max(df[["count"]], na.rm=T)+5),
 #                                # main=Sub,
@@ -1892,21 +1899,8 @@ SMD_difference_Plot_Example=function(){
 #                                AR_Order=1, # p
 #                                MA_Order=0)
 # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
-# 
 # # generate missing data
 # df[80:100, count:=NA]
-# ITS=Segmented_Regression_Model(Data=df,
-#                                Res_Var="count",
-#                                Time_Var="time",
-#                                Int_Var="intv",
-#                                ylim=c(min(df[["count"]], na.rm=T)-5,
-#                                       max(df[["count"]], na.rm=T)+5),
-#                                # main=Sub,
-#                                ylab=paste0("Count"),
-#                                xlab="Time",
-#                                AR_Order=1, # p
-#                                MA_Order=0)
-# # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
 Segmented_Regression_Model=function(Data,
                                     Res_Var,
                                     Time_Var,
@@ -1924,6 +1918,7 @@ Segmented_Regression_Model=function(Data,
            "nlme", # gls
            "AICcmodavg", # confidence interval for gls
            "forecast",
+           "tsModel", # for harmonic()
            "zoo"), # to test autocorrelation
          checkpackages)
   
@@ -1967,13 +1962,16 @@ Segmented_Regression_Model=function(Data,
   Data[[Time_Var]]=as.factor(Data[[Time_Var]])
   Data$Time=as.numeric(Data[[Time_Var]])
   
-  # Level
-  Data$Level=as.numeric(Data[[Int_Var]])
+  # Level(s)
+  for(i in 1:length(Int_Var)){
+    Data[, paste0("Level_", i):=eval(parse(text=Int_Var[i]))]
+  }
   
-  # Trend
-  Data=as.data.table(Data)
-  Data[, Trend:=0]
-  Data[eval(parse(text=Int_Var))==1, Trend:=1:.N]
+  # Trend(s)
+  for(i in 1:length(Int_Var)){
+    Data[, paste0("Trend_", i):=0]
+    Data[eval(parse(text=Int_Var[i]))==1, paste0("Trend_", i):=1:.N]
+  }
   
   #*********************************************
   # autocorrelation check (Breusch-Godfrey test)
@@ -1984,10 +1982,35 @@ Segmented_Regression_Model=function(Data,
     # If there exists significant evidence of existence of seasonality from the Webel-Ollech test,
     # the seasonally adjusted model is fitted with Fourier terms (pairs of sine and cosine functions) with 12 months as the underlying period reflecting the full seasonal cycle
     # (reference : Interrupted time series regression for the evaluation of public health interventions - A tutorial)
-    model_formula<<-as.formula(paste(Res_Var, "~ Time + Level + Trend + harmonic(Month, 2, ", Period, ")"))
+    model_formula<<-  as.formula(
+      paste0(
+        Res_Var,
+        " ~ Time + ",
+        paste(
+          paste0("Level_", 1:length(Int_Var)),
+          paste0("Trend_", 1:length(Int_Var)),
+          sep=" + ",
+          collapse=" + "
+        ),
+        
+        " + harmonic(Month, 2, ", Period, ")"
+      )
+    )
   }else{
-    model_formula<<-as.formula(paste(Res_Var, "~ Time + Level + Trend"))
+    model_formula<<-as.formula(
+      paste0(
+        Res_Var,
+        " ~ Time + ",
+        paste(
+          paste0("Level_", 1:length(Int_Var)),
+          paste0("Trend_", 1:length(Int_Var)),
+          sep=" + ",
+          collapse=" + "
+        )
+      )
+    )
   }
+  
   
   # handle missing data
   Non_Missing_Outcome_Obs=which(!is.na(Data[[Res_Var]]))
@@ -2084,12 +2107,38 @@ Segmented_Regression_Model=function(Data,
   Output$Summ_Table$`T-value`=round(Output$Summ_Table$`T-value`, 3)
   Output$Summ_Table$`P-value`=ifelse(Output$Summ_Table$`P-value`<0.001, "<0.001", round(Output$Summ_Table$`P-value`, 3))
   Output$Summ_Table=Output$Summ_Table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
-  Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
-                               "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend", "Estimate"],
-                               "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend", "Estimate"], ") in the post-intervention period. ",
-                               "After the intervention, the outcome immediately changes by ",
-                               Output$Summ_Table["Level", "Estimate"],
-                               " on average.")
+  if(length(Int_Var)==1){
+    Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
+           "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend_1", "Estimate"],
+           "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend_1", "Estimate"], ") in the post-intervention period. ",
+           "After the intervention, the outcome immediately changes by ",
+           Output$Summ_Table["Level_1", "Estimate"],
+           " on average.")
+  }else if(length(Int_Var)>1){
+    Interpretation_Temp=c()
+    Interpretation_Temp=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period.")
+    for(i in 1:length(Int_Var)){
+      Interpretation_Temp=c(Interpretation_Temp,
+                            # paste0("Level change after intervention ", i, " : After intervention ", i, ", the outcome immediately changes by ", Output$Summ_Table[paste0("Level_", i), "Estimate"], " on average."),
+                            # paste0("Trend change after intervention ", i, " : ", Output$Summ_Table[paste0("Trend_", i), "Estimate"], ""),
+                            paste0("After intervention ", i, ", the outcome changes by ",
+                                   sum(Output$Summ_Table[c("Time", paste0("Trend_", 1:i)), "Estimate"]),
+                                   "(=",
+                                   paste0(
+                                     Output$Summ_Table["Time", "Estimate"],
+                                     "+",
+                                     paste0(Output$Summ_Table[paste0("Trend_", 1:i), "Estimate"], collapse="+")),
+                                   ") by one unit increase of time, along with the immediate level change by ", Output$Summ_Table[paste0("Level_", i), "Estimate"], "."))
+    }
+    Output$Interpretation=paste0(Interpretation_Temp, collapse=" ")
+  }
+  
+  rownames(Output$Summ_Table)=c("Intercept (Level at t=0)",
+                                "Secular trend (baseline slope)",
+                                paste0(
+                                  c("Level change after intervention ", "Trend change after intervention "),
+                                  rep(1:length(Int_Var), each=2)
+                                ))
   
   # fitted value
   # Fitted_Values=fitted(gls_model_fit) # old one
@@ -2097,18 +2146,49 @@ Segmented_Regression_Model=function(Data,
   SE_Values=predictSE.gls(gls_model_fit, newdata=Data, se.fit=TRUE)$se.fit
   Data[, paste0("Fitted_", Res_Var):=Fitted_Values]
   Data[, paste0("SE_", Res_Var):=SE_Values]
-  Output$Fitted_Value=Data[, .SD, .SDcols=c(Res_Var, Time_Var, "Time", "Level", "Trend",
+  Output$Fitted_Value=Data[, .SD, .SDcols=c(Res_Var, Time_Var, "Time", "Level_1", "Trend_1",
                                             paste0("Fitted_", Res_Var),
                                             paste0("SE_", Res_Var))]
   Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Lower_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))-qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
   Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Uppder_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))+qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
   
+  # # for seasonality-adjusted model (ref. Interrupted time series regression for the evaluation of public health interventions: a tutorial)
+  # # let's work on this later!
+  # Fitted_Values=predict(gls_model_fit,
+  #                       type="response",
+  #                       Data)
+  # 
+  # # it is sometimes difficult to clearly see the change graphically in the
+  # #   seasonally adjusted model, therefore it can be useful to plot a straight
+  # #   line representing a 'deseasonalised' trend
+  # # this can be done by predicting all the observations for the same month, in
+  # #   this case we use June
+  # Fitted_Values=predict(gls_model_fit,
+  #                       type="response",
+  #                       transform(Data,Month=6))
+  
   # plot
   Output$Fitted_Regression_Line_Plot=function(){
-    Data=as.data.frame(Data)
+    # segment positions
+    Data=as.data.table(Data)
+    Data[, Index:=.I]
+    Data$Level_0=1
+    Data$Trend_0=1:nrow(Data)
+    for(i in 0:(length(Int_Var))){
+      Data[, paste0("Level_", i, "_Seg"):=0]
+      Data[eval(parse(text=paste0("Level_", i)))==1, paste0("Level_", i, "_Seg"):=1]
+      for(j in i:length(Int_Var)){
+        if(j!=i){
+          Data[eval(parse(text=paste0("Level_", i)))==1 &
+                 eval(parse(text=paste0("Level_", j)))==1, paste0("Level_", i, "_Seg"):=0]
+        }
+      }
+    }
+    
+    # Data=as.data.frame(Data)
     plot(Data$Time,
          Data[[Res_Var]],
-         # ylim=c(0, 100),
+         # ylim=ylim,
          ...,
          # main=Sub,
          # xlab="Time",
@@ -2131,55 +2211,98 @@ Segmented_Regression_Model=function(Data,
     Fitted_Values=fitted(gls_model_fit)
     names(Fitted_Values)=Non_missing_Time
     
-    # Pre_Period_End=length(Data[[Time_Var]][Data[[Int_Var]]==0])
-    Post_Period_Start=min(which(Data[[Int_Var]]==1)) # the first time value of the post-intervention period
-    
-    # Pre_Period_End_No_Missing : the last time index of the pre-intervention period
-    Pre_Period_End_No_Missing=max(Non_missing_Time[Non_missing_Time<Post_Period_Start])
-    
-    # Post_Period_End_No_Missing : the first time index of the post-intervention period
-    Post_Period_End_No_Missing=min(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing])
-    
-    # pre-intervention regression line
-    lines(Non_missing_Time[Non_missing_Time<=Pre_Period_End_No_Missing],
-          Fitted_Values[Non_missing_Time<=Pre_Period_End_No_Missing],
-          col="red", lwd=2)
-    
-    # post-intervention regression line
-    lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
-          Fitted_Values[Non_missing_Time>Pre_Period_End_No_Missing],
-          col="blue", lwd=2)
+    # predicted lines
+    for(i in 0:length(Int_Var)){
+      lines(Non_missing_Time[Data[Non_Missing_Outcome_Obs, ][, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]]],
+            Fitted_Values[Data[Non_Missing_Outcome_Obs, ][, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]]],
+            col=c("red",
+                  "blue",
+                  "green",
+                  "purple",
+                  "yellow")[i+1], lwd=2)
+    }
     
     # Add a box to show phase-in (or missing) period
     if(sum(is.na(Data[[Res_Var]]))>0){
-      rect(Pre_Period_End_No_Missing+1,
-           -500,
-           Post_Period_End_No_Missing-1,
-           5000,
-           border=NA,
-           col='grey70')
+      missing_points=setdiff(1:nrow(Data),
+                             Non_Missing_Outcome_Obs)
+      # missing_points=c(1, 2, 3, 7, 8, 9, 12)
+      
+      for(i in 2:length(missing_points)){
+        if(i==2){
+          temp_start=missing_points[1]
+          temp_end=missing_points[i]
+        }
+        if(i>2){
+          if(missing_points[i]-missing_points[i-1]==1){
+            temp_end=missing_points[i]
+          }else{
+            print(paste0("missing_start : ", temp_start, " / missing_end : ", temp_end))
+            temp_start=missing_points[i]
+            temp_end=missing_points[i]
+          }
+        }
+        rect(temp_start,
+             -500,
+             temp_end,
+             5000,
+             border=NA,
+             col='grey70')
+        rect(temp_start-0.1,
+             -500,
+             temp_end+0.1,
+             5000,
+             border=NA,
+             col='grey70')
+      }
+      print(paste0("missing_start : ", temp_start, " / missing_end : ", temp_end))
     }
     
     # intervention
-    abline(
-      v=Post_Period_Start-1,
-      lty=2,
-      lwd=3,
-      col=1)
+    for(i in 1:length(Int_Var)){
+      abline(
+        v=min(Data[eval(parse(text=paste0(Int_Var[i])))==1, Index]),
+        lty=2,
+        lwd=3,
+        col=1)
+    }
     
     # extrapolated regression line extended from the pre-intervention regression line
     # !!! this one only works for non-seasonally-adjusted model !!!
-    segments(Post_Period_End_No_Missing,
-             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*Post_Period_End_No_Missing,
-             nrow(Data),
-             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*nrow(Data),
-             lty=2,
-             lwd=2,
-             col="red")
+    for(i in 0:(length(Int_Var)-1)){
+      
+      Pre_Seg_Intersectant_Points=intersect(Data[, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]],
+                                            Non_missing_Time)
+      Intersectant_Points=intersect(Data[, .I[eval(parse(text=paste0("Level_", i+1, "_Seg")))==1]],
+                                    Non_missing_Time)
+      Pre_Temp_Data_Min=Data[min(Pre_Seg_Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      Pre_Temp_Data_Max=Data[max(Pre_Seg_Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      
+      Temp_Data_Min=Data[min(Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      Temp_Data_Max=Data[max(Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      
+      Temp_Coeffs=gls_model_fit$coefficients
+      names(Temp_Coeffs)[1]="Level_0"
+      names(Temp_Coeffs)[2]="Trend_0"
+      Temp_Coeffs=Temp_Coeffs[sort(names(Temp_Coeffs))]
+      Temp_Coeffs[Pre_Temp_Data_Min==0]=0
+      
+      segments(min(Intersectant_Points),
+               sum(Temp_Coeffs[sort(names(Temp_Coeffs))]*Temp_Data_Min[, .SD, .SDcols=sort(colnames(Temp_Data_Min))]),
+               max(Intersectant_Points),
+               sum(Temp_Coeffs[sort(names(Temp_Coeffs))]*Temp_Data_Max[, .SD, .SDcols=sort(colnames(Temp_Data_Max))]),
+               lty=2,
+               lwd=2,
+               col=c("red",
+                     "blue",
+                     "green",
+                     "purple",
+                     "yellow")[i+1])
+    }
     
-    # Post_Data_prediction=Data_to_fit[Time%in%c(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing]), ]
+    # Post_Data_prediction=Data_to_fit[Time%in%c(Non_missing_Time[Non_missing_Time>Prior_Segment_End_No_Missing]), ]
     # Post_Data_prediction[, Level:=0]
-    # lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
+    # lines(Non_missing_Time[Non_missing_Time>Prior_Segment_End_No_Missing],
     #       predict(gls_model_fit, newdata=Post_Data_prediction),
     #       col="blue", lwd=2)
     
@@ -2202,6 +2325,7 @@ Segmented_Regression_Model=function(Data,
   
   return(Output)
 }
+
 
 
 
