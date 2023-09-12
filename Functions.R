@@ -9254,9 +9254,9 @@ Contingency_Table_Generator_Conti_X=function(Data,
   Data=as.data.frame(Data)
   
   # If response variable is binary, perform GLM to compute P.value and OR.and.CI
+  Levels=levels(as.factor(Data[, Col_Var]))
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
     #
-    Levels=levels(as.factor(Data[, Col_Var]))
     if(sum(is.na(as.numeric(as.character(Data[, Col_Var]))))==nrow(Data)){
       Data$Col_Var_Temp=1
       Data$Col_Var_Temp[Data[, Col_Var]==Levels[1]]=0
@@ -9310,6 +9310,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
       Sum_Col_Wise=as.data.frame(Data) %>% 
         dplyr::select(Col_Var) %>% 
         table(useNA=useNA) %>% c
+      names(Sum_Col_Wise)=Levels
       
       # compute P.values
       OR.and.CI=""
@@ -9333,6 +9334,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
       Sum_Col_Wise=as.data.frame(Data) %>% 
         dplyr::select(Col_Var) %>% 
         table(useNA=useNA) %>% c
+      names(Sum_Col_Wise)=Levels
       
       # compute P.values
       OR.and.CI="Y is not binary"
@@ -9346,25 +9348,53 @@ Contingency_Table_Generator_Conti_X=function(Data,
     }
   }
   
-  #
-  Data=as.data.table(Data)
   # summary statistics
   if(Missing=="Include"){
-    Sum_Stat=round(t(rbind(
-      with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
-      summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
-      summary(as.data.frame(Data)[, Row_Var])[1:6] # total
-    )), 2)
+    if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==1){
+      RowNames=rownames(with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary))))
+      #
+      Data=as.data.table(Data)
+      Sum_Stat=round(t(rbind(
+        RowNames=with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
+        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+      )), 2)
+      colnames(Sum_Stat)[length(RowNames)]=RowNames
+    }else{
+      #
+      Data=as.data.table(Data)
+      Sum_Stat=round(t(rbind(
+        with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
+        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+      )), 2)
+    }
   }else if(Missing=="Not_Include"){
-    Sum_Stat=round(t(rbind(
-      with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
-      summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
-    )), 2)
+    if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==1){
+      #
+      Data=as.data.table(Data)
+      RowNames=rownames(with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary))))
+      Sum_Stat=round(t(rbind(
+        RowNames=with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
+      )), 2)
+      colnames(Sum_Stat)[length(RowNames)]=RowNames
+    }else{
+      #
+      Data=as.data.table(Data)
+      Sum_Stat=round(t(rbind(
+        with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
+      )), 2)
+    }
+    
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
   
-  if(length(unique(Data[[Col_Var]]))==2){
-    colnames(Sum_Stat)=c(Levels, "")
-  }
+  # if(length(unique(Data[[Col_Var]])[!is.na(unique(Data[[Col_Var]]))])==2){
+  #   colnames(Sum_Stat)=c(Levels, rep(NA, sum(colnames(Sum_Stat)=="")))
+  # }
+  
+  colnames(Sum_Stat)=c(Levels, rep(NA, sum(colnames(Sum_Stat)=="")))
   
   # merge all results
   Out=c()
