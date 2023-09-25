@@ -3812,6 +3812,241 @@ Competing_Risk_Confounder_Model=function(Data,
 
 
 
+#*************************************
+#
+# [ --- Quantile Regression --- ] ----
+#
+#*************************************
+# QR_Bivariate
+#*************
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# Data_to_use$outcome=rnorm(nrow(Data_to_use))
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# QR_Bivariate(Data=Data_to_use,
+#              Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                          list(c("sex", "age", "sex:age"))),
+#              Res_Var=Res_Var,
+#              Quantile=0.5,
+#              Method="br")
+QR_Bivariate=function(Data,
+                      Pred_Vars,
+                      Res_Var,
+                      Quantile=0.5,
+                      Method="br",
+                      Significance_Level=0.1){ # Significance_Level : a threshold of p-value for univariable selection
+  # main algorithm
+  Output=c()
+  List_For_Multivariable=c()
+  for(i in 1:length(Pred_Vars)){
+    #i=1
+    # run model
+    Temp=QR_Multivariable(Data=Data,
+                          Pred_Vars=unlist(Pred_Vars[i]),
+                          Res_Var=Res_Var,
+                          Quantile=Quantile,
+                          Method=Method)
+    Output=rbind(Output,
+                 Temp$Summ_Table,
+                 fill=T)
+    
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
+    
+    # print out progress
+    if(sum(grepl(":", Pred_Vars[i]))>0){
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", unlist(Pred_Vars[i])[grepl(":", unlist(Pred_Vars[i]))], " (", i ," out of ", length(Pred_Vars), ")"))
+    }else{
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
+    }
+  }
+  
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
+}
+
+
+#******************
+# QR_Multivariable
+#******************
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# Data_to_use$outcome=rnorm(nrow(Data_to_use))
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# QR_Multivariable(Data=Data_to_use,
+#                  Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                  Res_Var=Res_Var,
+#                  Quantile=0.5,
+#                  Method="br")
+QR_Multivariable=function(Data,
+                          Pred_Vars,
+                          Res_Var,
+                          Quantile=0.5,
+                          Method="br"){
+  # check out packages
+  lapply(c("quantreg",
+           "data.table"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+  Data=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data)
+  
+  # main algorithm
+  Output=c()
+  #i=1
+  # run model
+  # fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
+  # model_fit=glm(fullmod, family=eval(parse(text=Quantile)), na.action=na.exclude, data=Data)
+  fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
+  model_fit=rq(fullmod,
+               na.action=na.omit,
+               data=Data,
+               tau=Quantile,
+               method=Method)
+  
+  # number of observations from a model fit
+  Used_N_Rows=nrow(model_fit$model)
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  Output$model_fit=model_fit
+  
+  # determine whether p-value is calculated based on t or Wald
+  Summ=summary(model_fit, se="nid")
+  Value_Label=colnames(Summ$coefficients)[grep("value", colnames(Summ$coefficients))]
+  if(grepl("z", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
+  # Output
+  # # Individual t test and confidence interval for each parameter
+  # # confint.lm for the direct formulae based on t values
+  # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+  # Est.CI=cbind(Est=coef(model_fit), confint.lm(model_fit, level=0.95))
+  
+  # confidence interval (raw)
+  # CI.raw=confint(model_fit, level=0.95)
+  switch(CI_Type,
+         
+         # t-distribution-based confidence interval using a function written in person
+         "t"={
+           Coeffs=Summ$coefficients
+           Coeffs=as.data.frame(Coeffs)
+           Coeffs=Coeffs[-1, ]
+           DF=Summ$rdf
+           Level=0.5
+           Est.CI=cbind(`2.5%`=Coeffs[, "Value"]-qt(1-(1-Level)/2, DF)*Coeffs[, "Std. Error"],
+                        `97.5%`=Coeffs[, "Value"]+qt(1-(1-Level)/2, DF)*Coeffs[, "Std. Error"])
+         },
+         
+         # Wald confidence interval using a function written in person
+         "z"={
+           Coeffs=Summ$coefficients
+           Coeffs=as.data.frame(Coeffs)
+           Coeffs=Coeffs[-1, ] # remove (Intercept)
+           Level=0.5
+           
+           Est.CI=cbind(`2.5%`=Coeffs[, "Value"]-qnorm(1-(1-Level)/2)*Coeffs[, "Std. Error"],
+                        `97.5%`=Coeffs[, "Value"]+qnorm(1-(1-Level)/2)*Coeffs[, "Std. Error"])
+         },
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
+  
+  
+  Est.CI=cbind(coef(model_fit)[-1],
+               Est.CI)
+  
+  colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
+  
+  est=cbind.fill(as.data.frame(Summ$coefficients)[-1, ], Est.CI)
+  
+  switch(CI_Type,
+         
+         "t"={
+           Output$Summ_Table=data.frame(
+             Estimate=round2(est[, "Estimate"], 3),
+             Std.Error=round2(est[, "Std. Error"], 3),
+             `P-value`=ifelse(est[, "Pr(>|t|)"]<0.001, "<0.001",
+                              format(round2(est[, "Pr(>|t|)"], 3), nsmall=3)),
+             Estimate.and.CI=paste0(format(round2(est[, "Estimate"] , 2), nsmall=2),
+                                    " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
+                                    format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
+             row.names=names(coef(model_fit))[-1]
+           )
+         },
+         
+         "z"={
+           Output$Summ_Table=data.frame(
+             Estimate=round2(est[, "Estimate"], 3),
+             Std.Error=round2(est[, "Std. Error"], 3),
+             `P-value`=ifelse(est[, "Pr(>|z|)"]<0.001, "<0.001",
+                              format(round2(est[, "Pr(>|z|)"], 3), nsmall=3)),
+             Estimate.and.CI=paste0(format(round2(est[, "Estimate"] , 2), nsmall=2),
+                                    " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
+                                    format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
+             row.names=names(coef(model_fit))[-1]
+           )
+         },
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
+  
+  Output$Summ_Table=as.data.table(Output$Summ_Table, keep.rownames=TRUE)
+  
+  
+  Output$Summ_Table=cbind(Output$Summ_Table[, c(1, 5, 4)],
+                          N_data_used=N_data_used)
+  
+  return(Output)
+}
+
+
+
 #*********************
 #
 # [ --- GLM --- ] ----
@@ -9092,7 +9327,8 @@ Contingency_Table_Generator=function(Data,
                                      Col_Var,
                                      Ref_of_Row_Var,
                                      Missing="Not_Include",
-                                     Ind_P_Value=F){
+                                     Ind_P_Value=F,
+                                     Sim.p.value=F){
   # library
   lapply(c("epitools"), checkpackages)
   
@@ -9189,9 +9425,9 @@ Contingency_Table_Generator=function(Data,
   # calculate p-values for the fisher's exact test and the chisq test
   Out=as.data.table(Out)
   if(sum(rownames(Contingency_Table)!="NA")>1 & sum(colnames(Contingency_Table)!="NA")>1){
-    Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=FALSE)$p.value<0.001,
+    Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value<0.001,
                                                              "<0.001",
-                                                             paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=FALSE)$p.value, 3)))
+                                                             paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value, 3)))
     Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value<0.001,
                                                                  "<0.001",
                                                                  paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value, 3)))  # return
