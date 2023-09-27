@@ -1874,16 +1874,23 @@ SMD_difference_Plot_Example=function(){
 #   ),
 #   month=rep(factor(month.name, levels=month.name), length=132)
 # )
-# df[, intv:=ifelse(time >= int, 1, 0)]
+# df[, intv_1:=ifelse(time >= int-70, 1, 0)]
+# df[, intv_2:=ifelse(time >= int-50, 1, 0)]
+# df[, intv_3:=ifelse(time >= int-30, 1, 0)]
+# df[, intv_4:=ifelse(time >= int-10, 1, 0)]
+# df[, intv_5:=ifelse(time >= int+10, 1, 0)]
 # df[, intv_trend:=c(rep(0, (int - 1)), 1:(length(unique(time)) - (int - 1)))]
 # # Add a grouping variable manually
-# df[, group:=ifelse(intv==1, "Intervention", "Control")]
+# df[, group:=ifelse(intv_1==1, "Intervention", "Control")]
 # # time
 # df[, time:=as.Date(time, origin="2020-01-01")]
+# 
 # ITS=Segmented_Regression_Model(Data=df,
 #                                Res_Var="count",
 #                                Time_Var="time",
-#                                Int_Var="intv",
+#                                Int_Var=c("intv_1",
+#                                          "intv_3",
+#                                          "intv_5"),
 #                                ylim=c(min(df[["count"]], na.rm=T)-5,
 #                                       max(df[["count"]], na.rm=T)+5),
 #                                # main=Sub,
@@ -1892,28 +1899,15 @@ SMD_difference_Plot_Example=function(){
 #                                AR_Order=1, # p
 #                                MA_Order=0)
 # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
-# 
 # # generate missing data
 # df[80:100, count:=NA]
-# ITS=Segmented_Regression_Model(Data=df,
-#                                Res_Var="count",
-#                                Time_Var="time",
-#                                Int_Var="intv",
-#                                ylim=c(min(df[["count"]], na.rm=T)-5,
-#                                       max(df[["count"]], na.rm=T)+5),
-#                                # main=Sub,
-#                                ylab=paste0("Count"),
-#                                xlab="Time",
-#                                AR_Order=1, # p
-#                                MA_Order=0)
-# # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
 Segmented_Regression_Model=function(Data,
                                     Res_Var,
                                     Time_Var,
                                     Int_Var,
                                     Period=12,
-                                    AR_Order=1, # p
-                                    MA_Order=1, # q
+                                    AR_Order=0, # p
+                                    MA_Order=0, # q
                                     Significance_Level=0.05, # 0.05 for 95% confidence interval
                                     ...){
   # check out packages
@@ -1924,6 +1918,7 @@ Segmented_Regression_Model=function(Data,
            "nlme", # gls
            "AICcmodavg", # confidence interval for gls
            "forecast",
+           "tsModel", # for harmonic()
            "zoo"), # to test autocorrelation
          checkpackages)
   
@@ -1967,13 +1962,16 @@ Segmented_Regression_Model=function(Data,
   Data[[Time_Var]]=as.factor(Data[[Time_Var]])
   Data$Time=as.numeric(Data[[Time_Var]])
   
-  # Level
-  Data$Level=as.numeric(Data[[Int_Var]])
+  # Level(s)
+  for(i in 1:length(Int_Var)){
+    Data[, paste0("Level_", i):=eval(parse(text=Int_Var[i]))]
+  }
   
-  # Trend
-  Data=as.data.table(Data)
-  Data[, Trend:=0]
-  Data[eval(parse(text=Int_Var))==1, Trend:=1:.N]
+  # Trend(s)
+  for(i in 1:length(Int_Var)){
+    Data[, paste0("Trend_", i):=0]
+    Data[eval(parse(text=Int_Var[i]))==1, paste0("Trend_", i):=1:.N]
+  }
   
   #*********************************************
   # autocorrelation check (Breusch-Godfrey test)
@@ -1984,10 +1982,35 @@ Segmented_Regression_Model=function(Data,
     # If there exists significant evidence of existence of seasonality from the Webel-Ollech test,
     # the seasonally adjusted model is fitted with Fourier terms (pairs of sine and cosine functions) with 12 months as the underlying period reflecting the full seasonal cycle
     # (reference : Interrupted time series regression for the evaluation of public health interventions - A tutorial)
-    model_formula<<-as.formula(paste(Res_Var, "~ Time + Level + Trend + harmonic(Month, 2, ", Period, ")"))
+    model_formula<<-  as.formula(
+      paste0(
+        Res_Var,
+        " ~ Time + ",
+        paste(
+          paste0("Level_", 1:length(Int_Var)),
+          paste0("Trend_", 1:length(Int_Var)),
+          sep=" + ",
+          collapse=" + "
+        ),
+        
+        " + harmonic(Month, 2, ", Period, ")"
+      )
+    )
   }else{
-    model_formula<<-as.formula(paste(Res_Var, "~ Time + Level + Trend"))
+    model_formula<<-as.formula(
+      paste0(
+        Res_Var,
+        " ~ Time + ",
+        paste(
+          paste0("Level_", 1:length(Int_Var)),
+          paste0("Trend_", 1:length(Int_Var)),
+          sep=" + ",
+          collapse=" + "
+        )
+      )
+    )
   }
+  
   
   # handle missing data
   Non_Missing_Outcome_Obs=which(!is.na(Data[[Res_Var]]))
@@ -2037,7 +2060,7 @@ Segmented_Regression_Model=function(Data,
     if(AR_Order==0 & MA_Order==0){ # ignore Corr_Structure even if there exists autocorrelation
       Corr_Structure=NULL
     }else{
-      Corr_Structure=corARMA(p=AR_Order, # default for p and q are 1
+      Corr_Structure=corARMA(p=AR_Order, # default for p and q are 0
                              q=MA_Order, # determine p and q values in accordance with the instruction in the table shown at 7:10 at https://learning.edx.org/course/course-v1:UBCx+ITSx+1T2017/block-v1:UBCx+ITSx+1T2017+type@sequential+block@72dd230d284343fba05ea08e1c26ac01/block-v1:UBCx+ITSx+1T2017+type@vertical+block@afae5c71391440c0ad3f8221bd1f4238
                              form=~Time)
     }
@@ -2084,12 +2107,38 @@ Segmented_Regression_Model=function(Data,
   Output$Summ_Table$`T-value`=round(Output$Summ_Table$`T-value`, 3)
   Output$Summ_Table$`P-value`=ifelse(Output$Summ_Table$`P-value`<0.001, "<0.001", round(Output$Summ_Table$`P-value`, 3))
   Output$Summ_Table=Output$Summ_Table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
-  Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
-                               "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend", "Estimate"],
-                               "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend", "Estimate"], ") in the post-intervention period. ",
-                               "After the intervention, the outcome immediately changes by ",
-                               Output$Summ_Table["Level", "Estimate"],
-                               " on average.")
+  if(length(Int_Var)==1){
+    Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
+           "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend_1", "Estimate"],
+           "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend_1", "Estimate"], ") in the post-intervention period. ",
+           "After the intervention, the outcome immediately changes by ",
+           Output$Summ_Table["Level_1", "Estimate"],
+           " on average.")
+  }else if(length(Int_Var)>1){
+    Interpretation_Temp=c()
+    Interpretation_Temp=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period.")
+    for(i in 1:length(Int_Var)){
+      Interpretation_Temp=c(Interpretation_Temp,
+                            # paste0("Level change after intervention ", i, " : After intervention ", i, ", the outcome immediately changes by ", Output$Summ_Table[paste0("Level_", i), "Estimate"], " on average."),
+                            # paste0("Trend change after intervention ", i, " : ", Output$Summ_Table[paste0("Trend_", i), "Estimate"], ""),
+                            paste0("After intervention ", i, ", the outcome changes by ",
+                                   sum(Output$Summ_Table[c("Time", paste0("Trend_", 1:i)), "Estimate"]),
+                                   "(=",
+                                   paste0(
+                                     Output$Summ_Table["Time", "Estimate"],
+                                     "+",
+                                     paste0(Output$Summ_Table[paste0("Trend_", 1:i), "Estimate"], collapse="+")),
+                                   ") by one unit increase of time, along with the immediate level change by ", Output$Summ_Table[paste0("Level_", i), "Estimate"], "."))
+    }
+    Output$Interpretation=paste0(Interpretation_Temp, collapse=" ")
+  }
+  
+  rownames(Output$Summ_Table)=c("Intercept (Level at t=0)",
+                                "Secular trend (baseline slope)",
+                                paste0(
+                                  c("Level change after intervention ", "Trend change after intervention "),
+                                  rep(1:length(Int_Var), each=2)
+                                ))
   
   # fitted value
   # Fitted_Values=fitted(gls_model_fit) # old one
@@ -2097,18 +2146,49 @@ Segmented_Regression_Model=function(Data,
   SE_Values=predictSE.gls(gls_model_fit, newdata=Data, se.fit=TRUE)$se.fit
   Data[, paste0("Fitted_", Res_Var):=Fitted_Values]
   Data[, paste0("SE_", Res_Var):=SE_Values]
-  Output$Fitted_Value=Data[, .SD, .SDcols=c(Res_Var, Time_Var, "Time", "Level", "Trend",
+  Output$Fitted_Value=Data[, .SD, .SDcols=c(Res_Var, Time_Var, "Time", "Level_1", "Trend_1",
                                             paste0("Fitted_", Res_Var),
                                             paste0("SE_", Res_Var))]
   Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Lower_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))-qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
   Output$Fitted_Value[, paste0((1-Significance_Level)*100, "%_CI_Uppder_Boundary"):=eval(parse(text=paste0("Fitted_", Res_Var)))+qnorm(1-Significance_Level/2)*eval(parse(text=paste0("SE_", Res_Var)))]
   
+  # # for seasonality-adjusted model (ref. Interrupted time series regression for the evaluation of public health interventions: a tutorial)
+  # # let's work on this later!
+  # Fitted_Values=predict(gls_model_fit,
+  #                       type="response",
+  #                       Data)
+  # 
+  # # it is sometimes difficult to clearly see the change graphically in the
+  # #   seasonally adjusted model, therefore it can be useful to plot a straight
+  # #   line representing a 'deseasonalised' trend
+  # # this can be done by predicting all the observations for the same month, in
+  # #   this case we use June
+  # Fitted_Values=predict(gls_model_fit,
+  #                       type="response",
+  #                       transform(Data,Month=6))
+  
   # plot
   Output$Fitted_Regression_Line_Plot=function(){
-    Data=as.data.frame(Data)
+    # segment positions
+    Data=as.data.table(Data)
+    Data[, Index:=.I]
+    Data$Level_0=1
+    Data$Trend_0=1:nrow(Data)
+    for(i in 0:(length(Int_Var))){
+      Data[, paste0("Level_", i, "_Seg"):=0]
+      Data[eval(parse(text=paste0("Level_", i)))==1, paste0("Level_", i, "_Seg"):=1]
+      for(j in i:length(Int_Var)){
+        if(j!=i){
+          Data[eval(parse(text=paste0("Level_", i)))==1 &
+                 eval(parse(text=paste0("Level_", j)))==1, paste0("Level_", i, "_Seg"):=0]
+        }
+      }
+    }
+    
+    # Data=as.data.frame(Data)
     plot(Data$Time,
          Data[[Res_Var]],
-         # ylim=c(0, 100),
+         # ylim=ylim,
          ...,
          # main=Sub,
          # xlab="Time",
@@ -2131,55 +2211,98 @@ Segmented_Regression_Model=function(Data,
     Fitted_Values=fitted(gls_model_fit)
     names(Fitted_Values)=Non_missing_Time
     
-    # Pre_Period_End=length(Data[[Time_Var]][Data[[Int_Var]]==0])
-    Post_Period_Start=min(which(Data[[Int_Var]]==1)) # the first time value of the post-intervention period
-    
-    # Pre_Period_End_No_Missing : the last time index of the pre-intervention period
-    Pre_Period_End_No_Missing=max(Non_missing_Time[Non_missing_Time<Post_Period_Start])
-    
-    # Post_Period_End_No_Missing : the first time index of the post-intervention period
-    Post_Period_End_No_Missing=min(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing])
-    
-    # pre-intervention regression line
-    lines(Non_missing_Time[Non_missing_Time<=Pre_Period_End_No_Missing],
-          Fitted_Values[Non_missing_Time<=Pre_Period_End_No_Missing],
-          col="red", lwd=2)
-    
-    # post-intervention regression line
-    lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
-          Fitted_Values[Non_missing_Time>Pre_Period_End_No_Missing],
-          col="blue", lwd=2)
+    # predicted lines
+    for(i in 0:length(Int_Var)){
+      lines(Non_missing_Time[Data[Non_Missing_Outcome_Obs, ][, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]]],
+            Fitted_Values[Data[Non_Missing_Outcome_Obs, ][, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]]],
+            col=c("red",
+                  "blue",
+                  "green",
+                  "purple",
+                  "yellow")[i+1], lwd=2)
+    }
     
     # Add a box to show phase-in (or missing) period
     if(sum(is.na(Data[[Res_Var]]))>0){
-      rect(Pre_Period_End_No_Missing+1,
-           -500,
-           Post_Period_End_No_Missing-1,
-           5000,
-           border=NA,
-           col='grey70')
+      missing_points=setdiff(1:nrow(Data),
+                             Non_Missing_Outcome_Obs)
+      # missing_points=c(1, 2, 3, 7, 8, 9, 12)
+      
+      for(i in 2:length(missing_points)){
+        if(i==2){
+          temp_start=missing_points[1]
+          temp_end=missing_points[i]
+        }
+        if(i>2){
+          if(missing_points[i]-missing_points[i-1]==1){
+            temp_end=missing_points[i]
+          }else{
+            print(paste0("missing_start : ", temp_start, " / missing_end : ", temp_end))
+            temp_start=missing_points[i]
+            temp_end=missing_points[i]
+          }
+        }
+        rect(temp_start,
+             -500,
+             temp_end,
+             5000,
+             border=NA,
+             col='grey70')
+        rect(temp_start-0.1,
+             -500,
+             temp_end+0.1,
+             5000,
+             border=NA,
+             col='grey70')
+      }
+      print(paste0("missing_start : ", temp_start, " / missing_end : ", temp_end))
     }
     
     # intervention
-    abline(
-      v=Post_Period_Start-1,
-      lty=2,
-      lwd=3,
-      col=1)
+    for(i in 1:length(Int_Var)){
+      abline(
+        v=min(Data[eval(parse(text=paste0(Int_Var[i])))==1, Index]),
+        lty=2,
+        lwd=3,
+        col=1)
+    }
     
     # extrapolated regression line extended from the pre-intervention regression line
     # !!! this one only works for non-seasonally-adjusted model !!!
-    segments(Post_Period_End_No_Missing,
-             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*Post_Period_End_No_Missing,
-             nrow(Data),
-             gls_model_fit$coefficients[1]+gls_model_fit$coefficients[2]*nrow(Data),
-             lty=2,
-             lwd=2,
-             col="red")
+    for(i in 0:(length(Int_Var)-1)){
+      
+      Pre_Seg_Intersectant_Points=intersect(Data[, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]],
+                                            Non_missing_Time)
+      Intersectant_Points=intersect(Data[, .I[eval(parse(text=paste0("Level_", i+1, "_Seg")))==1]],
+                                    Non_missing_Time)
+      Pre_Temp_Data_Min=Data[min(Pre_Seg_Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      Pre_Temp_Data_Max=Data[max(Pre_Seg_Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      
+      Temp_Data_Min=Data[min(Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      Temp_Data_Max=Data[max(Intersectant_Points), .SD, .SDcols=c(paste0("Level_", 0:length(Int_Var)), paste0("Trend_", 0:length(Int_Var)))]
+      
+      Temp_Coeffs=gls_model_fit$coefficients
+      names(Temp_Coeffs)[1]="Level_0"
+      names(Temp_Coeffs)[2]="Trend_0"
+      Temp_Coeffs=Temp_Coeffs[sort(names(Temp_Coeffs))]
+      Temp_Coeffs[Pre_Temp_Data_Min==0]=0
+      
+      segments(min(Intersectant_Points),
+               sum(Temp_Coeffs[sort(names(Temp_Coeffs))]*Temp_Data_Min[, .SD, .SDcols=sort(colnames(Temp_Data_Min))]),
+               max(Intersectant_Points),
+               sum(Temp_Coeffs[sort(names(Temp_Coeffs))]*Temp_Data_Max[, .SD, .SDcols=sort(colnames(Temp_Data_Max))]),
+               lty=2,
+               lwd=2,
+               col=c("red",
+                     "blue",
+                     "green",
+                     "purple",
+                     "yellow")[i+1])
+    }
     
-    # Post_Data_prediction=Data_to_fit[Time%in%c(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing]), ]
+    # Post_Data_prediction=Data_to_fit[Time%in%c(Non_missing_Time[Non_missing_Time>Prior_Segment_End_No_Missing]), ]
     # Post_Data_prediction[, Level:=0]
-    # lines(Non_missing_Time[Non_missing_Time>Pre_Period_End_No_Missing],
+    # lines(Non_missing_Time[Non_missing_Time>Prior_Segment_End_No_Missing],
     #       predict(gls_model_fit, newdata=Post_Data_prediction),
     #       col="blue", lwd=2)
     
@@ -2202,6 +2325,7 @@ Segmented_Regression_Model=function(Data,
   
   return(Output)
 }
+
 
 
 
@@ -2775,9 +2899,11 @@ COX_Confounder_Model=function(Data,
 #         conf.int=T,
 #         palette=c("red3", "green3"))
 KM_Plot=function(Data,
+                 Res_Var,
+                 Group_Vars=NULL,
+                 Strat_Vars=NULL,
                  Start_Time=NULL,
                  Stop_Time,
-                 Res_Var,
                  Pred_Vars="1",
                  ...){
   # check out packages
@@ -2827,31 +2953,63 @@ KM_Plot=function(Data,
   }
   
   #
-  if(!is.null(Start_Time)){
-    fullmod=as.formula(paste("Surv(", Start_Time, ", ", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
-  }else{
-    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ")", "~", paste(Pred_Vars, collapse="+")))
-  }
+  if(!is.null(Group_Vars)){
+    Group_Parts=paste0("+", paste0(" cluster(", Group_Vars, ")", collapse=" +"))
+  }else{Group_Parts=""}
+  if(!is.null(Strat_Vars)){
+    Strat_Parts=paste0("+", paste0(" strata(", Strat_Vars, ")", collapse=" +"))
+  }else{Strat_Parts=""}
   
-  # conduct Log-rank test if the model is not a null model
-  if(sum(Pred_Vars!="1")>0){
-    surv_diff=do.call(survdiff, args=list(formula=fullmod, data=Data))
-    p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
-    p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
+  if(is.null(Start_Time)){
+    fullmod=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
     
-    if(p.val=="< 0.001"){
-      Log_rank_test=paste0("Log rank p ", p.val)
-    }else{
-      Log_rank_test=paste0("Log rank p = ", p.val)
+    # conduct Log-rank test if the model is not a null model
+    if(sum(Pred_Vars!="1")>0){
+      surv_diff=do.call(survdiff, args=list(formula=fullmod, data=Data))
+      p.val=max(0.001, round(1-pchisq(surv_diff$chisq, length(surv_diff$n)-1), 3))
+      p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
+      
+      if(p.val=="< 0.001"){
+        Log_rank_test=paste0("Log rank p ", p.val)
+      }else{
+        Log_rank_test=paste0("Log rank p = ", p.val)
+      }
+      
+      # pairwise comparisons between group levels in case there are more than 2 groups
+      # undefined columns selected, so remove the cluster() part
+      # as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+")))
+      pairwise_test=pairwise_survdiff(formula=as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"))), data=as.data.frame(Data))
+      
+    }else{ # if the model is a null model
+      Log_rank_test=""
+      pairwise_test=""
     }
     
-    # pairwise comparisons between group levels in case there are more than 2 groups
-    pairwise_test=pairwise_survdiff(formula=fullmod, data=as.data.frame(Data))
+  }else{ # Right censored data only, so calculate p-value from bivariate model
+    fullmod=as.formula(paste("Surv(", Start_Time, ",", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+"), Group_Parts, Strat_Parts))
     
-  }else{ # if the model is a null model
-    Log_rank_test=""
-    pairwise_test=""
+    if(sum(Pred_Vars!="1")>0){
+      coxph_output=do.call(coxph, args=list(formula=fullmod, data=Data))
+      p.val=max(0.001, round(summary(coxph_output)$coefficients[, "Pr(>|z|)"], 3))
+      p.val=ifelse(p.val=="0.001", "< 0.001", p.val)
+      
+      if(p.val=="< 0.001"){
+        Log_rank_test=paste0("p-value ", p.val)
+      }else{
+        Log_rank_test=paste0("p-value = ", p.val)
+      }
+      
+      # (need to work on this part!) pairwise comparisons between group levels in case there are more than 2 groups
+      # Right censored data only, so as.formula(paste("Surv(", Stop_Time, ",", Res_Var, ") ~", paste(Pred_Vars, collapse="+")))
+      # Data[, (Group_Vars):=as.factor(eval(parse(text=Group_Vars)))]
+      pairwise_test=""
+      
+    }else{
+      Log_rank_test=""
+      pairwise_test=""
+    }
   }
+  
   
   # survfit_output
   survfit_output=do.call(survfit, args=list(formula=fullmod, data=Data))
@@ -3648,6 +3806,241 @@ Competing_Risk_Confounder_Model=function(Data,
                                                        Start_Time=Start_Time,
                                                        Stop_Time=Stop_Time,
                                                        Message=Message)
+  
+  return(Output)
+}
+
+
+
+#*************************************
+#
+# [ --- Quantile Regression --- ] ----
+#
+#*************************************
+# QR_Bivariate
+#*************
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# Data_to_use$outcome=rnorm(nrow(Data_to_use))
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# QR_Bivariate(Data=Data_to_use,
+#              Pred_Vars=c(Pred_Vars[!Pred_Vars%in%c("sex", "age")],
+#                          list(c("sex", "age", "sex:age"))),
+#              Res_Var=Res_Var,
+#              Quantile=0.5,
+#              Method="br")
+QR_Bivariate=function(Data,
+                      Pred_Vars,
+                      Res_Var,
+                      Quantile=0.5,
+                      Method="br",
+                      Significance_Level=0.1){ # Significance_Level : a threshold of p-value for univariable selection
+  # main algorithm
+  Output=c()
+  List_For_Multivariable=c()
+  for(i in 1:length(Pred_Vars)){
+    #i=1
+    # run model
+    Temp=QR_Multivariable(Data=Data,
+                          Pred_Vars=unlist(Pred_Vars[i]),
+                          Res_Var=Res_Var,
+                          Quantile=Quantile,
+                          Method=Method)
+    Output=rbind(Output,
+                 Temp$Summ_Table,
+                 fill=T)
+    
+    # List_For_Multivariable
+    if("<0.001"%in%(Temp$Summ_Table$P.value)|
+       sum(Temp$Summ_Table$P.value<Significance_Level)>0){
+      List_For_Multivariable=c(List_For_Multivariable,
+                               Pred_Vars[i])
+    }
+    
+    # print out progress
+    if(sum(grepl(":", Pred_Vars[i]))>0){
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", unlist(Pred_Vars[i])[grepl(":", unlist(Pred_Vars[i]))], " (", i ," out of ", length(Pred_Vars), ")"))
+    }else{
+      print(paste0("Res_Var : ", Res_Var, ", Pred_Var : ", Pred_Vars[i], " (", i ," out of ", length(Pred_Vars), ")"))
+    }
+  }
+  
+  return(list(Summ_Table=Output,
+              List_For_Multivariable=List_For_Multivariable))
+}
+
+
+#******************
+# QR_Multivariable
+#******************
+# lapply(c("stats", "geepack", "doBy"), checkpackages)
+# require(dplyr)
+# data("respiratory")
+# Data_to_use=respiratory %>%
+#   group_by(id) %>%
+#   filter(visit==min(visit))
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline")
+# Res_Var="outcome"
+# Data_to_use$sex=as.character(Data_to_use$sex)
+# Data_to_use$sex[sample(1:nrow(Data_to_use), 50)]="N"
+# Data_to_use$sex=as.factor(Data_to_use$sex)
+# Data_to_use$outcome=rnorm(nrow(Data_to_use))
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_to_use[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Data_to_use=Format_Columns(Data_to_use,
+#                            Res_Var="outcome",
+#                            Pred_Vars,
+#                            vector.OF.classes.num.fact,
+#                            levels.of.fact)
+# QR_Multivariable(Data=Data_to_use,
+#                  Pred_Vars=c("center", "sex", "age", "sex:age"),
+#                  Res_Var=Res_Var,
+#                  Quantile=0.5,
+#                  Method="br")
+QR_Multivariable=function(Data,
+                          Pred_Vars,
+                          Res_Var,
+                          Quantile=0.5,
+                          Method="br"){
+  # check out packages
+  lapply(c("quantreg",
+           "data.table"), checkpackages)
+  
+  # as data frame
+  Data=as.data.frame(Data)
+  Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
+  Data=Data[Non_Missing_Outcome_Obs, ]
+  Origin_N_Rows=nrow(Data)
+  
+  # main algorithm
+  Output=c()
+  #i=1
+  # run model
+  # fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
+  # model_fit=glm(fullmod, family=eval(parse(text=Quantile)), na.action=na.exclude, data=Data)
+  fullmod=as.formula(paste(Res_Var, "~", paste(Pred_Vars, collapse="+")))
+  model_fit=rq(fullmod,
+               na.action=na.omit,
+               data=Data,
+               tau=Quantile,
+               method=Method)
+  
+  # number of observations from a model fit
+  Used_N_Rows=nrow(model_fit$model)
+  N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
+  Output$model_fit=model_fit
+  
+  # determine whether p-value is calculated based on t or Wald
+  Summ=summary(model_fit, se="nid")
+  Value_Label=colnames(Summ$coefficients)[grep("value", colnames(Summ$coefficients))]
+  if(grepl("z", Value_Label)){
+    CI_Type="z"
+  }else if(grepl("t", Value_Label)){
+    CI_Type="t"
+  }else{
+    CI_Type="nothing"
+  }
+  
+  # Output
+  # # Individual t test and confidence interval for each parameter
+  # # confint.lm for the direct formulae based on t values
+  # # reference : https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/confint
+  # Est.CI=cbind(Est=coef(model_fit), confint.lm(model_fit, level=0.95))
+  
+  # confidence interval (raw)
+  # CI.raw=confint(model_fit, level=0.95)
+  switch(CI_Type,
+         
+         # t-distribution-based confidence interval using a function written in person
+         "t"={
+           Coeffs=Summ$coefficients
+           Coeffs=as.data.frame(Coeffs)
+           Coeffs=Coeffs[-1, ]
+           DF=Summ$rdf
+           Level=0.5
+           Est.CI=cbind(`2.5%`=Coeffs[, "Value"]-qt(1-(1-Level)/2, DF)*Coeffs[, "Std. Error"],
+                        `97.5%`=Coeffs[, "Value"]+qt(1-(1-Level)/2, DF)*Coeffs[, "Std. Error"])
+         },
+         
+         # Wald confidence interval using a function written in person
+         "z"={
+           Coeffs=Summ$coefficients
+           Coeffs=as.data.frame(Coeffs)
+           Coeffs=Coeffs[-1, ] # remove (Intercept)
+           Level=0.5
+           
+           Est.CI=cbind(`2.5%`=Coeffs[, "Value"]-qnorm(1-(1-Level)/2)*Coeffs[, "Std. Error"],
+                        `97.5%`=Coeffs[, "Value"]+qnorm(1-(1-Level)/2)*Coeffs[, "Std. Error"])
+         },
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
+  
+  
+  Est.CI=cbind(coef(model_fit)[-1],
+               Est.CI)
+  
+  colnames(Est.CI)=c("Estimate", "Lower Est", "Upper Est")
+  
+  est=cbind.fill(as.data.frame(Summ$coefficients)[-1, ], Est.CI)
+  
+  switch(CI_Type,
+         
+         "t"={
+           Output$Summ_Table=data.frame(
+             Estimate=round2(est[, "Estimate"], 3),
+             Std.Error=round2(est[, "Std. Error"], 3),
+             `P-value`=ifelse(est[, "Pr(>|t|)"]<0.001, "<0.001",
+                              format(round2(est[, "Pr(>|t|)"], 3), nsmall=3)),
+             Estimate.and.CI=paste0(format(round2(est[, "Estimate"] , 2), nsmall=2),
+                                    " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
+                                    format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
+             row.names=names(coef(model_fit))[-1]
+           )
+         },
+         
+         "z"={
+           Output$Summ_Table=data.frame(
+             Estimate=round2(est[, "Estimate"], 3),
+             Std.Error=round2(est[, "Std. Error"], 3),
+             `P-value`=ifelse(est[, "Pr(>|z|)"]<0.001, "<0.001",
+                              format(round2(est[, "Pr(>|z|)"], 3), nsmall=3)),
+             Estimate.and.CI=paste0(format(round2(est[, "Estimate"] , 2), nsmall=2),
+                                    " (", format(round2(as.numeric(est[, "Lower Est"]), 2), nsmall=2), " - ",
+                                    format(round2(as.numeric(est[, "Upper Est"]), 2), nsmall=2), ")"),
+             row.names=names(coef(model_fit))[-1]
+           )
+         },
+         
+         # default
+         stop("CI_Type = Nothing")
+  )
+  
+  Output$Summ_Table=as.data.table(Output$Summ_Table, keep.rownames=TRUE)
+  
+  
+  Output$Summ_Table=cbind(Output$Summ_Table[, c(1, 5, 4)],
+                          N_data_used=N_data_used)
   
   return(Output)
 }
@@ -5230,6 +5623,9 @@ GEE_Backward_by_P_2=function(Full_Model,
   
   Name_Dictionary=list()
   for(i in 1:length(Pred_Vars)){
+    if(class(Data[[Pred_Vars[i]]])=="character"){
+      Data[, (Pred_Vars[i]):=as.factor(eval(parse(text=Pred_Vars[i])))]
+    }
     Name_Dictionary[[Pred_Vars[i]]]=paste0(colnames(Data[, .SD, .SDcols=Pred_Vars[i]]), Data[, levels(unlist(.SD)), .SDcols=Pred_Vars[i]])
   }
   
@@ -5257,7 +5653,9 @@ GEE_Backward_by_P_2=function(Full_Model,
     Summ_Table[[Step]]=Current_Summ_Table[order(p.value, decreasing=TRUE)]
     
     # identify the variable to remove by p-value
-    Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[-1, p.value]))]
+    Current_Summ_Table=Current_Summ_Table[-1, ] # remove (Intercept)
+    Var_To_Remove=Current_Summ_Table[, names][which(Current_Summ_Table$p.value==max(Current_Summ_Table[, p.value]))]
+    Var_To_Remove=Var_To_Remove[1]
     for(i in 1:length(Pred_Vars)){
       if(sum(Var_To_Remove==Name_Dictionary[[Pred_Vars[[i]]]])>0){
         Var_To_Remove=Pred_Vars[[i]]
@@ -5286,7 +5684,12 @@ GEE_Backward_by_P_2=function(Full_Model,
   Out$Summ_Table=Summ_Table
   Out$QIC_Table=Temp_Table
   # the final model with the lowest QIC
-  Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  if(which.min(Temp_Table[, QIC])==nrow(Temp_Table)){
+    print(warning("Null model has the lowest QIC."))
+    Out$Selected_Vars="1"
+  }else{
+    Out$Selected_Vars=Temp_Table$Further_Excluded_Var[(which.min(Temp_Table[, QIC])+1):nrow(Temp_Table)]
+  }
   
   return(Out)
 }
@@ -8924,7 +9327,8 @@ Contingency_Table_Generator=function(Data,
                                      Col_Var,
                                      Ref_of_Row_Var,
                                      Missing="Not_Include",
-                                     Ind_P_Value=F){
+                                     Ind_P_Value=F,
+                                     Sim.p.value=F){
   # library
   lapply(c("epitools"), checkpackages)
   
@@ -9021,9 +9425,9 @@ Contingency_Table_Generator=function(Data,
   # calculate p-values for the fisher's exact test and the chisq test
   Out=as.data.table(Out)
   if(sum(rownames(Contingency_Table)!="NA")>1 & sum(colnames(Contingency_Table)!="NA")>1){
-    Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value<0.001,
+    Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value<0.001,
                                                              "<0.001",
-                                                             paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=TRUE)$p.value, 3)))
+                                                             paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value, 3)))
     Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value<0.001,
                                                                  "<0.001",
                                                                  paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value, 3)))  # return
@@ -9078,7 +9482,8 @@ Contingency_Table_Generator_Conti_X=function(Data,
                                              Row_Var,
                                              Col_Var,
                                              Ref_of_Row_Var,
-                                             Missing="Not_Include"){
+                                             Missing="Not_Include",
+                                             T_Test_Var_Equal=FALSE){
   # library
   lapply(c("doBy"), checkpackages)
   
@@ -9086,9 +9491,9 @@ Contingency_Table_Generator_Conti_X=function(Data,
   Data=as.data.frame(Data)
   
   # If response variable is binary, perform GLM to compute P.value and OR.and.CI
+  Levels=levels(as.factor(Data[, Col_Var]))
   if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==2){
     #
-    Levels=levels(as.factor(Data[, Col_Var]))
     if(sum(is.na(as.numeric(as.character(Data[, Col_Var]))))==nrow(Data)){
       Data$Col_Var_Temp=1
       Data$Col_Var_Temp[Data[, Col_Var]==Levels[1]]=0
@@ -9122,7 +9527,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
                                   Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
     P.value_Mann_Whitney=ifelse(Mann_Whitney_test$p.value<0.001, "<0.001", round(Mann_Whitney_test$p.value, 3))
     T.test=t.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var], 
-                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative="two.sided")
+                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative="two.sided", var.equal=T_Test_Var_Equal)
     P.value_T_test=ifelse(T.test$p.value<0.001, "<0.001", round(T.test$p.value, 3))
     P.value_ANOVA="Y is binary"
   }else{
@@ -9142,6 +9547,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
       Sum_Col_Wise=as.data.frame(Data) %>% 
         dplyr::select(Col_Var) %>% 
         table(useNA=useNA) %>% c
+      names(Sum_Col_Wise)=Levels
       
       # compute P.values
       OR.and.CI=""
@@ -9165,6 +9571,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
       Sum_Col_Wise=as.data.frame(Data) %>% 
         dplyr::select(Col_Var) %>% 
         table(useNA=useNA) %>% c
+      names(Sum_Col_Wise)=Levels
       
       # compute P.values
       OR.and.CI="Y is not binary"
@@ -9178,25 +9585,53 @@ Contingency_Table_Generator_Conti_X=function(Data,
     }
   }
   
-  #
-  Data=as.data.table(Data)
   # summary statistics
   if(Missing=="Include"){
-    Sum_Stat=round(t(rbind(
-      with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
-      summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
-      summary(as.data.frame(Data)[, Row_Var])[1:6] # total
-    )), 2)
+    if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==1){
+      RowNames=rownames(with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary))))
+      #
+      Data=as.data.table(Data)
+      Sum_Stat=round(t(rbind(
+        RowNames=with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
+        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+      )), 2)
+      colnames(Sum_Stat)[length(RowNames)]=RowNames
+    }else{
+      #
+      Data=as.data.table(Data)
+      Sum_Stat=round(t(rbind(
+        with(Data, do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(Data[is.na(eval(parse(text=Col_Var))), eval(parse(text=Row_Var))])[1:6], # missing in outcome
+        summary(as.data.frame(Data)[, Row_Var])[1:6] # total
+      )), 2)
+    }
   }else if(Missing=="Not_Include"){
-    Sum_Stat=round(t(rbind(
-      with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
-      summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
-    )), 2)
+    if(length(unique(Data[, Col_Var][!is.na(Data[, Col_Var])]))==1){
+      #
+      Data=as.data.table(Data)
+      RowNames=rownames(with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary))))
+      Sum_Stat=round(t(rbind(
+        RowNames=with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
+      )), 2)
+      colnames(Sum_Stat)[length(RowNames)]=RowNames
+    }else{
+      #
+      Data=as.data.table(Data)
+      Sum_Stat=round(t(rbind(
+        with(na.omit(Data[, .SD, .SDcols=c(Row_Var, Col_Var)]), do.call(rbind, by(eval(parse(text=Row_Var)), eval(parse(text=Col_Var)), summary)))[, 1:6], # excluding NA's
+        summary(as.data.frame(Data[!is.na(eval(parse(text=Col_Var))), ])[, Row_Var])[1:6] # total
+      )), 2)
+    }
+    
   }else(print("Options for Missing : (1) Not_Include (Default), or (2) Include"))
   
-  if(length(unique(Data[[Col_Var]]))==2){
-    colnames(Sum_Stat)=c(Levels, "")
-  }
+  # if(length(unique(Data[[Col_Var]])[!is.na(unique(Data[[Col_Var]]))])==2){
+  #   colnames(Sum_Stat)=c(Levels, rep(NA, sum(colnames(Sum_Stat)=="")))
+  # }
+  
+  colnames(Sum_Stat)=c(Levels, rep(NA, sum(colnames(Sum_Stat)=="")))
   
   # merge all results
   Out=c()
