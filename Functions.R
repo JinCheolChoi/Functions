@@ -9482,7 +9482,8 @@ Contingency_Table_Generator_Conti_X=function(Data,
                                              Row_Var,
                                              Col_Var,
                                              Ref_of_Row_Var,
-                                             Missing="Not_Include"){
+                                             Missing="Not_Include",
+                                             T_Test_Var_Equal=FALSE){
   # library
   lapply(c("doBy"), checkpackages)
   
@@ -9526,7 +9527,7 @@ Contingency_Table_Generator_Conti_X=function(Data,
                                   Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var])
     P.value_Mann_Whitney=ifelse(Mann_Whitney_test$p.value<0.001, "<0.001", round(Mann_Whitney_test$p.value, 3))
     T.test=t.test(Data[which(Data[, Col_Var]==unique_outcome_value[1]), Row_Var], 
-                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative="two.sided")
+                  Data[which(Data[, Col_Var]==unique_outcome_value[2]), Row_Var], alternative="two.sided", var.equal=T_Test_Var_Equal)
     P.value_T_test=ifelse(T.test$p.value<0.001, "<0.001", round(T.test$p.value, 3))
     P.value_ANOVA="Y is binary"
   }else{
