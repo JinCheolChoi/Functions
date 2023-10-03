@@ -578,7 +578,7 @@ Marginal_Effect_2=function(Model_Fit,
                            Var_2_Levels,
                            Model="GLMM"){
   # check out packages
-  lapply(c("marginaleffects", "data.table"), checkpackages)
+  lapply(c("marginaleffects", "data.table", "insight"), checkpackages)
   
   # If Model==GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
   # (ignore) It seems that this part doesn't matter as the actual data stored in the model object is used.
@@ -626,11 +626,12 @@ Marginal_Effect_2=function(Model_Fit,
            # for mixed models (i.e. GLMM)
            "TRUE"={
              
-             dfs_temp=Summ$coefficients[-1, "df"]
+             # dfs_temp=Summ$coefficients[-1, "df"]
+             # 
+             # df_temp=dfs_temp[setdiff(grep(Var_1, names(dfs_temp)),
+             #                          grep(":", names(dfs_temp)))]
              
-             df_temp=dfs_temp[setdiff(grep(Var_1, names(dfs_temp)),
-                                      grep(":", names(dfs_temp)))]
-             
+             df_temp=insight::get_df(Model_Fit)
            },
            
            # for fixed models (i.e. GLM)
@@ -646,6 +647,7 @@ Marginal_Effect_2=function(Model_Fit,
                              type=type_temp,
                              newdata=do.call(datagrid, List_Var_2),
                              df=df_temp)
+  
   setnames(Temp_Var_1,
            c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
