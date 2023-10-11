@@ -2909,7 +2909,7 @@ KM_Plot=function(Data,
                  Pred_Vars="1",
                  ...){
   # check out packages
-  lapply(c("ggplot2", "survminer" , "survival", "data.table"), checkpackages)
+  lapply(c("ggplot2", "survminer", "survival", "data.table"), checkpackages)
   
   # Data to data.table
   Data=as.data.table(Data)
@@ -3224,6 +3224,7 @@ Incidence_Rate=function(Data,
                         Conf.Level=0.95){
   # check out packages
   lapply(c("data.table",
+           "ragg",
            "epiR"), # epi.conf
          checkpackages)
   
@@ -3261,7 +3262,7 @@ Incidence_Rate=function(Data,
   Output=data.table(
     N_Events=N_Events, # the number of new cases identified during the period of observation
     N_Participants=N_Participants,
-    Total_Observed_Time=Total_Observed_Time, # the total time the population was at risk of and being watched for disease
+    Total_Observed_Time_At_Risk=Total_Observed_Time, # the total time the population was at risk of and being watched for disease
     # unit : year
     Incidence_Rate=IR_CI$est,
     CI_Lower=IR_CI$lower,
