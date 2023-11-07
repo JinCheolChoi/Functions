@@ -2111,11 +2111,11 @@ Segmented_Regression_Model=function(Data,
   Output$Summ_Table=Output$Summ_Table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
   if(length(Int_Var)==1){
     Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
-           "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend_1", "Estimate"],
-           "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend_1", "Estimate"], ") in the post-intervention period. ",
-           "After the intervention, the outcome immediately changes by ",
-           Output$Summ_Table["Level_1", "Estimate"],
-           " on average.")
+                                 "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend_1", "Estimate"],
+                                 "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend_1", "Estimate"], ") in the post-intervention period. ",
+                                 "After the intervention, the outcome immediately changes by ",
+                                 Output$Summ_Table["Level_1", "Estimate"],
+                                 " on average.")
   }else if(length(Int_Var)>1){
     Interpretation_Temp=c()
     Interpretation_Temp=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period.")
@@ -7993,7 +7993,7 @@ GLMM_Multinomial_Multivariate=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # # proportional odds assumption test
 # Output=Proportional_Odds_Assumption_Test(Data=Data_to_use,
@@ -8214,7 +8214,7 @@ CLMM_Ordinal_Bivariate=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # # proportional odds assumption test
 # Output=Proportional_Odds_Assumption_Test(Data=Data_to_use,
@@ -8446,7 +8446,7 @@ CLMM_Ordinal_Multivariable=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # # proportional odds assumption test
 # Output=Proportional_Odds_Assumption_Test(Data=Data_to_use,
@@ -8660,7 +8660,7 @@ CLMM_Confounder_Selection=function(Full_Model,
 #                            Pred_Vars=Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # Main_Pred_Var="sex"
 # #Some arguments (Data, Res_Var, Group_Var, and NAGQ) must be declared with '<-' in a function!
@@ -8846,6 +8846,47 @@ Proportional_Odds_Assumption_Test=function(Data,
 #   
 #   return(Output)
 # }
+
+#************************************
+# CLMM_Ordinal_Type_Odds_Determinator
+#************************************
+CLMM_Ordinal_Type_Odds_Determinator=function(Data,
+                                             Pred_Vars,
+                                             Res_Var,
+                                             Group_Var,
+                                             NAGQ=3){
+  Output=as.data.table(
+    expand.grid(
+      rep(list(c("Non_Prop",
+                 "Prop")),
+          times=length(Pred_Vars))
+    )
+  )
+  colnames(Output)=Pred_Vars
+  
+  Output$Model_Fit=apply(
+    Output,
+    1,
+    function(x){
+      Temp=CLMM_Ordinal_Multivariable(Data,
+                                      Pred_Vars<-Pred_Vars,
+                                      Type_Odds=x,
+                                      Res_Var<-Res_Var,
+                                      Group_Var<-Group_Var,
+                                      NAGQ=NAGQ)
+      
+      return(
+        Temp$model_fit
+      )
+    }
+  )
+  
+  Output[, logLik:=sapply(Model_Fit, logLik)]
+  Output[, AIC:=sapply(Model_Fit, AIC)]
+  
+  return(Output)
+}
+
 
 #**********************
 #
