@@ -3200,7 +3200,7 @@ COX_Backward_by_AIC=function(Full_Model,
 # Example
 #********
 # # Create a simple data set for a time-dependent model
-# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+# Data_to_use=list(id=c(1:20),
 #                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
 #                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
 #                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
@@ -3232,6 +3232,7 @@ Incidence_Rate=function(Data,
   Data=as.data.table(Data)
   
   # number of events
+  # if the event is non-recurrent, N_Events is the number of new events
   N_Events=sum(Data[,
                     .SD,
                     .SDcol=c(Res_Var)])
@@ -3265,8 +3266,8 @@ Incidence_Rate=function(Data,
     Total_Observed_Time_At_Risk=Total_Observed_Time, # the total time the population was at risk of and being watched for disease
     # unit : year
     Incidence_Rate=IR_CI$est,
-    CI_Lower=IR_CI$lower,
-    CI_Upper=IR_CI$upper
+    IR_CI_Lower=IR_CI$lower,
+    IR_CI_Upper=IR_CI$upper
   )
   
   #**********
@@ -3274,11 +3275,83 @@ Incidence_Rate=function(Data,
   # https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section2.html
   # https://cran.r-project.org/web/packages/epiR/vignettes/epiR_descriptive.html
   # https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
+  # https://en.wikipedia.org/wiki/Incidence_(epidemiology)
+  # https://en.wikipedia.org/wiki/Prevalence
   
   return(Output)
 }
 
 
+#*****************
+# Point_Prevalence
+#*****************
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1:20),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# Population_Size=length(unique(Data_to_use$id))
+# Point_Prevalence(Data=Data_to_use,
+#                  Res_Var="event",
+#                  Population_Size=Population_Size)
+Point_Prevalence=function(Data,
+                          Res_Var,
+                          Population_Size,
+                          Conf.Level=0.95){
+  # check out packages
+  lapply(c("data.table",
+           "ragg",
+           "epiR"), # epi.conf
+         checkpackages)
+  
+  # as data.table
+  Data=as.data.table(Data)
+  
+  # number of events
+  N_Events=sum(Data[,
+                    .SD,
+                    .SDcol=c(Res_Var)])
+  
+  # N_Participants
+  N_Participants=nrow(Data)
+  
+  # manual calculation
+  # point prevalence : the proportion of people in a population who have a disease
+  N_Events/Population_Size
+  
+  # with epi.conf to obtain confidence intervals as well
+  PR_CI=epi.conf(cbind(N_Events, N_Participants),
+                 ctype="prevalence",
+                 method="exact",
+                 N=Population_Size, # N is identified not to be influential
+                 design=1, 
+                 conf.level=Conf.Level)
+  
+  # Output
+  Output=data.table(
+    N_Events=N_Events, # the number of new cases identified during the period of observation
+    N_Participants=N_Participants,
+    Population_Size=Population_Size,
+    
+    Prevalence=PR_CI$est,
+    PR_CI_Lower=PR_CI$lower,
+    PR_CI_Upper=PR_CI$upper
+  )
+  
+  #**********
+  # Reference
+  # https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section2.html
+  # https://cran.r-project.org/web/packages/epiR/vignettes/epiR_descriptive.html
+  # https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
+  # https://en.wikipedia.org/wiki/Incidence_(epidemiology)
+  # https://en.wikipedia.org/wiki/Prevalence
+  
+  return(Output)
+}
 
 #********************************
 #
