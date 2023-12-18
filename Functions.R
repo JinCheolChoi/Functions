@@ -5717,7 +5717,7 @@ GEE_Backward_by_P_2=function(Full_Model,
     Further_Excluded_Var="(none)",
     QIC=geepack::QIC(Current_Full_Model)["QIC"])
   
-  # run GEE excluding one variable with the highest p-valuse in the current model
+  # run GEE excluding one variable with the highest p-values in the current model
   for(Step in 1:length(Pred_Vars)){
     #Step=1
     Out$Model[[Step]]=Current_Full_Model
@@ -5820,7 +5820,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
   
   Out$Model[[1]]=Current_Full_Model$model_fit
   Summ_Table[[1]]=Current_Full_Model$Summ_Table[order(P.value, decreasing=TRUE)]
-  # run GEE excluding one variable with the highest p-valuse in the current model
+  # run GEE excluding one variable with the highest p-values in the current model
   for(Step in 1:length(Pred_Vars)){
     #Step=1
     est=esticon(Current_Full_Model$model_fit,
@@ -7348,6 +7348,7 @@ GLMM_Overdispersion_Test=function(model){
 # AIC-based backward elimination
 #*******************************
 # data(mtcars)
+# library(MASS)
 # MultiLinearReg=glm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb, data=mtcars, family="gaussian")
 # 
 # stepAIC(MultiLinearReg, trace=TRUE)
