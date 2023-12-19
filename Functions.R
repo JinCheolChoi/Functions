@@ -1901,6 +1901,7 @@ SMD_difference_Plot_Example=function(){
 #                                AR_Order=1, # p
 #                                MA_Order=0)
 # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+#                                   # !!! applying seasonality into plot is a future work to do (let's get an idea to do it from Interrupted time series regression for the evaluation of public health interventions - A tutorial.R) !!!
 # # generate missing data
 # df[80:100, count:=NA]
 Segmented_Regression_Model=function(Data,
@@ -2271,6 +2272,8 @@ Segmented_Regression_Model=function(Data,
     
     # extrapolated regression line extended from the pre-intervention regression line
     # !!! this one only works for non-seasonally-adjusted model !!!
+    # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+    #                                   # !!! applying seasonality into plot is a future work to do (let's get an idea to do it from Interrupted time series regression for the evaluation of public health interventions - A tutorial.R) !!!
     for(i in 0:(length(Int_Var)-1)){
       
       Pre_Seg_Intersectant_Points=intersect(Data[, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]],
