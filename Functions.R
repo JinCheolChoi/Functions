@@ -9517,7 +9517,7 @@ Contingency_Table_Generator=function(Data,
      sum(colnames(Contingency_Table)!="NA")==2){
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
-      oddsratio(method="wald")
+      epitools::oddsratio(method="wald")
     Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2), 
                                 " (", 
                                 round(Odds_ratio$measure[, 2], 2), 
