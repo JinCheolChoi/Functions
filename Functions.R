@@ -578,7 +578,7 @@ Marginal_Effect_2=function(Model_Fit,
                            Var_2_Levels,
                            Model="GLMM"){
   # check out packages
-  lapply(c("marginaleffects", "data.table"), checkpackages)
+  lapply(c("marginaleffects", "data.table", "insight"), checkpackages)
   
   # If Model==GEE (based on geeglm), bring the saved data in the model object to Non_Missing_Data
   # (ignore) It seems that this part doesn't matter as the actual data stored in the model object is used.
@@ -626,11 +626,12 @@ Marginal_Effect_2=function(Model_Fit,
            # for mixed models (i.e. GLMM)
            "TRUE"={
              
-             dfs_temp=Summ$coefficients[-1, "df"]
+             # dfs_temp=Summ$coefficients[-1, "df"]
+             # 
+             # df_temp=dfs_temp[setdiff(grep(Var_1, names(dfs_temp)),
+             #                          grep(":", names(dfs_temp)))]
              
-             df_temp=dfs_temp[setdiff(grep(Var_1, names(dfs_temp)),
-                                      grep(":", names(dfs_temp)))]
-             
+             df_temp=insight::get_df(Model_Fit)
            },
            
            # for fixed models (i.e. GLM)
@@ -646,6 +647,7 @@ Marginal_Effect_2=function(Model_Fit,
                              type=type_temp,
                              newdata=do.call(datagrid, List_Var_2),
                              df=df_temp)
+  
   setnames(Temp_Var_1,
            c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
@@ -1899,6 +1901,7 @@ SMD_difference_Plot_Example=function(){
 #                                AR_Order=1, # p
 #                                MA_Order=0)
 # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+#                                   # !!! applying seasonality into plot is a future work to do (let's get an idea to do it from Interrupted time series regression for the evaluation of public health interventions - A tutorial.R) !!!
 # # generate missing data
 # df[80:100, count:=NA]
 Segmented_Regression_Model=function(Data,
@@ -2109,11 +2112,11 @@ Segmented_Regression_Model=function(Data,
   Output$Summ_Table=Output$Summ_Table[, c("Estimate", "Std.Error", "CI_LB", "CI_UB", "T-value", "P-value")]
   if(length(Int_Var)==1){
     Output$Interpretation=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period. ",
-           "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend_1", "Estimate"],
-           "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend_1", "Estimate"], ") in the post-intervention period. ",
-           "After the intervention, the outcome immediately changes by ",
-           Output$Summ_Table["Level_1", "Estimate"],
-           " on average.")
+                                 "This time effect changes to ", Output$Summ_Table["Time", "Estimate"]+Output$Summ_Table["Trend_1", "Estimate"],
+                                 "(=", Output$Summ_Table["Time", "Estimate"], "+", Output$Summ_Table["Trend_1", "Estimate"], ") in the post-intervention period. ",
+                                 "After the intervention, the outcome immediately changes by ",
+                                 Output$Summ_Table["Level_1", "Estimate"],
+                                 " on average.")
   }else if(length(Int_Var)>1){
     Interpretation_Temp=c()
     Interpretation_Temp=paste0("The outcome changes by ", Output$Summ_Table["Time", "Estimate"], " on average by one unit increase of time in the pre-intervention period.")
@@ -2269,6 +2272,8 @@ Segmented_Regression_Model=function(Data,
     
     # extrapolated regression line extended from the pre-intervention regression line
     # !!! this one only works for non-seasonally-adjusted model !!!
+    # ITS$Fitted_Regression_Line_Plot() # !!! the post-intervention regression line is not accurate for seasonal-adjusted models !!!
+    #                                   # !!! applying seasonality into plot is a future work to do (let's get an idea to do it from Interrupted time series regression for the evaluation of public health interventions - A tutorial.R) !!!
     for(i in 0:(length(Int_Var)-1)){
       
       Pre_Seg_Intersectant_Points=intersect(Data[, .I[eval(parse(text=paste0("Level_", i, "_Seg")))==1]],
@@ -2907,7 +2912,7 @@ KM_Plot=function(Data,
                  Pred_Vars="1",
                  ...){
   # check out packages
-  lapply(c("ggplot2", "survminer" , "survival", "data.table"), checkpackages)
+  lapply(c("ggplot2", "survminer", "survival", "data.table"), checkpackages)
   
   # Data to data.table
   Data=as.data.table(Data)
@@ -3198,7 +3203,7 @@ COX_Backward_by_AIC=function(Full_Model,
 # Example
 #********
 # # Create a simple data set for a time-dependent model
-# Data_to_use=list(id=c(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5),
+# Data_to_use=list(id=c(1:20),
 #                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
 #                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
 #                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
@@ -3222,6 +3227,7 @@ Incidence_Rate=function(Data,
                         Conf.Level=0.95){
   # check out packages
   lapply(c("data.table",
+           "ragg",
            "epiR"), # epi.conf
          checkpackages)
   
@@ -3229,6 +3235,7 @@ Incidence_Rate=function(Data,
   Data=as.data.table(Data)
   
   # number of events
+  # if the event is non-recurrent, N_Events is the number of new events
   N_Events=sum(Data[,
                     .SD,
                     .SDcol=c(Res_Var)])
@@ -3259,11 +3266,11 @@ Incidence_Rate=function(Data,
   Output=data.table(
     N_Events=N_Events, # the number of new cases identified during the period of observation
     N_Participants=N_Participants,
-    Total_Observed_Time=Total_Observed_Time, # the total time the population was at risk of and being watched for disease
+    Total_Observed_Time_At_Risk=Total_Observed_Time, # the total time the population was at risk of and being watched for disease
     # unit : year
     Incidence_Rate=IR_CI$est,
-    CI_Lower=IR_CI$lower,
-    CI_Upper=IR_CI$upper
+    IR_CI_Lower=IR_CI$lower,
+    IR_CI_Upper=IR_CI$upper
   )
   
   #**********
@@ -3271,11 +3278,83 @@ Incidence_Rate=function(Data,
   # https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section2.html
   # https://cran.r-project.org/web/packages/epiR/vignettes/epiR_descriptive.html
   # https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
+  # https://en.wikipedia.org/wiki/Incidence_(epidemiology)
+  # https://en.wikipedia.org/wiki/Prevalence
   
   return(Output)
 }
 
 
+#*****************
+# Point_Prevalence
+#*****************
+# # Create a simple data set for a time-dependent model
+# Data_to_use=list(id=c(1:20),
+#                  start=c(1,2,5,2,1,7,3,4,8,8,3,3,2,1,5,2,1,6,2,3),
+#                  stop=c(2,3,6,7,8,9,9,9,14,17,13,14,10,7,6,5,4,10,4,5),
+#                  event=c(1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,1,1,1,0),
+#                  x1=c(1,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,1,0,1,1),
+#                  x2=c(0,1,1,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,1),
+#                  x3=c(0,1,2,2,2,0,1,0,1,0,2,2,0,1,0,0,1,1,0,2))
+# Data_to_use$x3=as.factor(Data_to_use$x3)
+# Population_Size=length(unique(Data_to_use$id))
+# Point_Prevalence(Data=Data_to_use,
+#                  Res_Var="event",
+#                  Population_Size=Population_Size)
+Point_Prevalence=function(Data,
+                          Res_Var,
+                          Population_Size,
+                          Conf.Level=0.95){
+  # check out packages
+  lapply(c("data.table",
+           "ragg",
+           "epiR"), # epi.conf
+         checkpackages)
+  
+  # as data.table
+  Data=as.data.table(Data)
+  
+  # number of events
+  N_Events=sum(Data[,
+                    .SD,
+                    .SDcol=c(Res_Var)])
+  
+  # N_Participants
+  N_Participants=nrow(Data)
+  
+  # manual calculation
+  # point prevalence : the proportion of people in a population who have a disease
+  N_Events/Population_Size
+  
+  # with epi.conf to obtain confidence intervals as well
+  PR_CI=epi.conf(cbind(N_Events, N_Participants),
+                 ctype="prevalence",
+                 method="exact",
+                 N=Population_Size, # N is identified not to be influential
+                 design=1, 
+                 conf.level=Conf.Level)
+  
+  # Output
+  Output=data.table(
+    N_Events=N_Events, # the number of new cases identified during the period of observation
+    N_Participants=N_Participants,
+    Population_Size=Population_Size,
+    
+    Prevalence=PR_CI$est,
+    PR_CI_Lower=PR_CI$lower,
+    PR_CI_Upper=PR_CI$upper
+  )
+  
+  #**********
+  # Reference
+  # https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section2.html
+  # https://cran.r-project.org/web/packages/epiR/vignettes/epiR_descriptive.html
+  # https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
+  # https://en.wikipedia.org/wiki/Incidence_(epidemiology)
+  # https://en.wikipedia.org/wiki/Prevalence
+  
+  return(Output)
+}
 
 #********************************
 #
@@ -5641,7 +5720,7 @@ GEE_Backward_by_P_2=function(Full_Model,
     Further_Excluded_Var="(none)",
     QIC=geepack::QIC(Current_Full_Model)["QIC"])
   
-  # run GEE excluding one variable with the highest p-valuse in the current model
+  # run GEE excluding one variable with the highest p-values in the current model
   for(Step in 1:length(Pred_Vars)){
     #Step=1
     Out$Model[[Step]]=Current_Full_Model
@@ -5744,7 +5823,7 @@ GEE_Backward_by_P_missing_Data=function(Data,
   
   Out$Model[[1]]=Current_Full_Model$model_fit
   Summ_Table[[1]]=Current_Full_Model$Summ_Table[order(P.value, decreasing=TRUE)]
-  # run GEE excluding one variable with the highest p-valuse in the current model
+  # run GEE excluding one variable with the highest p-values in the current model
   for(Step in 1:length(Pred_Vars)){
     #Step=1
     est=esticon(Current_Full_Model$model_fit,
@@ -7272,6 +7351,7 @@ GLMM_Overdispersion_Test=function(model){
 # AIC-based backward elimination
 #*******************************
 # data(mtcars)
+# library(MASS)
 # MultiLinearReg=glm(mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb, data=mtcars, family="gaussian")
 # 
 # stepAIC(MultiLinearReg, trace=TRUE)
@@ -7990,7 +8070,7 @@ GLMM_Multinomial_Multivariate=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # # proportional odds assumption test
 # Output=Proportional_Odds_Assumption_Test(Data=Data_to_use,
@@ -8211,7 +8291,7 @@ CLMM_Ordinal_Bivariate=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # # proportional odds assumption test
 # Output=Proportional_Odds_Assumption_Test(Data=Data_to_use,
@@ -8443,7 +8523,7 @@ CLMM_Ordinal_Multivariable=function(Data,
 #                     Pred_Vars,
 #                     vector.OF.classes.num.fact,
 #                     levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # # proportional odds assumption test
 # Output=Proportional_Odds_Assumption_Test(Data=Data_to_use,
@@ -8657,7 +8737,7 @@ CLMM_Confounder_Selection=function(Full_Model,
 #                            Pred_Vars=Pred_Vars,
 #                            vector.OF.classes.num.fact,
 #                            levels.of.fact)
-# Data_to_use$outcome=as.factor(Data_to_use$outcome)
+# Data_to_use$outcome=factor(Data_to_use$outcome, order=TRUE)
 # Data_to_use$id=as.factor(Data_to_use$id)
 # Main_Pred_Var="sex"
 # #Some arguments (Data, Res_Var, Group_Var, and NAGQ) must be declared with '<-' in a function!
@@ -8843,6 +8923,47 @@ Proportional_Odds_Assumption_Test=function(Data,
 #   
 #   return(Output)
 # }
+
+#************************************
+# CLMM_Ordinal_Type_Odds_Determinator
+#************************************
+CLMM_Ordinal_Type_Odds_Determinator=function(Data,
+                                             Pred_Vars,
+                                             Res_Var,
+                                             Group_Var,
+                                             NAGQ=3){
+  Output=as.data.table(
+    expand.grid(
+      rep(list(c("Non_Prop",
+                 "Prop")),
+          times=length(Pred_Vars))
+    )
+  )
+  colnames(Output)=Pred_Vars
+  
+  Output$Model_Fit=apply(
+    Output,
+    1,
+    function(x){
+      Temp=CLMM_Ordinal_Multivariable(Data,
+                                      Pred_Vars<-Pred_Vars,
+                                      Type_Odds=x,
+                                      Res_Var<-Res_Var,
+                                      Group_Var<-Group_Var,
+                                      NAGQ=NAGQ)
+      
+      return(
+        Temp$model_fit
+      )
+    }
+  )
+  
+  Output[, logLik:=sapply(Model_Fit, logLik)]
+  Output[, AIC:=sapply(Model_Fit, AIC)]
+  
+  return(Output)
+}
+
 
 #**********************
 #
@@ -9396,7 +9517,7 @@ Contingency_Table_Generator=function(Data,
      sum(colnames(Contingency_Table)!="NA")==2){
     # compute odds ratio
     Odds_ratio=Contingency_Table %>% 
-      oddsratio(method="wald")
+      epitools::oddsratio(method="wald")
     Odds_ratio_row=cbind(paste0(round(Odds_ratio$measure[, 1], 2), 
                                 " (", 
                                 round(Odds_ratio$measure[, 2], 2), 
@@ -9424,6 +9545,7 @@ Contingency_Table_Generator=function(Data,
   
   # calculate p-values for the fisher's exact test and the chisq test
   Out=as.data.table(Out)
+  set.seed(1)
   if(sum(rownames(Contingency_Table)!="NA")>1 & sum(colnames(Contingency_Table)!="NA")>1){
     Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value<0.001,
                                                              "<0.001",
