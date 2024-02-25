@@ -8112,6 +8112,8 @@ CLMM_Ordinal_Bivariate=function(Data,
   # main algorithm
   Output=c()
   
+  # set seed
+  set.seed(1)
   for(i in 1:length(Pred_Vars)){
     #i=5
     i<<-i
@@ -8333,6 +8335,8 @@ CLMM_Ordinal_Multivariable=function(Data,
   Loc_Vars<<-Pred_Vars[Type_Odds=="Prop"]
   Nom_Vars<<-Pred_Vars[Type_Odds=="Non_Prop"]
   
+  # set seed
+  set.seed(1)
   if(length(Loc_Vars)==0){ # if all are not proportional odds
     model_fit=clmm2(as.formula(paste(Res_Var, "~1")),
                     nominal=as.formula(paste("~", paste(Nom_Vars, collapse="+"))),
@@ -8383,7 +8387,13 @@ CLMM_Ordinal_Multivariable=function(Data,
   Output$Prop_Odds=c()
   Output$Non_Prop_Odds=c()
   for(i in 1:length(Pred_Vars)){
-    Target_Ind=grep(Pred_Vars[i], names(Coef))
+    # Target_Ind
+    if(is.numeric(Data[, Pred_Vars[i]])){
+      Target_Ind=which(names(Coef)%in%Pred_Vars[i]) # nothing changes to Target_Ind
+    }else if(is.factor(Data[, Pred_Vars[i]])){ # if Pred_Vars[i] is not a binary factor, Target_Ind should be singular
+      Cat_Levels=levels(Data[, Pred_Vars[i]])
+      Target_Ind=which(names(Coef)%in%paste0(Pred_Vars[i], Cat_Levels[-1]))
+    }
     
     if(Type_Odds[i]=="Prop"){
       # confidence interval (exponentiated)
