@@ -4235,7 +4235,7 @@ GLM_Multivariable=function(Data,
                            Compute.Power=FALSE,
                            nsim=1000){
   # check out packages
-  lapply(c("MASS", "data.table", "car"), checkpackages)
+  lapply(c("MASS", "data.table", "car", "pwr", "simr"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
@@ -4292,6 +4292,7 @@ GLM_Multivariable=function(Data,
   }
   
   # power
+  # https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.12504
   if(Compute.Power==TRUE){
     Coef=as.data.frame(summary(model_fit)$coefficients)[-1, ]
     Var.Power_Temp=list()
@@ -4437,8 +4438,28 @@ GLM_Multivariable=function(Data,
       round(summary(x)["upper"]*100, 2),
       ")"
     ))
+    
+    # calculate the overall power of the model given the significance level of 0.05
+    # ** reference **
+    # -	https://ladal.edu.au/pwr.html#Power_Analysis_for_GLMs
+    
+    # McFadden's R-squared value
+    # -	https://stackoverflow.com/questions/68162280/glm-no-r-squared-output-when-running-simple-linear-regression-with-categorical
+    # -	https://www.statology.org/glm-r-squared/
+    Rsquared=with((model_fit), 1-deviance/null.deviance)
+    
+    # effect size
+    # - https://cran.r-project.org/web/packages/pwr/vignettes/pwr-vignette.html
+    Effect_Size=Rsquared/(1-Rsquared)
+    
+    model_power=pwr.f2.test(u=nrow(Output$Summ_Table),
+                            v=model_fit$df.residual,
+                            f2=Effect_Size,
+                            sig.level=0.05)
+    
+    Output$model_power=model_power
   }
-  
+
   return(Output)
 }
 
