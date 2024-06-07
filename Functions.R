@@ -4231,7 +4231,9 @@ GLM_Multivariable=function(Data,
                            Res_Var,
                            which.family,
                            Offset_Var=NULL,
-                           Use_Stepwise_AIC=FALSE){
+                           Use_Stepwise_AIC=FALSE,
+                           Compute.Power=FALSE,
+                           nsim=1000){
   # check out packages
   lapply(c("MASS", "data.table", "car"), checkpackages)
   
@@ -4241,6 +4243,9 @@ GLM_Multivariable=function(Data,
   Data=Data[Non_Missing_Outcome_Obs, ]
   Origin_N_Rows=nrow(Data)
   if(Use_Stepwise_AIC==TRUE){
+    Data<<-na.exclude(Data[, c(unique(unlist(strsplit(Pred_Vars, ":"))), Res_Var)]) # activate if Stepwise_AIC() is used
+  }
+  if(Compute.Power==TRUE){
     Data<<-na.exclude(Data[, c(unique(unlist(strsplit(Pred_Vars, ":"))), Res_Var)]) # activate if Stepwise_AIC() is used
   }
   
@@ -4265,6 +4270,9 @@ GLM_Multivariable=function(Data,
                   offset=eval(parse(text=(paste0("log(" , Offset_Var, ")")))))
   }
   
+  # modify the formula of the call in the model object
+  model_fit$call$formula=fullmod
+  
   # number of observations from a model fit
   Used_N_Rows=nobs(model_fit)
   N_data_used=paste0(Used_N_Rows, "/", Origin_N_Rows, " (", round(Used_N_Rows/Origin_N_Rows*100, 2), "%)") 
@@ -4282,6 +4290,32 @@ GLM_Multivariable=function(Data,
   }else{
     CI_Type="nothing"
   }
+  
+  # power
+  Coef=as.data.frame(summary(model_fit)$coefficients)[-1, ]
+  Var.Power_Temp=list()
+  Estimates=row.names(Coef)
+  for(i in 1:length(Pred_Vars)){
+    if(Compute.Power==T){
+      lapply(c("simr"), checkpackages)
+      Var.Power_Temp[[i]]=powerSim(model_fit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)
+    }
+  }
+  
+  Var.Power=list()
+  for(i in 1:length(Pred_Vars)){
+    lapply(
+      which(Estimates%in%unlist(lapply(Pred_Vars[i],
+                                       function(x){
+                                         paste0(x, levels(Data[, x])[-1])
+                                       }))),
+      function(x){
+        Var.Power[[x]]<<-Var.Power_Temp[[i]]
+      }
+    )
+  }
+  rm(Var.Power_Temp)
+  ##########################################################
   
   # Output
   if(grepl("gaussian", which.family)){
@@ -4391,6 +4425,18 @@ GLM_Multivariable=function(Data,
                      format(round2(LRT_pvalues, 7), nsmall=3))
   Output$Summ_Table$`P.value(LRT)`=rep(LRT_pvalues[-1], LRT_results$Df[-1])
   Output$Summ_Table$`P.value(LRT)`[duplicated(rep(rownames(LRT_results)[-1], LRT_results$Df[-1]))]=""
+  
+  # power
+  if(Compute.Power==T){
+    Output$Summ_Table$Power=sapply(Var.Power, function(x) paste0(
+      paste0(round(summary(x)["mean"]*100, 2), "%"),
+      " (",
+      round(summary(x)["lower"]*100, 2),
+      ", ",
+      round(summary(x)["upper"]*100, 2),
+      ")"
+    ))
+  }
   
   return(Output)
 }
