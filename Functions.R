@@ -6240,6 +6240,7 @@ GLMM_Multivariable=function(Data,
       }
     )
   }
+  rm(Var.Power_Temp)
   
   Coef.ind=sort(unique(Coef.ind))
   CI.raw.ind=sort(unique(CI.raw.ind))
@@ -6310,7 +6311,7 @@ GLMM_Multivariable=function(Data,
   
   # power
   if(Compute.Power==T){
-    Output$Summ_Table$power=sapply(Var.Power, function(x) paste0(
+    Output$Summ_Table$Power=sapply(Var.Power, function(x) paste0(
       paste0(round(summary(x)["mean"]*100, 2), "%"),
       " (",
       round(summary(x)["lower"]*100, 2),
