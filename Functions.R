@@ -5429,7 +5429,7 @@ GEE_Confounder_Model=function(Data,
 #                           Res_Var="outcome",
 #                           Group_Var="id",
 #                           which.family<-"binomial")
-# QIC_Selection_Steps=GEE_Backward_by_geepack::QIC(Full_Model=GEE.fit$model_fit,
+# QIC_Selection_Steps=GEE_Backward_by_QIC(Full_Model=GEE.fit$model_fit,
 #                                         Pred_Vars=Pred_Vars)
 GEE_Backward_by_QIC=function(Full_Model,
                              Pred_Vars){ # minimum percentage of change-in-estimate to terminate the algorithm
@@ -6217,15 +6217,28 @@ GLMM_Multivariable=function(Data,
   CI.ind=c()
   
   # power
-  Var.Power=list()
+  Var.Power_Temp=list()
   Estimates=row.names(Coef)
-  for(i in 1:length(Estimates)){
-    Coef.ind=c(Coef.ind, which(grepl(Estimates[i], row.names(Coef))))
-    CI.raw.ind=c(CI.raw.ind, which(grepl(Estimates[i], row.names(CI.raw))))
-    CI.ind=c(CI.ind, which(grepl(Estimates[i], row.names(CI))))
+  for(i in 1:length(Pred_Vars)){
+    Coef.ind=c(Coef.ind, which(grepl(Pred_Vars[i], row.names(Coef))))
+    CI.raw.ind=c(CI.raw.ind, which(grepl(Pred_Vars[i], row.names(CI.raw))))
+    CI.ind=c(CI.ind, which(grepl(Pred_Vars[i], row.names(CI))))
     if(Compute.Power==T){
       lapply(c("simr"), checkpackages)
-      Var.Power[[i]]=powerSim(model_fit, fixed(Estimates[i], "lr"), nsim=nsim, progress=F)}
+      Var.Power_Temp[[i]]=powerSim(model_fit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)
+    }
+  }
+  Var.Power=list()
+  for(i in 1:length(Pred_Vars)){
+    lapply(
+      which(Estimates%in%unlist(lapply(Pred_Vars[i],
+                                       function(x){
+                                         paste0(x, levels(Data_to_use[, x])[-1])
+                                       }))),
+      function(x){
+        Var.Power[[x]]<<-Var.Power_Temp[[i]]
+      }
+    )
   }
   
   Coef.ind=sort(unique(Coef.ind))
