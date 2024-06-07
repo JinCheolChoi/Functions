@@ -4292,30 +4292,31 @@ GLM_Multivariable=function(Data,
   }
   
   # power
-  Coef=as.data.frame(summary(model_fit)$coefficients)[-1, ]
-  Var.Power_Temp=list()
-  Estimates=row.names(Coef)
-  for(i in 1:length(Pred_Vars)){
-    if(Compute.Power==T){
-      lapply(c("simr"), checkpackages)
-      Var.Power_Temp[[i]]=powerSim(model_fit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)
-    }
-  }
-  
-  Var.Power=list()
-  for(i in 1:length(Pred_Vars)){
-    lapply(
-      which(Estimates%in%unlist(lapply(Pred_Vars[i],
-                                       function(x){
-                                         paste0(x, levels(Data[, x])[-1])
-                                       }))),
-      function(x){
-        Var.Power[[x]]<<-Var.Power_Temp[[i]]
+  if(Compute.Power==TRUE){
+    Coef=as.data.frame(summary(model_fit)$coefficients)[-1, ]
+    Var.Power_Temp=list()
+    Estimates=row.names(Coef)
+    for(i in 1:length(Pred_Vars)){
+      if(Compute.Power==T){
+        lapply(c("simr"), checkpackages)
+        Var.Power_Temp[[i]]=powerSim(model_fit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)
       }
-    )
+    }
+    
+    Var.Power=list()
+    for(i in 1:length(Pred_Vars)){
+      lapply(
+        which(Estimates%in%unlist(lapply(Pred_Vars[i],
+                                         function(x){
+                                           paste0(x, levels(Data[, x])[-1])
+                                         }))),
+        function(x){
+          Var.Power[[x]]<<-Var.Power_Temp[[i]]
+        }
+      )
+    }
+    rm(Var.Power_Temp)
   }
-  rm(Var.Power_Temp)
-  ##########################################################
   
   # Output
   if(grepl("gaussian", which.family)){
