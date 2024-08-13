@@ -2424,6 +2424,175 @@ Segmented_Regression_Model=function(Data,
 #   Trend_Plot
 # }
 
+
+
+#********
+# ITS_GEE
+#********
+# Example
+#********
+# # (important!) Time unit is months.
+# lapply(c("geepack"), checkpackages)
+# data("respiratory")
+# Data_original=respiratory
+# # generate missing data
+# Data_original$outcome[1:5]=NA
+# Data_original$treat[c(3, 7, 35, 74)]=NA
+# Data_original$id[c(6, 25, 45, 98)]=NA
+# Data_original$sex=as.character(Data_original$sex)
+# Data_original$sex[c(2, 15, 35, 58, 93)]="N"
+# Data_original$sex=factor(Data_original$sex)
+# Pred_Vars=c("center", "id", "treat", "sex", "age", "baseline", "visit")
+# vector.OF.classes.num.fact=ifelse(unlist(lapply(Data_original[, Pred_Vars], class))=="integer", "num", "fact")
+# levels.of.fact=rep("NA", length(vector.OF.classes.num.fact))
+# levels.of.fact[which(Pred_Vars=="treat")]="P"
+# levels.of.fact[which(Pred_Vars=="sex")]="F"
+# Res_Var="outcome"
+# Group_Var="id"
+# #
+# Data_original=Format_Columns(Data_original,
+#                              Res_Var="outcome",
+#                              Pred_Vars,
+#                              vector.OF.classes.num.fact,
+#                              levels.of.fact)
+# Data_original=data.table(Data_original)
+# Data_original[visit==1, INT_DATE:=as.Date("2024-01-01")]
+# Data_original[visit==2, INT_DATE:=as.Date("2024-02-01")]
+# Data_original[visit==3, INT_DATE:=as.Date("2024-03-01")]
+# Data_original[visit==4, INT_DATE:=as.Date("2024-04-01")]
+# set.seed(1)
+# Data_original[sample(1:nrow(Data_original), 100), outcome:=1]
+# Data_original[sample(1:nrow(Data_original), 100), outcome:=0]
+# Data_original[sample(1:nrow(Data_original), 100), center:=1]
+# Data_original[sample(1:nrow(Data_original), 100), center:=0]
+# # Data_original[, Interruption:=0]
+# # Data_original[Int_Date>="2024-08-13", Interruption:=1]
+# # run GEE_Multivariable
+# ITS_GEE(Data=Data_original,
+#         Pred_Vars=c("center", "sex", "age"),
+#         Res_Var=Res_Var,
+#         Group_Var=Group_Var,
+#         which.family="binomial (link='logit')",
+#         Time_Var="INT_DATE",
+#         Int_Date="2024-03-01")
+ITS_GEE=function(Data,
+                 Pred_Vars,
+                 Res_Var,
+                 Group_Var,
+                 which.family,
+                 Time_Var,
+                 Int_Date){
+  
+  # check out packages
+  lapply(c("geepack", "data.table"), checkpackages)
+  
+  Int_Date=as.Date(Int_Date)
+  
+  # Time
+  Sorted_Time_Var=sort(unique(Data[[Time_Var]]))
+  Data[, Time:=sapply(Data[[Time_Var]],
+                      function(x){
+                        which(x==Sorted_Time_Var)
+                      })]
+  
+  # Level
+  Data[, Level:=0]
+  Data[eval(parse(text=Time_Var))>=Int_Date, Level:=1]
+  
+  # Trend
+  Sorted_Date=seq(head(sort(unique(Data[[Time_Var]])), 1),
+                  tail(sort(unique(Data[[Time_Var]])), 1),
+                  by="1 month")
+  Sorted_Date=Sorted_Date[Sorted_Date>=Int_Date]
+  Data[, Trend:=sapply(Data[[Time_Var]],
+                       function(x){
+                         if(x%in%Sorted_Date){
+                           which(x==Sorted_Date)
+                         }else{
+                           0
+                         }
+                       })]
+  
+  # # Time_Level
+  # Data[, Time_Level:=Time*Level]
+  
+  # Time_Rev
+  Sorted_Time_Var_Rev=sort(unique(Data[[Time_Var]]), decreasing=TRUE)
+  Data[, Time_Rev:=sapply(Data[[Time_Var]],
+                          function(x){
+                            which(x==Sorted_Time_Var_Rev)
+                          })]
+  
+  # Level_Rev
+  Data[, Level_Rev:=1]
+  Data[eval(parse(text=Time_Var))>=Int_Date, Level_Rev:=0]
+  
+  # Trend_Rev
+  Sorted_Date_Rev=seq(head(sort(unique(Data[[Time_Var]])), 1),
+                      tail(sort(unique(Data[[Time_Var]])), 1),
+                      by="1 month")
+  # Sorted_Date_Rev=sort(Sorted_Date_Rev, decreasing=TRUE)
+  Sorted_Date_Rev=Sorted_Date_Rev[Sorted_Date_Rev<Int_Date]
+  Coef=length(Sorted_Date_Rev)
+  Data[, Trend_Rev:=sapply(Data[[Time_Var]],
+                           function(x){
+                             if(x%in%Sorted_Date_Rev){
+                               which(x==Sorted_Date_Rev)-Coef
+                             }else{
+                               0
+                             }
+                           })]
+  
+  
+  # data overview
+  unique(Data[, .SD, .SDcols=c(Time_Var, "Time", "Level", "Trend", "Level_Rev", "Trend_Rev")])[order(eval(parse(text=Time_Var)))]
+  
+  ITS_GEE_Pre_Interruption=GEE_Multivariable(Data=Data,
+                                             Pred_Vars=c(
+                                               "Time",
+                                               "Level",
+                                               "Trend",
+                                               Pred_Vars
+                                             ),
+                                             Res_Var=Res_Var,
+                                             Group_Var=Group_Var,
+                                             which.family=which.family)
+  
+  ITS_GEE_Post_Interruption=GEE_Multivariable(Data=Data,
+                                              Pred_Vars=c(
+                                                "Time",
+                                                "Level_Rev",
+                                                "Trend_Rev",
+                                                Pred_Vars
+                                              ),
+                                              Res_Var=Res_Var,
+                                              Group_Var=Group_Var,
+                                              which.family=which.family)
+  
+  Output=c()
+  Output$ITS_GEE_Pre_Interruption=ITS_GEE_Pre_Interruption
+  Output$ITS_GEE_Post_Interruption=ITS_GEE_Post_Interruption
+  
+  
+  if(grepl("gaussian", which.family)){
+    Converted_Est="Estimate.and.CI"
+  }else if(grepl("binomial", which.family)){
+    Converted_Est="OR.and.CI"
+  }else if(grepl("poisson", which.family)){
+    Converted_Est="IRR.and.CI"
+  }
+  Summ_Table=rbind(as.data.frame(ITS_GEE_Pre_Interruption$Summ_Table)[1, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")],
+                   as.data.frame(ITS_GEE_Post_Interruption$Summ_Table)[1, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")],
+                   as.data.frame(ITS_GEE_Pre_Interruption$Summ_Table)[3, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")])
+  Summ_Table[["rn"]]=c("Pre-intervention trend", "Post-intervention trend", "Compare trends")
+  
+  Output$Summ_Table=as.data.table(Summ_Table)
+  
+  return(Output)
+}
+
+
+
 #************************
 #
 # [ --- COX PH --- ] ----
@@ -6296,19 +6465,23 @@ GLMM_Multivariable=function(Data,
       Var.Power_Temp[[i]]=powerSim(model_fit, fixed(Pred_Vars[i], "lr"), nsim=nsim, progress=F)
     }
   }
-  Var.Power=list()
-  for(i in 1:length(Pred_Vars)){
-    lapply(
-      which(Estimates%in%unlist(lapply(Pred_Vars[i],
-                                       function(x){
-                                         paste0(x, levels(Data_to_use[, x])[-1])
-                                       }))),
-      function(x){
-        Var.Power[[x]]<<-Var.Power_Temp[[i]]
-      }
-    )
+  
+  if(Compute.Power==T){
+    Var.Power=list()
+    for(i in 1:length(Pred_Vars)){
+      lapply(
+        which(Estimates%in%unlist(lapply(Pred_Vars[i],
+                                         function(x){
+                                           paste0(x, levels(Data_to_use[, x])[-1])
+                                         }))),
+        function(x){
+          Var.Power[[x]]<<-Var.Power_Temp[[i]]
+        }
+      )
+    }
+    rm(Var.Power_Temp)
   }
-  rm(Var.Power_Temp)
+  
   
   Coef.ind=sort(unique(Coef.ind))
   CI.raw.ind=sort(unique(CI.raw.ind))
