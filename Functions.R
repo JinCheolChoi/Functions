@@ -2583,8 +2583,9 @@ ITS_GEE=function(Data,
   }
   Summ_Table=rbind(as.data.frame(ITS_GEE_Pre_Interruption$Summ_Table)[1, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")],
                    as.data.frame(ITS_GEE_Post_Interruption$Summ_Table)[1, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")],
-                   as.data.frame(ITS_GEE_Pre_Interruption$Summ_Table)[3, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")])
-  Summ_Table[["rn"]]=c("Pre-intervention trend", "Post-intervention trend", "Compare trends")
+                   as.data.frame(ITS_GEE_Pre_Interruption$Summ_Table)[3, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")],
+                   as.data.frame(ITS_GEE_Pre_Interruption$Summ_Table)[2, c("rn", "Estimate", "Std.Error", "P.value", Converted_Est, "N_data_used")])
+  Summ_Table[["rn"]]=c("Pre-intervention trend", "Post-intervention trend", "Compare trends", "Immediate effect")
   
   Output$Summ_Table=as.data.table(Summ_Table)
   
