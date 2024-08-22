@@ -5235,7 +5235,7 @@ GEE_Multivariable=function(Data,
                            Group_Var,
                            which.family){ # names of people should be numeric
   # check out packages
-  lapply(c("geepack", "MESS", "doBy", "HH", "data.table"), checkpackages)
+  lapply(c("geepack", "stringi", "MESS", "doBy", "HH", "data.table"), checkpackages)
   
   # as data frame
   Data=as.data.frame(Data)
