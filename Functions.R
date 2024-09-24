@@ -643,10 +643,10 @@ Marginal_Effect_2=function(Model_Fit,
            stop("as.character(is.null(Summ$df.residual)) is something else"))
   }
   
-  Temp_Var_1=marginaleffects(Model_Fit,
-                             type=type_temp,
-                             newdata=do.call(datagrid, List_Var_2),
-                             df=df_temp)
+  Temp_Var_1=slopes(Model_Fit,
+                    type=type_temp,
+                    newdata=do.call(datagrid, List_Var_2),
+                    df=df_temp)
   
   setnames(Temp_Var_1,
            c("term", "estimate", "std.error"),
@@ -658,7 +658,8 @@ Marginal_Effect_2=function(Model_Fit,
   
   Temp_Var_1=Temp_Var_1[, !colnames(Temp_Var_1)%in%c("rowid", "type")]
   
-  Marginal_Summ_Var_1=Temp_Var_1[grepl(Var_1, Temp_Var_1$factor), ]
+  # Marginal_Summ_Var_1=Temp_Var_1[grepl(Var_1, Temp_Var_1$factor), ]
+  Marginal_Summ_Var_1=Temp_Var_1[Temp_Var_1$factor%in%Var_1, ]
   
   #**********************************************
   # marginal effect of Var_2 conditional on Var_1
@@ -693,10 +694,10 @@ Marginal_Effect_2=function(Model_Fit,
            stop("as.character(is.null(Summ$df.residual)) is something else"))
   }
   
-  Temp_Var_2=marginaleffects(Model_Fit,
-                             type=type_temp,
-                             newdata=do.call(datagrid, List_Var_1),
-                             df=df_temp)
+  Temp_Var_2=slopes(Model_Fit,
+                    type=type_temp,
+                    newdata=do.call(datagrid, List_Var_1),
+                    df=df_temp)
   setnames(Temp_Var_2,
            c("term", "estimate", "std.error"),
            c("factor", "AME", "SE"))
@@ -707,7 +708,8 @@ Marginal_Effect_2=function(Model_Fit,
   
   Temp_Var_2=Temp_Var_2[, !colnames(Temp_Var_2)%in%c("rowid", "type")]
   
-  Marginal_Summ_Var_2=Temp_Var_2[grepl(Var_2, Temp_Var_2$factor), ]
+  # Marginal_Summ_Var_2=Temp_Var_2[grepl(Var_2, Temp_Var_2$factor, fixed=TRUE), ]
+  Marginal_Summ_Var_2=Temp_Var_2[Temp_Var_2$factor%in%Var_2, ]
   
   #**************************************
   # combine the marginal effect summaries
