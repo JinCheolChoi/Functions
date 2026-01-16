@@ -2710,6 +2710,7 @@ COX_Multivariable=function(Data,
   Non_Missing_Outcome_Obs=which(!is.na(Data[, Res_Var]))
   Data=Data[Non_Missing_Outcome_Obs, ]
   Data=Data[Data[, Stop_Time]!=0, ]
+  Data=Data[Data[, Stop_Time]>0, ]
   if(!is.null(Start_Time)){
     Data=Data[Data[, Start_Time]<Data[, Stop_Time],]
   }
@@ -5288,7 +5289,11 @@ GEE_Multivariable=function(Data,
                                  ", corstr='exchangeable')",
                                  collapse=""))
   
+  # model_fit
   Output$model_fit=model_fit
+  
+  # QIC
+  Output$QIC=QIC(model_fit)
   
   # vif
   if(length(Pred_Vars)>=2){Output_vif=car::vif(model_fit)}else{Output_vif=""}
@@ -9818,6 +9823,9 @@ Contingency_Table_Generator=function(Data,
     Out[Value==Ref_of_Row_Var, c("P-value (Fisher)")]=ifelse(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value<0.001,
                                                              "<0.001",
                                                              paste0(round(fisher.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], simulate.p.value=Sim.p.value)$p.value, 3)))
+    Out[Value==Ref_of_Row_Var, c("Fisher's test")]=ifelse(sum(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$expected<5)>0,
+                                                          "Yes",
+                                                          "No") # "Yes" if at least one cell's expected frequency is less than 5
     Out[Value==Ref_of_Row_Var, c("P-value (Chi-square)")]=ifelse(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value<0.001,
                                                                  "<0.001",
                                                                  paste0(round(chisq.test(Contingency_Table[!rownames(Contingency_Table)=="NA", ], correct=FALSE)$p.value, 3)))  # return
@@ -9871,7 +9879,6 @@ Contingency_Table_Generator=function(Data,
 Contingency_Table_Generator_Conti_X=function(Data,
                                              Row_Var,
                                              Col_Var,
-                                             Ref_of_Row_Var,
                                              Missing="Not_Include",
                                              T_Test_Var_Equal=FALSE){
   # library
