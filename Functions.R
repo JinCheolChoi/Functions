@@ -9763,9 +9763,10 @@ Contingency_Table_Generator=function(Data,
     table(useNA="no")
   
   # Sum of values column-wise INCLUDING missing data in Row_Var
-  Sum_Col_Wise=Data %>% 
-    dplyr::select(Col_Var) %>% 
-    table(useNA="no") %>% c
+  # Sum_Col_Wise=Data %>% 
+  #   dplyr::select(Col_Var) %>% 
+  #   table(useNA="no") %>% c
+  Sum_Col_Wise=apply(as.matrix(Contingency_Table), 2, sum)
   
   # Sum of values row-wise EXCLUDING missing data in Col_Var
   Sum_Row_Wise=apply(Contingency_Table, 1, sum)
